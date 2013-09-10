@@ -1,0 +1,23 @@
+{
+  "name": "rush-http-proxy",
+  "version": "0.0.1",
+  "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Based on excellent node-http-proxy.",
+  "main": "rush-http-proxy",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "keywords": [
+    "http",
+    "https",
+    "proxy"
+  ],
+  "author": "Damian Kaczmarek <rushpl@gmail.com>",
+  "license": "BSD",
+  "dependencies": {
+    "http-proxy": "~0.10.3",
+    "optimist": "~0.6.0",
+    "extend": "~1.2.0",
+    "jsonlint-lines": "~1.6.0"
+  }
+}
