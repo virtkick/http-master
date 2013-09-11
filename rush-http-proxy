@@ -188,12 +188,15 @@ function handleConfig(config) {
   });
 }
 
-function reloadConfigs() {
-  if(parseConfig(true)) {
+function unbindAll() {
     servers.forEach(function(server) {
       server.close();
     });
     servers = [];
+}
+
+function reloadConfigs() {
+  if(parseConfig(true)) {
     handleConfig(config);
   }
 }
@@ -201,33 +204,51 @@ function reloadConfigs() {
 var numCPUs = require('os').cpus().length;
 var cluster = require('cluster');
 
+var EventEmitter = require('events').EventEmitter;
 
 if (cluster.isMaster) {
   parseConfig();
   // Fork workers.
     
+
+  function initWorker(worker) {
+    worker.send('start');
+    workers.push(worker);
+    worker.emitter = new EventEmitter();
+    worker.on("message", function(message) {
+      if(message == 'unbindFinished')
+        worker.emit('unbindFinished');
+    });
+    worker.on("listening", function(host, port) {
+    });
+  }
+
   var worker;
   var workers = [];
   for (var i = 0; i < (config.workerCount || numCPUs); i++) {
     worker = cluster.fork();
     if(i == 0) {
-      worker.send('start');
-      workers.push(worker);
+      initWorker(worker);
     }
     else {
       (function(worker) {
         setTimeout(function() {
-          worker.send('start');
-          workers.push(worker);
+          initWorker(worker);
         }, config.workersInitDelay || 1000);
       })(worker);
     }
   }
 
-  fs.watchFile(argv.config, function() {
-    console.log("Reloading");
+  var watch = require('node-watch');
+
+  watch(argv.config, function() {
+    util.puts("Reloading workers due to config change");
+
     workers.forEach(function(worker) {
-      worker.send('reload');
+      worker.once('unbindFinished', function() { 
+        worker.send('reload');
+      });
+      worker.send('unbind');
     });
   });
 
@@ -238,13 +259,19 @@ if (cluster.isMaster) {
   var worker = cluster.worker;
 
   process.on('message', function(msg) {
-    if(msg == 'start') {
-      parseConfig();
-      handleConfig(config);
-    }
-    else if(msg == 'reload') {
-      reloadConfigs();
-    }
+    process.emit('msg:' + msg) });
+
+  process.on('msg:start', function() {
+    parseConfig();
+    handleConfig(config);
+  });
+  process.on('msg:unbind', function() {
+    logNotice('[' + cluster.worker.id + '] Reloading config due to changes');
+    unbindAll();
+    process.send("unbindFinished")
+  });
+  process.on('msg:reload', function() {
+    reloadConfigs();
   });
 }
 
