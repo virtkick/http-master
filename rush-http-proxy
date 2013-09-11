@@ -6,7 +6,8 @@ var path = require('path'),
     argv = require('optimist').argv,
     httpProxy = require('http-proxy'),
     crypto = require('crypto'),
-    extend = require('extend');
+    extend = require('extend'),
+    net = require('net');
 
 var help = [
     "usage: rush-http-proxy [options] ",
@@ -29,17 +30,77 @@ var location, config = {},
 
 var jsonLint = require('jsonlint-lines');
 var extend = require('extend');
+var async = require('async');
 
 var servers = [];
+
+
+var tcpServers = {};
+
+function getTcpServer(port, host, cb) {
+  var entry = (host ? host + ":" + port : port);
+  if(tcpServers[entry]) {
+    cb(null, tcpServers[entry]);
+
+  }
+  else {
+    var tcpServer = tcpServers[entry] = net.createServer();
+    function handler(err) {
+      if(err) return cb(err);
+      cb(null, tcpServer);
+    }
+    if(host)
+      tcpServer.listen(port, host, handler);
+    else
+      tcpServer.listen(port, handler);
+    
+  }
+}
+
 
 function logError(str) {
   if(argv.silent || config.silent)
     return;
+  if(cluster.worker) {
+    str = '[' + cluster.worker.id + '] ' + str;
+  }
   util.puts(str);
 }
 
 var logNotice = logError;
 
+function loadKeysForContext(context) {
+  Object.keys(context).forEach(function (key) {
+    // If CA certs are specified, load those too.
+    if (key === "ca") {
+      if(typeof context.ca == 'object') {
+        for (var i=0; i < context.ca.length; i++) {
+          if (context.ca === undefined) {
+            context.ca = [];
+          }
+          context.ca[i] = fs.readFileSync(context[key][i], 'utf8');
+        }
+      }
+      else {
+        var chain = fs.readFileSync(context.ca, 'utf8');
+        chain = chain.split("\n");
+        context.ca = [];
+        var cert = [];
+        chain.forEach(function(line) {
+          if(line.length == 0)
+            return;
+          cert.push(line);
+          if(line.match(/-END CERTIFICATE-/)) {
+            context.ca.push(cert.join("\n"))
+            cert = [];
+          }
+        });
+      }
+    } else if(key !== 'SNI' && key !== 'SNICallback') {
+      context[key] = fs.readFileSync(context[key], 'utf8');
+    }
+  });
+}
 
 function parseConfig(noExitOnError) {
   //
@@ -51,14 +112,14 @@ function parseConfig(noExitOnError) {
     config = jsonLint.parse(data);
   } catch (ex) {
     logError('Config ' + ex);
-    if(!noRestart)
+    if(!noExitOnError)
       process.exit(1);
     return false;
   }
   return true;
 }
 
-function handleConfigEntry(portEntry, config) {
+function handleConfigEntry(config, callback) {
   //
   // If `config.https` is set, then load the required file contents into the config options.
   //
@@ -78,38 +139,6 @@ function handleConfigEntry(portEntry, config) {
       }
     }
 
-    function loadKeysForContext(context) {
-      Object.keys(context).forEach(function (key) {
-        // If CA certs are specified, load those too.
-        if (key === "ca") {
-          if(typeof context.ca == 'object') {
-            for (var i=0; i < context.ca.length; i++) {
-              if (context.ca === undefined) {
-                context.ca = [];
-              }
-              context.ca[i] = fs.readFileSync(context[key][i], 'utf8');
-            }
-          }
-          else {
-            var chain = fs.readFileSync(context.ca, 'utf8');
-            chain = chain.split("\n");
-            context.ca = [];
-            var cert = [];
-            chain.forEach(function(line) {
-              if(line.length == 0)
-                return;
-              cert.push(line);
-              if(line.match(/-END CERTIFICATE-/)) {
-                context.ca.push(cert.join("\n"))
-                cert = [];
-              }
-            });
-          }
-        } else if(key !== 'SNI' && key !== 'SNICallback') {
-          context[key] = fs.readFileSync(context[key], 'utf8');
-        }
-      });
-    }
     loadKeysForContext(config.https);
     if(SNI) {
       for(key in SNI) {
@@ -135,64 +164,97 @@ function handleConfigEntry(portEntry, config) {
     server = httpProxy.createServer(config);
   }
   else {
-    return false;
+    return callback(null, null);
   }
 
-  //
-  // Start the server
-  //
-  if (config.host) {
-    server.listen(config.port, config.host);
-  } else {
-    server.listen(config.port);
+  function listeningHandler() {
+    console.log("Listening again");
+    server.removeAllListeners('error'); // remove the below handler
+    callback(null, server);
+    server.removeListener('error', errorHandler);
+  }
+  function errorHandler(err) {
+    console.log("Once error");
+    server.removeAllListeners('listening'); // remove the above handler
+    callback(err, server);
+    server.removeListener('listening', listeningHandler);
   }
 
-  server.once('listening', function() {
 
-    if(config.host)
-      logNotice('[' + cluster.worker.id + '] Listening on port: ' + config.host + ":" + port);
-    else
-      logNotice('[' + cluster.worker.id + '] Listening on port: ' + config.port);
+  server.once('listening', listeningHandler);
 
-    servers.push(server);
+  server.once('error', errorHandler);
+
+
+  getTcpServer(config.port, config.host, function(err, tcpServer) {
+    if(err) return callback(err, server);
+
+    tcpServer.removeAllListeners();
+    tcpServer.on('connection', function(socket) {
+      server.emit('connection', socket);
+    });
+    tcpServer.on('error', function(err) {
+      server.emit('error', err);
+    });
+    tcpServer.on('close', function(err) {
+      server.emit('close');
+    });
+    console.log("Emitting listening");
+    server.emit('listening');
   });
-
-  server.on('error', function(err) {
-    logError("Error while starting entry for " + (config.host?config.host + ":" + config.port: "port " + config.port) + " : " + err.toString());
-    process.exit();
-  });
-
+    
 }
 
 function handleConfig(config) {
+  async.parallel(Object.keys(config.ports).map(function(portEntry) {
 
-  Object.keys(config.ports).forEach(function(portEntry) {
+    return function(asyncCallback) {
 
-    var m;
-    // TODO: IPV6?
-    if((m = portEntry.match(/((\S+):)?(\d+)(?:(?:\s*=>\s*)?(\S+):(\d+)?)?/))) {
-      var host = m[2];
-      var port = parseInt(m[3]);
-      var targetHost = m[4];
-      var targetPort = m[5];
+      var m;
+      // TODO: IPV6?
+      if((m = portEntry.match(/((\S+):)?(\d+)(?:(?:\s*=>\s*)?(\S+):(\d+)?)?/))) {
+        var host = m[2];
+        var port = parseInt(m[3]);
+        var targetHost = m[4];
+        var targetPort = m[5];
 
-      var portConfig = config.ports[portEntry];
+        var portConfig = config.ports[portEntry];
+        var configEntry = extend({
+           targetHost: targetHost,
+           targetPort: targetPort,
+           host: host,
+           port: port,
+        }, portConfig);
 
-      handleConfigEntry(portEntry, extend({
-         targetHost: targetHost,
-         targetPort: targetPort,
-         host: host,
-         port: port,
-      }, portConfig));
+        handleConfigEntry(configEntry , function(err, server) {
+          var entryString = (configEntry.host?configEntry.host + ":" + configEntry.port: "port " + configEntry.port);
+          if(err) {
+            logError("Error while starting entry " + entryString + " : " + err.toString());
+          }
+          if(server) {
+            logNotice("Listening on port: " + entryString);
+          }
+          else
+            logNotice("Entry " + entryString + " is unusable, needs to specify router or target");
+          asyncCallback(err, server);
+        });
+      };
+    };
+  }), function(err, results) {
+    if(err) {
+      return process.exit();
     }
+    logNotice("Start successful");
+    process.send("started");
+    servers = results;
   });
 }
 
-function unbindAll() {
-    servers.forEach(function(server) {
-      server.close();
-    });
-    servers = [];
+function unbindAll(cb) {
+  servers.forEach(function(server){
+    server.removeAllListeners();
+  });
+  cb();
 }
 
 function reloadConfigs() {
@@ -207,49 +269,78 @@ var cluster = require('cluster');
 var EventEmitter = require('events').EventEmitter;
 
 if (cluster.isMaster) {
+  var startTime = new Date().getTime();
+
   parseConfig();
   // Fork workers.
     
-
-  function initWorker(worker) {
+  function initWorker(cb) {
+    var worker = cluster.fork();
     worker.send('start');
-    workers.push(worker);
     worker.emitter = new EventEmitter();
-    worker.on("message", function(message) {
-      if(message == 'unbindFinished')
-        worker.emit('unbindFinished');
-    });
+    worker.on("message", function(message) { worker.emit("msg:" + message); });
     worker.on("listening", function(host, port) {
     });
+    worker.once('msg:started', function() {
+      cb();
+    });
+    return worker;
   }
 
   var worker;
   var workers = [];
-  for (var i = 0; i < (config.workerCount || numCPUs); i++) {
-    worker = cluster.fork();
-    if(i == 0) {
-      initWorker(worker);
-    }
-    else {
-      (function(worker) {
-        setTimeout(function() {
-          initWorker(worker);
-        }, config.workersInitDelay || 1000);
-      })(worker);
-    }
+
+  worker = initWorker(function() {
+    workers.push(worker);
+    async.times( (config.workerCount || numCPUs) -1, function(n, next) {
+      workers.push(initWorker(function() {
+        next(null);
+      }));
+    }, function(err) {
+      if(err) {
+        logError("Workers failed to start");
+        process.exit();
+      }
+      logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
+    });
+
+  });
+
+  function reloadAllWorkers() {
+    
+    var startTime = new Date().getTime();
+
+    async.parallel(workers.map(function(worker) {
+      return function(asyncCallback) {
+        worker.once('msg:unbindFinished', function() { 
+
+          worker.once('msg:started', function() {
+            asyncCallback();
+          });
+          worker.send('reload');
+        });
+        worker.send('unbind');
+      };
+    }), function(err) {
+      logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
+    });;    
   }
+
 
   var watch = require('node-watch');
 
-  watch(argv.config, function() {
-    util.puts("Reloading workers due to config change");
-
-    workers.forEach(function(worker) {
-      worker.once('unbindFinished', function() { 
-        worker.send('reload');
-      });
-      worker.send('unbind');
+  if(config.watchConfig || argv.watch) {
+    watch(argv.config, function() {
+      if(!parseConfig(true)) return;
+      logNotice("Reloading workers due to config change"); 
+      reloadAllWorkers();
     });
+  }
+
+  process.on('SIGUSR1', function() {
+    logNotice("USR1: Reloading config");
+    if(!parseConfig(true)) return;
+    reloadAllWorkers();
   });
 
   cluster.on('exit', function(worker, code, signal) {
@@ -266,9 +357,10 @@ if (cluster.isMaster) {
     handleConfig(config);
   });
   process.on('msg:unbind', function() {
-    logNotice('[' + cluster.worker.id + '] Reloading config due to changes');
-    unbindAll();
-    process.send("unbindFinished")
+    logNotice('Reloading config');
+    unbindAll(function() {
+      process.send("unbindFinished");
+    });
   });
   process.on('msg:reload', function() {
     reloadConfigs();
