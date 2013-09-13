@@ -173,10 +173,13 @@ function handleConfigEntry(config, callback) {
         target = "http://" + target;
       }
       target = target.replace('/[path]', '[path]');
-      redirectTable[host] = {
+      var redirectEntry = {
         path: path,
         target: target
       };
+
+      redirectTable[host] = redirectEntry;
+      redirectTable[host + ":" + config.port] = redirectEntry;
     });
 
     args.push(function(req, res, next) {
