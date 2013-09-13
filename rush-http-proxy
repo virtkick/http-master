@@ -169,7 +169,7 @@ function handleConfigEntry(config, callback) {
 
       var target = config.redirect[redirectEntry];
 
-      if(!target.match(/^http:\/\//) || !target.match(/^http:\/\//)) {
+      if(!target.match(/^http:\/\//) && !target.match(/^https:\/\//)) {
         target = "http://" + target;
       }
       target = target.replace('/[path]', '[path]');
