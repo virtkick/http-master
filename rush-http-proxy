@@ -9,6 +9,8 @@ var path = require('path'),
     extend = require('extend'),
     net = require('net');
 
+var http = require('http');
+
 var help = [
     "usage: rush-http-proxy [options] ",
     "",
@@ -153,18 +155,55 @@ function handleConfigEntry(config, callback) {
   //
   config.silent = typeof argv.silent !== 'undefined' ? argv.silent : config.silent;
 
-  //
-  // Create the server with the specified options
-  //
+
+  var args = [];
+
+  if(config.redirect) {
+
+    var redirectTable = {};
+
+    Object.keys(config.redirect).forEach(function(redirectEntry) {
+      var array = redirectEntry.split(/\/(.+)?/);
+      var host = array[0];
+      var path = array[1];
+
+      var target = config.redirect[redirectEntry];
+
+      if(!target.match(/^http:\/\//) || !target.match(/^http:\/\//)) {
+        target = "http://" + target;
+      }
+      target = target.replace('/[path]', '[path]');
+      redirectTable[host] = {
+        path: path,
+        target: target
+      };
+    });
+
+    args.push(function(req, res, next) {
+      var entry = redirectTable[req.headers.host];
+      if(!entry) return next();
+
+      if(entry.path && req.url !== entry.path) return next();
+
+      var target = entry.target;
+      target = target.replace("[path]", req.url);
+
+      res.statusCode = 302;
+      res.setHeader("Location", target);
+      res.end();
+    });
+  }
+
   var server;
   if (config.targetHost) {
-    server = httpProxy.createServer(config.targetPort, config.targetHost, config);
+    args.push(config.targetPort);
+    args.push(config.targetHost);
   }
-  else if (config.router) {
-    server = httpProxy.createServer(config);
-  }
-  else {
-    return callback(null, null);
+  args.push(config);
+  try {
+    server = httpProxy.createServer.apply(httpProxy, args);
+  } catch(err) {
+    return callback(err, null);
   }
 
   function listeningHandler() {
@@ -235,7 +274,7 @@ function handleConfig(config) {
             logNotice("Listening on port: " + entryString);
           }
           else
-            logNotice("Entry " + entryString + " is unusable, needs to specify router or target");
+            logNotice("Entry " + entryString + " is unusable");
           asyncCallback(err, server);
         });
       };
@@ -292,7 +331,7 @@ if (cluster.isMaster) {
 
   worker = initWorker(function() {
     workers.push(worker);
-    async.times( (config.workerCount || numCPUs) -1, function(n, next) {
+    async.times( (config.workerCount || argv.workers || numCPUs) -1, function(n, next) {
       workers.push(initWorker(function() {
         next(null);
       }));
