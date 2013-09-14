@@ -11,7 +11,7 @@ module.exports = {
 	initMaster: function(config) {
 
 		var logStream = process.stdout;
-		if(config.logging)
+		if(config.logging && config.logging.logFile)
 			logStream = fs.createWriteStream(config.logging.logFile, {'flags': 'a'});
 
 		process.on('msg:log', function(data) {
