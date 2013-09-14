@@ -1,6 +1,6 @@
 {
   "name": "rush-http-proxy",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Based on excellent node-http-proxy.",
   "main": "rush-http-proxy",
   "scripts": {

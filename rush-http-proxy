@@ -44,6 +44,15 @@ var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(fun
   return (b.priority || 0) - (a.priority || 0);
 });
 
+function dropPriveleges()
+{
+  var user = argv.user || config.user;
+  if (typeof user === 'string') {
+    process.setuid(user);
+    logNotice("Dropped priveleges to: " + user);
+  }
+}
+
 function runModules(cb) {
   var args = Array.prototype.slice.call(arguments, 1);
   var results = [];
@@ -276,6 +285,7 @@ function handleConfig(config) {
       return process.exit();
     }
     logNotice("Start successful");
+    dropPriveleges();
     process.sendMessage("started");
     servers = results;
   });
@@ -346,6 +356,7 @@ if (cluster.isMaster) {
         process.exit();
       }
       logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
+      dropPriveleges();
     });
 
   });
@@ -426,11 +437,3 @@ if (cluster.isMaster) {
 }
 
 
-var user = argv.user || config.user;
-
-//
-// Drop privileges if requested
-//
-if (typeof user === 'string') {
-    process.setuid(user);
-}
