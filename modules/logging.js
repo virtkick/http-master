@@ -11,8 +11,21 @@ module.exports = {
 	initMaster: function(config) {
 
 		var logStream = process.stdout;
-		if(config.logging && config.logging.logFile)
-			logStream = fs.createWriteStream(config.logging.logFile, {'flags': 'a'});
+		var watcher;
+		if(config.logging && config.logging.logFile) {
+			function openLogFile() {
+				logStream = fs.createWriteStream(config.logging.logFile, {'flags': 'a'});
+				logStream.on('open', function() {
+					watcher = fs.watch(config.logging.logFile, function(action, filename) {
+						if(action == 'rename') {
+							watcher.close();
+							openLogFile();
+						}
+					});
+				});
+			}
+			openLogFile();
+		}
 
 		process.on('msg:log', function(data) {
 			var str = JSON.stringify(data) + "\n";
