@@ -22,7 +22,6 @@ module.exports = {
 			redirectTable[host + ":" + config.port] = redirectEntry;
 		});
 
-		return null;
 		return function(req, res, next) {
 			var entry = redirectTable[req.headers.host];
 			if (!entry) return next();
