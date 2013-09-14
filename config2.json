@@ -1,9 +1,13 @@
 {
+	"logging": {
+		"logFile": "test.log"
+	},
 	"ports": {
 		"8081" : {
 			"redirect": {
-				"test.pl:8081": "http://127.0.0.1:8082/[path]"
+				"test.pl/test": "https://127.0.0.1:8082/[path]"
 			},
+
 			"router": {
 				"test.pl": "127.0.0.1:8082"
 			}

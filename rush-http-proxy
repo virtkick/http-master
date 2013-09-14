@@ -35,15 +35,40 @@ var extend = require('extend');
 var async = require('async');
 
 var servers = [];
-
-
 var tcpServers = {};
+
+var modules = require("fs").readdirSync("./modules").map(function(file) {
+  return require('./modules/' + file);
+}).sort(function(a, b) { // sort modules according to priority
+  return (b.priority || 0) - (a.priority || 0);
+});
+
+function runModules(cb) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  var results = [];
+
+  var name;
+  if(typeof cb === 'string') {
+    name = cb;
+  }
+  else {
+    name = args.shift();
+  }
+
+  modules.forEach(function(module) {
+    if(module[name]) {
+      var ret = module[name].apply(module[name], args);
+      if(ret && typeof cb === 'function')
+        cb(name, ret);
+    }
+  });
+}
+
 
 function getTcpServer(port, host, cb) {
   var entry = (host ? host + ":" + port : port);
   if(tcpServers[entry]) {
     cb(null, tcpServers[entry]);
-
   }
   else {
     var tcpServer = tcpServers[entry] = net.createServer();
@@ -55,10 +80,8 @@ function getTcpServer(port, host, cb) {
       tcpServer.listen(port, host, handler);
     else
       tcpServer.listen(port, handler);
-    
   }
 }
-
 
 function logError(str) {
   if(argv.silent || config.silent)
@@ -155,47 +178,11 @@ function handleConfigEntry(config, callback) {
   //
   config.silent = typeof argv.silent !== 'undefined' ? argv.silent : config.silent;
 
-
   var args = [];
 
-  if(config.redirect) {
-
-    var redirectTable = {};
-
-    Object.keys(config.redirect).forEach(function(redirectEntry) {
-      var array = redirectEntry.split(/\/(.+)?/);
-      var host = array[0];
-      var path = array[1];
-
-      var target = config.redirect[redirectEntry];
-
-      if(!target.match(/^http:\/\//) && !target.match(/^https:\/\//)) {
-        target = "http://" + target;
-      }
-      target = target.replace('/[path]', '[path]');
-      var redirectEntry = {
-        path: path,
-        target: target
-      };
-
-      redirectTable[host] = redirectEntry;
-      redirectTable[host + ":" + config.port] = redirectEntry;
-    });
-
-    args.push(function(req, res, next) {
-      var entry = redirectTable[req.headers.host];
-      if(!entry) return next();
-
-      if(entry.path && req.url !== entry.path) return next();
-
-      var target = entry.target;
-      target = target.replace("[path]", req.url);
-
-      res.statusCode = 302;
-      res.setHeader("Location", target);
-      res.end();
-    });
-  }
+  runModules(function(name, middlewareFunction) {
+    args.push(middlewareFunction);
+  }, "middleware", config);
 
   var server;
   if (config.targetHost) {
@@ -210,13 +197,11 @@ function handleConfigEntry(config, callback) {
   }
 
   function listeningHandler() {
-    console.log("Listening again");
     server.removeAllListeners('error'); // remove the below handler
     callback(null, server);
     server.removeListener('error', errorHandler);
   }
   function errorHandler(err) {
-    console.log("Once error");
     server.removeAllListeners('listening'); // remove the above handler
     callback(err, server);
     server.removeListener('listening', listeningHandler);
@@ -241,13 +226,14 @@ function handleConfigEntry(config, callback) {
     tcpServer.on('close', function(err) {
       server.emit('close');
     });
-    console.log("Emitting listening");
     server.emit('listening');
+    runModules('onServerListening', config, server);
   });
-    
 }
 
 function handleConfig(config) {
+  runModules('preprocessConfig', config);
+
   async.parallel(Object.keys(config.ports).map(function(portEntry) {
 
     return function(asyncCallback) {
@@ -268,6 +254,8 @@ function handleConfig(config) {
            port: port,
         }, portConfig);
 
+
+
         handleConfigEntry(configEntry , function(err, server) {
           var entryString = (configEntry.host?configEntry.host + ":" + configEntry.port: "port " + configEntry.port);
           if(err) {
@@ -287,7 +275,7 @@ function handleConfig(config) {
       return process.exit();
     }
     logNotice("Start successful");
-    process.send("started");
+    process.sendMessage("started");
     servers = results;
   });
 }
@@ -310,17 +298,30 @@ var cluster = require('cluster');
 
 var EventEmitter = require('events').EventEmitter;
 
+  
+
 if (cluster.isMaster) {
   var startTime = new Date().getTime();
 
   parseConfig();
-  // Fork workers.
-    
+      
   function initWorker(cb) {
     var worker = cluster.fork();
-    worker.send('start');
+    worker.sendMessage = function(type, data) {
+      worker.send(JSON.stringify({
+        type: type,
+        data: data
+      }));
+    };
+
+
+    worker.sendMessage('start');
     worker.emitter = new EventEmitter();
-    worker.on("message", function(message) { worker.emit("msg:" + message); });
+    worker.on("message",  function(msg) {
+      var msg = JSON.parse(msg);
+      process.emit('msg:' + msg.type, msg.data, worker);
+      worker.emit('msg:' + msg.type, msg.data);
+    });
     worker.on("listening", function(host, port) {
     });
     worker.once('msg:started', function() {
@@ -359,9 +360,9 @@ if (cluster.isMaster) {
           worker.once('msg:started', function() {
             asyncCallback();
           });
-          worker.send('reload');
+          worker.sendMessage('reload');
         });
-        worker.send('unbind');
+        worker.sendMessage('unbind');
       };
     }), function(err) {
       logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
@@ -386,22 +387,36 @@ if (cluster.isMaster) {
   });
 
   cluster.on('exit', function(worker, code, signal) {
+    logError("Worker failed with code", code);
     process.exit();
   });
-} else {
+
+  runModules("initMaster", config);
+
+} else { // worker
   var worker = cluster.worker;
 
+  process.sendMessage = function(type, data) {
+    process.send(JSON.stringify({
+      type: type,
+      data: data
+    }));
+  };
+
   process.on('message', function(msg) {
-    process.emit('msg:' + msg) });
+    var msg = JSON.parse(msg);
+    process.emit('msg:' + msg.type, msg.data);
+  });
 
   process.on('msg:start', function() {
     parseConfig();
+    runModules("initWorker", config);
     handleConfig(config);
   });
   process.on('msg:unbind', function() {
     logNotice('Reloading config');
     unbindAll(function() {
-      process.send("unbindFinished");
+      process.sendMessage("unbindFinished");
     });
   });
   process.on('msg:reload', function() {
