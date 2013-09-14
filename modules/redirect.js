@@ -1,9 +1,17 @@
+function splitFirst(str) {
+	var index = str.indexOf('/');
+	if(index == -1)
+		return [str];
+	return [str.substr(0,index), str.substr(index)];
+
+}
+
 module.exports = {
 	middleware: function(config) {
 		var redirectTable = {};
 
 		Object.keys(config.redirect).forEach(function(redirectEntry) {
-			var array = redirectEntry.split(/\/(.+)?/);
+			var array = splitFirst(redirectEntry);
 			var host = array[0];
 			var path = array[1];
 
@@ -14,9 +22,10 @@ module.exports = {
 			}
 			target = target.replace('/[path]', '[path]');
 			var redirectEntry = {
-				path: '/' + path,
+				path: path,
 				target: target
 			};
+			console.log("Redirect entry for", redirectEntry);
 
 			redirectTable[host] = redirectEntry;
 			redirectTable[host + ":" + config.port] = redirectEntry;
