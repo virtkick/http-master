@@ -20,6 +20,7 @@ var help = [
     "  --config CONFIGFILE    Location of the configuration file for the proxy server",
     "  --silent            Silence the log output from the proxy server",
     "  --user   USER       User to drop privileges to once server socket is bound",
+    "  --group  GROUP      Group to drop privileges to once server socket is bound",
     "  -h, --help          You're staring at it"
 ].join('\n');
 
@@ -44,6 +45,7 @@ var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(fun
   return (b.priority || 0) - (a.priority || 0);
 });
 
+var droppedPrivileges = false;
 function dropPrivileges()
 {
   var strInfo;
@@ -60,8 +62,9 @@ function dropPrivileges()
     else
       strInfo = user;
   }
-  
-  logNotice("Dropped privileges to: " + strInfo);
+  if(!droppedPrivileges)
+    logNotice("Dropped privileges to: " + strInfo);
+  droppedPrivileges = true;
 }
 
 function runModules(cb) {
