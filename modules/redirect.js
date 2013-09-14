@@ -8,8 +8,9 @@ function splitFirst(str) {
 
 module.exports = {
 	middleware: function(config) {
-		var redirectTable = {};
+		if(!config.redirect) return;
 
+		var redirectTable = {};
 		Object.keys(config.redirect).forEach(function(redirectEntry) {
 			var array = splitFirst(redirectEntry);
 			var host = array[0];
@@ -25,7 +26,6 @@ module.exports = {
 				path: path,
 				target: target
 			};
-			console.log("Redirect entry for", redirectEntry);
 
 			redirectTable[host] = redirectEntry;
 			redirectTable[host + ":" + config.port] = redirectEntry;
