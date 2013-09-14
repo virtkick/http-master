@@ -36,8 +36,9 @@ var async = require('async');
 
 var servers = [];
 var tcpServers = {};
+var path = require('path');
 
-var modules = require("fs").readdirSync("./modules").map(function(file) {
+var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(function(file) {
   return require('./modules/' + file);
 }).sort(function(a, b) { // sort modules according to priority
   return (b.priority || 0) - (a.priority || 0);
