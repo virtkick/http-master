@@ -8,7 +8,7 @@ module.exports = {
 		if(config.logging)
 			logging = true;
 	},
-	initMaster: function(config) {
+	allWorkersStarted: function(config) {
 
 		var logStream = process.stdout;
 		var watcher;
