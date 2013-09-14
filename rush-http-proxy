@@ -17,11 +17,13 @@ var help = [
     "Starts a rush-http-daemon server using the specified command-line options",
     "",
     "options:",
-    "  --config CONFIGFILE    Location of the configuration file for the proxy server",
-    "  --silent            Silence the log output from the proxy server",
-    "  --user   USER       User to drop privileges to once server socket is bound",
-    "  --group  GROUP      Group to drop privileges to once server socket is bound",
-    "  -h, --help          You're staring at it"
+    "  --config CONFIGFILE     Location of the configuration file for the proxy server",
+    "  --preprocessor JS-FILE  Provide js file as config preprocessor",
+    "  --preprocessor-test     Test config preprocessor by printing out its output",
+    "  --silent                Silence the log output from the proxy server",
+    "  --user   USER           User to drop privileges to once server socket is bound",
+    "  --group  GROUP          Group to drop privileges to once server socket is bound",
+    "  -h, --help              You're staring at it"
 ].join('\n');
 
 if (argv.h || argv.help || Object.keys(argv).length === 2) {
@@ -32,6 +34,12 @@ var location, config = {},
     target = argv.target;
 
 var jsonLint = require('jsonlint-lines');
+
+if(argv['preprocessor-test']) {
+  console.log(JSON.stringify(require(argv.preprocessor)(argv, fs.readFileSync(argv.config).toString("utf8")), null, 4 ));
+  process.exit();
+}
+
 var extend = require('extend');
 var async = require('async');
 
@@ -49,20 +57,24 @@ var droppedPrivileges = false;
 function dropPrivileges()
 {
   var strInfo;
-  var group = argv.group || config.group;
-  if (typeof group === 'string') {
-    process.setgid(group);
-    strInfo = group;
+  if(process.setgid) {
+    var group = argv.group || config.group;
+    if (typeof group === 'string') {
+      process.setgid(group);
+      strInfo = group;
+    }
   }
-  var user = argv.user || config.user;
-  if (typeof user === 'string') {
-    process.setuid(user);
-    if(strInfo)
-      strInfo = user + ":" + strInfo;
-    else
-      strInfo = user;
+  if(process.setuid) {
+    var user = argv.user || config.user;
+    if (typeof user === 'string') {
+      process.setuid(user);
+      if(strInfo)
+        strInfo = user + ":" + strInfo;
+      else
+        strInfo = user;
+    }
   }
-  if(!droppedPrivileges)
+  if(!droppedPrivileges && strInfo)
     logNotice("Dropped privileges to: " + strInfo);
   droppedPrivileges = true;
 }
@@ -152,15 +164,24 @@ function loadKeysForContext(context) {
 }
 
 function parseConfig(noExitOnError) {
+  if(!argv.config) {
+    logError("--config is mandatory");
+    process.exit();
+  }
   //
   // If we were passed a config, parse it
   //
   try {
     var data = fs.readFileSync(argv.config).toString("utf8");
-    data = data.replace("\n", "\r\n");
-    config = jsonLint.parse(data);
+    if(argv.preprocessor) {
+      config = require(argv.preprocessor)(argv, data);
+    }
+    else {
+      data = data.replace("\n", "\r\n");
+      config = jsonLint.parse(data);
+    }
   } catch (ex) {
-    logError('Config ' + ex);
+    logError('Config ' + ex.stack);
     if(!noExitOnError)
       process.exit(1);
     return false;
@@ -256,6 +277,7 @@ function handleConfigEntry(config, callback) {
 }
 
 function handleConfig(config) {
+
   runModules('preprocessConfig', config);
 
   async.parallel(Object.keys(config.ports).map(function(portEntry) {
@@ -414,8 +436,9 @@ if (cluster.isMaster) {
   });
 
   cluster.on('exit', function(worker, code, signal) {
-    logError("Worker failed with code", code);
+    logError("Worker failed with code " + code);
     process.exit();
+    logError("Closing whole application ...");
   });
 
   runModules("initMaster", config);
