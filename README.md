@@ -14,7 +14,6 @@ rush-http-proxy is based on node-http-proxy, the extra features are:
 Future plans:
 * Improve logging to format string to apache format.
 * Logging per route.
-* Systemd support.
 * Regexps in redirect.
 
 Usage
@@ -77,7 +76,7 @@ The above will feed `myconfig.conf` to a module loaded by `require("./myconfig.j
 The module needs to define a function such as below that would return the configuration object.
 ```
   module.exports = function(argv, data) { 
-    return JSON.parse(data); // this does the same as defautl loading
+    return JSON.parse(data); // this does the same as default loading
   }
 ```
 
@@ -138,3 +137,12 @@ Log to file:
   }
 }
 ```
+
+systemd unit file
+=================
+We provide an example systemd unit file for the proxy. The config file is set to /etc/http-proxy/config.json by default. Copy the `http-proxy.service` to /etc/systemd/system to use it.
+
+`systemctl start/stop/restart http-proxy`
+`systemctl enable http-proxy` - auto-start the proxy
+`systemctl reload http-proxy` - reload config with `kill -USR1`
+
