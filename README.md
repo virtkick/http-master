@@ -8,6 +8,8 @@ rush-http-proxy is based on node-http-proxy, the extra features are:
 * Watch for config changes and reloads the proxy logic without any downtime.
 * Simple redirect. Redirect http to https or any simple direct directs. No regexp yet.
 * Asynchronous logging module. Logs either to stdout or to file.
+* Link to custom config preprocessor so that you may devise your own config file format.
+* Drop privileges to user/group once started.
 
 Future plans:
 * Improve logging to format string to apache format.
@@ -66,6 +68,18 @@ Watch config for changes
 Add `--watch` or add to config `"watchConfig": true`.
 
 You may also trigger reload manually by sending USR1 signal to the master process. (only on *nix)
+
+Use config preprocessor
+===============
+`rush-http-proxy --config myconfig.conf --preprocessor ./myconfig.js`
+The above will feed `myconfig.conf` to a module loaded by `require("./myconfig.js")`. Feeding will also happen in the event of config reload due to changes or USR1 signal.
+
+The module needs to define a function such as below that would return the configuration object.
+```
+  module.exports = function(argv, data) { 
+    return JSON.parse(data); // this does the same as defautl loading
+  }
+```
 
 Redirect
 ===============
