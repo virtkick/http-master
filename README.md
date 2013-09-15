@@ -142,7 +142,7 @@ systemd unit file
 =================
 We provide an example systemd unit file for the proxy. The config file is set to /etc/http-proxy/config.json by default. Copy the `http-proxy.service` to /etc/systemd/system to use it.
 
-`systemctl start/stop/restart http-proxy`
-`systemctl enable http-proxy` - auto-start the proxy
-`systemctl reload http-proxy` - reload config with `kill -USR1`
+* `systemctl start/stop/restart http-proxy`
+* `systemctl enable http-proxy` - auto-start the proxy
+* `systemctl reload http-proxy` - reload config with `kill -USR1`
 
