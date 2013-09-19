@@ -22,27 +22,57 @@ module.exports = {
 				target = "http://" + target;
 			}
 			target = target.replace('/[path]', '[path]');
+
+			var regexp;
+			try {
+				regexp = new RegExp("^" + path + "$")
+			} catch(err) {
+				console.log(err);
+				return;
+			}
+
 			var redirectEntry = {
 				path: path,
-				target: target
+				target: target,
+				pathRegexp: path?regexp:null
 			};
-
-			redirectTable[host] = redirectEntry;
-			redirectTable[host + ":" + config.port] = redirectEntry;
+			if(!redirectTable[host]) {
+				var entryList = [redirectEntry];
+				redirectTable[host] = entryList;
+				redirectTable[host + ":" + config.port] = entryList;
+			} else {
+				redirectTable[host].push(redirectEntry);
+			}
 		});
-
 		return function(req, res, next) {
-			var entry = redirectTable[req.headers.host];
-			if (!entry) return next();
+			var entryList = redirectTable[req.headers.host];
+			if (!entryList) return next();
 
-			if (entry.path && req.url !== entry.path) return next();
+			for(var i = 0; i < entryList.length; ++i) {
+				var entry = entryList[i];
 
-			var target = entry.target;
-			target = target.replace("[path]", req.url);
+				var target = entry.target;
 
-			res.statusCode = 302;
-			res.setHeader("Location", target);
-			res.end();
+				var m;
+				if(entry.path && entry.pathRegexp) {
+					m = req.url.match(entry.pathRegexp);
+					if(m) {
+						if(m.length > 1) {
+							for(var j = 1;j < m.length;++j) {
+								target = target.replace("["+j + "]", m[j]);
+							}
+						}
+					}
+					else {
+						continue;
+					}
+				}
+				target = target.replace("[path]", req.url);
+				res.statusCode = 302;
+				res.setHeader("Location", target);
+				return res.end();
+			}
+			return next();
 		};
 	}
 }
