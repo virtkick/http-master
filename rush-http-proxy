@@ -281,7 +281,7 @@ function handleConfigEntry(config, callback) {
     server.proxy.proxyWebSocketRequest(req, socket, head);
   });
 
-  if(errorHandler)
+  if(proxyFailErrorHandler)
     server.proxy.on('proxyError', proxyFailErrorHandler);
 
   getTcpServer(config.port, config.host, function(err, tcpServer) {
