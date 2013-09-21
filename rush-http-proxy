@@ -53,6 +53,8 @@ var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(fun
   return (b.priority || 0) - (a.priority || 0);
 });
 
+var proxyFailErrorHandler;
+
 var droppedPrivileges = false;
 function dropPrivileges()
 {
@@ -180,6 +182,24 @@ function parseConfig(noExitOnError) {
       data = data.replace("\n", "\r\n");
       config = jsonLint.parse(data);
     }
+
+    if(config.errorHtmlFile) {
+      var content = fs.readFileSync(config.errorHtmlFile).toString('utf8');
+
+      content = content.replace(/src="(.+?)"/g, function(m, fileName) {
+        var imagePath = path.join(path.dirname(config.errorHtmlFile), fileName);
+        return 'src="data:image/'+path.extname(fileName).substr(1)+';base64,' + fs.readFileSync(imagePath).toString('base64') + '"';
+      });
+
+      proxyFailErrorHandler = function (err, req, res) {
+        res.writeHead(200, {
+          'Content-Type': 'text/html'
+        });
+        res.write(content);
+        res.end();
+      };
+    }
+
   } catch (ex) {
     logError('Config ' + ex.stack);
     if(!noExitOnError)
@@ -257,6 +277,8 @@ function handleConfigEntry(config, callback) {
 
   server.once('error', errorHandler);
 
+  if(errorHandler)
+    server.proxy.on('proxyError', proxyFailErrorHandler);
 
   getTcpServer(config.port, config.host, function(err, tcpServer) {
     if(err) return callback(err, server);
