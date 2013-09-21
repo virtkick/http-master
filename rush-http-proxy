@@ -277,6 +277,10 @@ function handleConfigEntry(config, callback) {
 
   server.once('error', errorHandler);
 
+  server.on('upgrade', function(req, socket, head) {
+    server.proxy.proxyWebSocketRequest(req, socket, head);
+  });
+
   if(errorHandler)
     server.proxy.on('proxyError', proxyFailErrorHandler);
 
