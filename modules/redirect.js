@@ -7,6 +7,7 @@ function splitFirst(str) {
 }
 
 module.exports = {
+	priority: 9,
 	middleware: function(config) {
 		if(!config.redirect) return;
 

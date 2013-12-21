@@ -1,10 +1,10 @@
 {
   "name": "rush-http-proxy",
-  "version": "0.1.11",
+  "version": "0.2.0",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Based on excellent node-http-proxy.",
   "main": "rush-http-proxy",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha tests/"
   },
   "repository": "",
   "keywords": [
@@ -12,15 +12,21 @@
     "https",
     "proxy"
   ],
-	"bin" : "./rush-http-proxy",
+  "bin": "./rush-http-proxy",
   "author": "Damian Kaczmarek <rushpl@gmail.com>",
   "license": "BSD",
   "dependencies": {
-    "http-proxy": "~0.10.3",
+    "http-proxy": "git://github.com/nodejitsu/node-http-proxy.git#caronte",
     "optimist": "~0.6.0",
     "extend": "~1.2.0",
     "jsonlint-lines": "~1.6.0",
     "node-watch": "~0.3.4",
-    "async": "~0.2.9"
+    "async": "~0.2.9",
+    "xregexp": "~2.0.0",
+    "node-static": "~0.7.2"
+  },
+  "devDependencies": {
+    "mocha": "~1.16.1",
+    "should": "~2.1.1"
   }
 }
