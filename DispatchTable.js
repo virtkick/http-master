@@ -84,10 +84,8 @@ DispatchTable.prototype.dispatch = function(req, res, next) {
 
 	req.next = next;
 	if (this.table[host]) {
-		console.log("Entry foun")
 		return this.runEntry(req, res, this.table[host].target);
 	} else if (this.regexpEntries.length) {
-		console.log("Checking regexps");
 		var i = 0;
 		var regexpEntries = this.regexpEntries;
 		for (i = 0; i < regexpEntries.length; ++i) {
@@ -95,12 +93,10 @@ DispatchTable.prototype.dispatch = function(req, res, next) {
 			var m = host.match(entry.regexp);
 			if (m) {
 				req.dispatcherMatch = m;
-				console.log("Dispatch table", host);
 				return this.runEntry(req, res, entry.target);
 			}
 		}
 	}
-	console.log("Nothing found ...");
 	next();
 };
 module.exports = DispatchTable;

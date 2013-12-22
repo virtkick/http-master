@@ -1,8 +1,30 @@
 {
 	"ports": {
-		"80" : {},
-		"dupa.pl:443" : {},
-		"dupa.pl:443 => 192.168.2.3:80" : {},
-		"[1fff:0:a88:85a3::ac1f]:80 => 192.168.2.3:80" : {}
+		"4080" : {
+			"router": {
+				"local.code2flow.com": "127.0.0.1:80",
+        "imagoartdesign.pl": "127.0.0.1:3000",
+        "www.imagoartdesign.pl": "127.0.0.1:3000",
+        "traceroute6.rushbase.net": "127.0.0.1:3001",
+        "rtsolutions.pl": "127.0.0.1:3002",
+        "www.rtsolutions.pl": "127.0.0.1:3002",
+        "webflow.rushbase.net": "127.0.0.1:3010",
+        "resizer.rushbase.net": "127.0.0.1:3009",
+        "test.rtsolutions.pl": "127.0.0.1:6060",
+        "termi.rushbase.net": "127.0.0.1:7080",
+        "test2.code2flow.*": "127.0.0.1:8099",
+        "confluence.code2flow.*": "127.0.0.1:10000",
+        "test.code2flow.*": "127.0.0.1:8091",
+        "www.code2flow.*": "127.0.0.1:8091",
+        "code2flow.*": "127.0.0.1:8091",
+        "test.qrfaktura.*": "127.0.0.1:8092",
+        "test.znajdzdoktora.pl": "127.0.0.1:12000",
+        "api.znajdzdoktora.pl": "127.0.0.1:12001",
+        "agn.rushbase.net": "127.0.0.1:8095",
+        "rss.rushbase.net": "127.0.0.1:8096",
+				"*" : 4000
+			},
+			"static": {}
+		}
 	}
 }

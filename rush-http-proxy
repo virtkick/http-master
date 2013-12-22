@@ -281,12 +281,12 @@ function handleConfigEntry(config, callback) {
   var upgradeHandlers = [];
   runModules(function(name, upgradeHandler) {
     upgradeHandlers.push(upgradeHandler);
-  });
+  }, 'upgrade', config);
 
   server.on('upgrade', function(req, socket, head) {
-    upgradeHandlers.forEach(function(f) {
-      f(req, socket. head);
-    });
+    for(var i = 0;i < upgradeHandlers.length;++i) {
+      upgradeHandlers[i](req, socket, head);
+    }
   });
 
   if(proxyFailErrorHandler)

@@ -10,30 +10,26 @@ function splitFirst(str, delim) {
 
 }
 
-var proxy = httpProxy.createProxyServer({
-	//agent: http.globalAgent
-	agent: null
-});
+function parseEntry(entry) {
+	var entry = url.parse(entry, true, true)
+	entry.ws = true;
+	return entry;
+}
 
 module.exports = {
 	upgrade: function(config) {
 		return function(req, socket, head) {
-			proxy.ws(req, socket, head);
-		}
+			// FIXME: very hackish
+			socket._idleNext.proxy.ws(req, socket, head);
+		};
 	},
 	middleware: function(config) {
 		if(!config.router) return;
 
-		proxy.off('error');
-		proxy.on('error', function(err, req, res) {
-			// forward to next route and save error for potential handler
-			req.err = err;
-		  req.next();
-		});
-
 		var dispatchTable = new DispatchTable(config.router,
-				function(req, res, target) {
-					proxy.web(req, res, {target: target});
+				function(req, res, proxy) {
+					req.connection.proxy = proxy;
+					proxy.web(req, res);
 				},
 				function(entryKey, entry) {
 					if(typeof entry == 'number')
@@ -46,7 +42,15 @@ module.exports = {
 							entry = 'http://' + entry;
 						}
 					}
-					return [entryKey, url.parse(entry, true, true)];
+					var proxy = httpProxy.createProxyServer({agent: null,
+							target: parseEntry(entry)});
+					proxy.on('error', function(err, req, res) {
+						// forward to next route and save error for potential handler
+						req.err = err;
+		  			req.next();
+					});
+
+					return [entryKey,  proxy];
 			});
 			return DispatchTable.prototype.dispatch.bind(dispatchTable);
 		}
