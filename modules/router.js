@@ -16,42 +16,40 @@ function parseEntry(entry) {
 	return entry;
 }
 
+var proxy = httpProxy.createProxyServer({agent: null});
+
+proxy.on('error', function(err, req, res) {
+	// forward to next route and save error for potential handler
+	req.err = err;
+	req.next();
+});
+
 module.exports = {
-	upgrade: function(config) {
-		return function(req, socket, head) {
-			// FIXME: very hackish
-			socket._idleNext.proxy.ws(req, socket, head);
-		};
-	},
 	middleware: function(config) {
 		if(!config.router) return;
 
-		var dispatchTable = new DispatchTable(config.router,
-				function(req, res, proxy) {
-					req.connection.proxy = proxy;
-					proxy.web(req, res);
-				},
-				function(entryKey, entry) {
-					if(typeof entry == 'number')
-						entry = entry.toString();
-					if(typeof entry == 'string') {
-						if(entry.match(/^\d+$/)) {
-							entry = '127.0.0.1:' + entry;
-						}
-						if(!entry.match('https?\/\/')) {
-							entry = 'http://' + entry;
-						}
+		return new DispatchTable({
+			config: config.router,
+			requestHandler: function(req, res, next, target) {
+				req.connection.proxy = proxy;
+				req.next = next;
+				proxy.web(req, res, {target: target});
+			},
+			upgradeHandler: function(req, socket, head, target) {
+				proxy.ws(req, socket, head, {target: target});
+			},
+			entryParser: function(entryKey, entry) {
+				if(typeof entry == 'number')
+					entry = entry.toString();
+				if(typeof entry == 'string') {
+					if(entry.match(/^\d+$/)) {
+						entry = '127.0.0.1:' + entry;
 					}
-					var proxy = httpProxy.createProxyServer({agent: null,
-							target: parseEntry(entry)});
-					proxy.on('error', function(err, req, res) {
-						// forward to next route and save error for potential handler
-						req.err = err;
-		  			req.next();
-					});
-
-					return [entryKey,  proxy];
-			});
-			return DispatchTable.prototype.dispatch.bind(dispatchTable);
+					if(!entry.match('https?\/\/')) {
+						entry = 'http://' + entry;
+					}
+				}
+				return [entryKey,  parseEntry(entry)];
+			}});
 		}
 };

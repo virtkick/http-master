@@ -3,6 +3,15 @@ var mocha = require('mocha');
 var DispatchTable = require('../DispatchTable');
 var assert = require('assert');
 
+function makeReq(host, path) {
+	return {
+		url: path,
+		headers: {
+			host: host
+		}
+	};
+}
+
 describe('DispatchTable internal structure', function() {
 
 	describe('Simple host based', function() {
@@ -15,9 +24,11 @@ describe('DispatchTable internal structure', function() {
 			'host3.subdomain.net': 400
 		};
 
-		var dispatchTable = new DispatchTable(config);
-		it('should have proper key for each host', function() {	
-			console.log(dispatchTable.table);
+		var dispatchTable = new DispatchTable({
+			config: config
+		});
+		it('should have proper key for each host', function() {
+			//console.log(dispatchTable.table);
 			assert.deepEqual(dispatchTable.table['host1'], {
 				target: {
 					key1: '1'
@@ -48,24 +59,26 @@ describe('DispatchTable internal structure', function() {
 			'host3.*.net': 400
 		};
 
-		var dispatchTable = new DispatchTable(config);
+		var dispatchTable = new DispatchTable({
+			config: config
+		});
 
 		it('should have proper regexp entries', function() {
-				dispatchTable.regexpEntries.should.not.be.empty;
+			dispatchTable.regexpEntries.should.not.be.empty;
 
-				var entry = dispatchTable.regexpEntries[0];
-				assert.deepEqual(entry.target, {
-					key1: '1'
-				})
-				assert(entry.regexp, "has regexp");
+			var entry = dispatchTable.regexpEntries[0];
+			assert.deepEqual(entry.target, {
+				key1: '1'
+			})
+			assert(entry.regexp, "has regexp");
 
-				entry = dispatchTable.regexpEntries[1];
-				assert.deepEqual(entry.target, 'stringTarget');
-				assert(entry.regexp, "has regexp");
+			entry = dispatchTable.regexpEntries[1];
+			assert.deepEqual(entry.target, 'stringTarget');
+			assert(entry.regexp, "has regexp");
 
-				entry = dispatchTable.regexpEntries[2];
-				assert.deepEqual(entry.target, 400);
-				assert(entry.regexp, "has regexp");
+			entry = dispatchTable.regexpEntries[2];
+			assert.deepEqual(entry.target, 400);
+			assert(entry.regexp, "has regexp");
 		});
 
 		it('should have wildcards compiled to proper working regexps', function() {
@@ -101,32 +114,34 @@ describe('DispatchTable internal structure', function() {
 	describe('Regexps', function() {
 
 		var config = {
-			'/.+/': {
+			'^.+': {
 				key1: '1'
 			},
-			'/(ala|ola)\\.ma\\.kota\\.pl/': 'stringTarget',
-			'/host3.*\\.net/': 400
+			'^(ala|ola)\\.ma\\.kota\\.pl': 'stringTarget',
+			'^host3.*\\.net': 400
 		};
 
-		var dispatchTable = new DispatchTable(config);
+		var dispatchTable = new DispatchTable({
+			config: config
+		});
 
 		it('should have proper regexp entries', function() {
-				dispatchTable.regexpEntries.should.not.be.empty;
+			dispatchTable.regexpEntries.should.not.be.empty;
 
-				var entry = dispatchTable.regexpEntries[0];
-				assert.deepEqual(entry.target, {
-					key1: '1'
-				})
-				assert(entry.regexp, "has regexp");
+			var entry = dispatchTable.regexpEntries[0];
+			assert.deepEqual(entry.target, {
+				key1: '1'
+			})
+			assert(entry.regexp, "has regexp");
 
-				entry = dispatchTable.regexpEntries[1];
-				assert.deepEqual(entry.target, 'stringTarget');
-				assert(entry.regexp, "has regexp");
-				assert(entry.regexp, "has regexp");
+			entry = dispatchTable.regexpEntries[1];
+			assert.deepEqual(entry.target, 'stringTarget');
+			assert(entry.regexp, "has regexp");
+			assert(entry.regexp, "has regexp");
 
-				entry = dispatchTable.regexpEntries[2];
-				assert.deepEqual(entry.target, 400);
-				assert(entry.regexp, "has regexp");
+			entry = dispatchTable.regexpEntries[2];
+			assert.deepEqual(entry.target, 400);
+			assert(entry.regexp, "has regexp");
 
 		});
 
@@ -148,9 +163,45 @@ describe('DispatchTable internal structure', function() {
 			assert('host3.net'.match(entry.regexp))
 			assert('host3.code2flow.net'.match(entry.regexp))
 		});
-
 	});
 
+	describe('DispatchTable Multiple paths for entry', function() {
+		var config = {
+			'code2flow.com/^get/(?<letter>[a-f])/?': 5070,
+			'code2flow.com/admin': 5060,
+			'code2flow.com/admin/*': 5061,
+			'code2flow.com/test': 5050,
+			'code2flow.com/*/test': 5040,
+			'code2flow.com': 5030
+		};
+		var dispatchTable = new DispatchTable({
+			config: config
+		});
+		it('should have proper entries', function() {
+
+			Object.keys(dispatchTable.table).should.have.length(2);
+			dispatchTable.table['code2flow.com'].should.have.length(6);
+
+		});
+		it('should yield proper targets for paths', function() {
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/test')).should.equal(5050);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/get/a')).should.equal(5070);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/get/a/')).should.equal(5070);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin')).should.equal(5060);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa')).should.equal(5061);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/')).should.equal(5030);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/3')).should.equal(5030);
+		});
+
+		it('should install transformer regexp for path', function() {
+			var req = makeReq('code2flow.com', '/get/a');
+			dispatchTable.getTargetForReq(req);
+			assert(req.pathMatch);
+			req.pathMatch[1].should.equal('a');
+			req.pathMatch.letter.should.equal('a');
+		});
+
+	});
 
 });
 
@@ -159,58 +210,94 @@ describe('DispatchTable dispatcher', function() {
 	var config = {
 		'code2flow.com': 5040,
 		'*.atlashost.eu': 'https://atlashost.eu',
-		'/(www|test|indigo)\.testowo\.pl/': 'localhost:5040'
+		'^(www|test|indigo)\\.testowo\\.pl': 'localhost:5040'
 	};
-	
+
 	it('should run first entry', function(finish) {
-		var dispatchTable = new DispatchTable(config, function(req, res, target) {
-			target.should.equal(5040);
-			finish();
+		var dispatchTable = new DispatchTable({
+			config: config,
+			requestHandler: function(req, res, next, target) {
+				target.should.equal(5040);
+				finish();
+			}
 		});
-		dispatchTable.dispatch({headers:{host: 'code2flow.com'}}, {}, function(err) {
+		dispatchTable.dispatchRequest({
+			headers: {
+				host: 'code2flow.com'
+			}
+		}, {}, function(err) {
 			finish(false);
 		});
 	});
 
 
 	it('should not run any entry', function(finish) {
-		var dispatchTable = new DispatchTable(config, function(req, res, target) {
-			finish(false);
+		var dispatchTable = new DispatchTable({
+			config: config,
+			requestHandler: function(req, res, next, target) {
+				finish(false);
+			}
 		});
-		dispatchTable.dispatch({headers:{host: 'table.code2flow.com'}}, {}, function(err) {
+		dispatchTable.dispatchRequest({
+			headers: {
+				host: 'table.code2flow.com'
+			}
+		}, {}, function(err) {
 			finish();
 		});
 	});
 
 	it('should run second entry', function(finish) {
-		var dispatchTable = new DispatchTable(config, function(req, res, target) {
-			target.should.equal('https://atlashost.eu');
-			finish();
+		var dispatchTable = new DispatchTable({
+			config: config,
+			requestHandler: function(req, res, next, target) {
+				target.should.equal('https://atlashost.eu');
+				finish();
+			}
 		});
-		dispatchTable.dispatch({headers:{host: 'test.atlashost.eu'}}, {}, function(err) {
+		dispatchTable.dispatchRequest({
+			headers: {
+				host: 'test.atlashost.eu'
+			}
+		}, {}, function(err) {
 			finish(false);
 		});
 	});
 
 	it('should run third entry', function(finish) {
-		var dispatchTable = new DispatchTable(config, function(req, res, target) {
-			target.should.equal('localhost:5040');
-			finish();
+		var dispatchTable = new DispatchTable({
+			config: config,
+			requestHandler: function(req, res, next, target) {
+				target.should.equal('localhost:5040');
+				finish();
+			}
 		});
-		dispatchTable.dispatch({headers:{host: 'www.testowo.pl'}}, {}, function(err) {
+		dispatchTable.dispatchRequest({
+			headers: {
+				host: 'www.testowo.pl'
+			}
+		}, {}, function(err) {
 			finish(false);
 		});
 	});
 
 	it('should transform target entry', function(finish) {
 
-		var dispatchTable = new DispatchTable(config, function(req, res, target) {
-			target.should.equal('/(www|test|indigo)\.testowo\.pl/|localhost:5040');
-			finish();
-		}, function(key, value) {
-			return [key, key + '|' + value];
+		var dispatchTable = new DispatchTable({
+			config: config,
+			requestHandler: function(req, res, next, target) {
+				target.should.equal('^(www|test|indigo)\\.testowo\\.pl|localhost:5040');
+				finish();
+			},
+			entryParser: function(key, value) {
+				return [key, key + '|' + value];
+			}
 		});
-		dispatchTable.dispatch({headers:{host: 'www.testowo.pl'}}, {}, function(err) {
+		dispatchTable.dispatchRequest({
+			headers: {
+				host: 'www.testowo.pl'
+			}
+		}, {}, function(err) {
 			finish(false);
 		});
 

@@ -242,18 +242,27 @@ function handleConfigEntry(config, callback) {
   //
   config.silent = typeof argv.silent !== 'undefined' ? argv.silent : config.silent;
 
-  var middleware = [];
+  var middlewares = [];
 
-  runModules(function(name, middlewareFunction) {
-    middleware.push(middlewareFunction);
+  var requestHandlers = [];
+  var upgradeHandlers = [];
+
+  runModules(function(name, middleware) {
+    middlewares.push(middleware);
+    if(typeof middleware == 'function')
+      requestHandlers.push(middleware);
+    else if(middleware.requestHandler)
+      requestHandlers.push(middleware.handleRequest.bind(middleware));
+    if(middleware.upgradeHandler)
+      upgradeHandlers.push(middleware.handleUpgrade.bind(middleware));
   }, "middleware", config);
 
-  var handler = require('./requestHandler')(config, middleware);
+  var handler = require('./requestHandler')(config, requestHandlers);
 
   var server;
   try {
     if(config.https) {
-      server = http.createServer(config.https, handler.request);
+      server = https.createServer(config.https, handler.request);
     }
     else {
       server = http.createServer(handler.request);
@@ -278,14 +287,11 @@ function handleConfigEntry(config, callback) {
 
   server.once('error', errorHandler);
 
-  var upgradeHandlers = [];
-  runModules(function(name, upgradeHandler) {
-    upgradeHandlers.push(upgradeHandler);
-  }, 'upgrade', config);
-
   server.on('upgrade', function(req, socket, head) {
     for(var i = 0;i < upgradeHandlers.length;++i) {
-      upgradeHandlers[i](req, socket, head);
+      if(upgradeHandlers[i](req, socket, head)) { // ws handled
+        break;
+      }
     }
   });
 

@@ -5,7 +5,9 @@ module.exports = {
   middleware: function(config) {
     if (!config.static) return;
 
-    var fileServer = new nodeStatic.Server(config.path || "./public", { cache: config.cacheTime || 600 });
+    var fileServer = new nodeStatic.Server(config.path || "./public", {
+      cache: config.cacheTime || 600
+    });
 
     return function(req, res, next) {
       fileServer.serve(req, res, function(e, serveRes) {
