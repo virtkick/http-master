@@ -184,6 +184,7 @@ describe('DispatchTable internal structure', function() {
 
 		});
 		it('should yield proper targets for paths', function() {
+
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/test')).should.equal(5050);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/get/a')).should.equal(5070);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/get/a/')).should.equal(5070);
@@ -199,10 +200,32 @@ describe('DispatchTable internal structure', function() {
 			assert(req.pathMatch);
 			req.pathMatch[1].should.equal('a');
 			req.pathMatch.letter.should.equal('a');
-		});
 
+		});
 	});
 
+});
+
+describe('DispatchTable various routes', function() {
+		var config = {
+			'local.code2flow.com/^get/(?<code>[a-f]{6})': 5070,
+			'*.code2flow.com/^get/(?<code>[a-f]{6})': 5080
+		};
+		var dispatchTable = new DispatchTable({
+			config: config
+		});
+		it('should yield proper targets', function() {
+			dispatchTable.getTargetForReq(makeReq('local.code2flow.com', '/get/abcdef')).should.equal(5070);
+			dispatchTable.getTargetForReq(makeReq('test.code2flow.com', '/get/abcdef')).should.equal(5080);
+		});
+		it('should install proper transformer', function() {
+			var req = makeReq('test.code2flow.com', '/get/abcdef');
+			var target = dispatchTable.getTargetForReq(req);
+			assert(target, 'target should be found');
+			target.should.equal(5080);			
+//			console.log("DUPA ", req.hostMatch);
+			req.hostMatch[1].should.equal('test');
+		});
 });
 
 

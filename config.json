@@ -2,7 +2,7 @@
 	"ports": {
 		"4080" : {
 			"redirect": {
-				"local.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
+				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
 			},
 			"router": {
 				"local.code2flow.com": "127.0.0.1:80",
@@ -25,7 +25,7 @@
         "api.znajdzdoktora.pl": "127.0.0.1:12001",
         "agn.rushbase.net": "127.0.0.1:8095",
         "rss.rushbase.net": "127.0.0.1:8096",
-				"*" : 4000
+				"*" : "4000/test/[path]"
 			},
 			"static": {}
 		}

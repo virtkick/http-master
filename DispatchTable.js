@@ -42,7 +42,7 @@ function globStringToRegex(str, specialCh) {
 	var inside = preg_quote(str).replace(/^\\\*\\\./g, '(?:(.+)\\.)?').
 	replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');
 
-	return new RegExp("^" + inside + "$", 'g');
+	return new RegExp("^" + inside + "$");
 }
 
 function getRegexpIfNeeded(str, specialCh) {
@@ -120,8 +120,8 @@ function DispatchTable(params) {
 			}
 		}
 	});
-	console.log(self.table);
-	console.log(self.regexpTable);
+//	console.log(self.table);
+	//console.log(self.regexpEntries);
 }
 
 DispatchTable.prototype.checkPathForReq = function(req, entry) {
@@ -163,6 +163,7 @@ DispatchTable.prototype.getTargetForReq = function(req) {
 		for (i = 0; i < regexpEntries.length; ++i) {
 			var entry = regexpEntries[i];
 			m = host.match(entry.regexp);
+//			console.log(entry.regexp);
 			if (m) {
 				req.hostMatch = m;
 				if(this.checkPathForReq(req, entry))

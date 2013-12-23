@@ -1,5 +1,7 @@
 var DispatchTable = require('../DispatchTable');
 
+var regexpHelper = require('../regexpHelper');
+
 function splitFirst(str) {
 	var index = str.indexOf('/');
 	if (index == -1)
@@ -16,14 +18,9 @@ module.exports = {
 		return new DispatchTable({
 			config: config.redirect,
 			requestHandler: function(req, res, next, target) {
-				var m = req.pathMatch;
-				if (m) {
-					if (m.length > 1) {
-						for(var key in m) {
-							target = target.replace("[" + key + "]", m[key]);
-						}
-					}
-				}
+				if(req.pathMatch || req.hostMatch)
+					target = regexpHelper(target, req.hostMatch, req.pathMatch);
+
 				target = target.replace("[path]", req.url);
 				res.statusCode = 302;
 				res.setHeader("Location", target);
