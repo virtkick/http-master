@@ -27,6 +27,7 @@ function parseEntry(entry) {
 }
 
 var proxy = httpProxy.createProxyServer({agent: null});
+var regexpHelper = require('../regexpHelper');
 
 proxy.on('error', function(err, req, res) {
 	// forward to next route and save error for potential handler
@@ -45,18 +46,21 @@ module.exports = {
 				req.next = next;
 				if(req.pathMatch || req.hostMatch) {
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
+					req.url = target.path;
 				}
 				proxy.web(req, res, {target: target});
 			},
 			upgradeHandler: function(req, socket, head, target) {
 				if(req.pathMatch || req.hostMatch) {
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
+					req.url = target.path;
 				}
 				proxy.ws(req, socket, head, {target: target});
 			},
 			entryParser: function(entryKey, entry) {
-
 				return [entryKey,  parseEntry(entry)];
-			}});
+			},
+			port: config.port
+		});
 		}
 };

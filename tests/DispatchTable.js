@@ -190,8 +190,8 @@ describe('DispatchTable internal structure', function() {
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/get/a/')).should.equal(5070);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin')).should.equal(5060);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa')).should.equal(5061);
-			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/')).should.equal(5030);
-			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/3')).should.equal(5030);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/')).should.equal(5061);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/3')).should.equal(5061);
 		});
 
 		it('should install transformer regexp for path', function() {
@@ -209,22 +209,27 @@ describe('DispatchTable internal structure', function() {
 describe('DispatchTable various routes', function() {
 		var config = {
 			'local.code2flow.com/^get/(?<code>[a-f]{6})': 5070,
-			'*.code2flow.com/^get/(?<code>[a-f]{6})': 5080
+			'*.code2flow.com/^(\\d+)/(?<code>[a-f]{6})': "[2]"
 		};
 		var dispatchTable = new DispatchTable({
 			config: config
 		});
 		it('should yield proper targets', function() {
 			dispatchTable.getTargetForReq(makeReq('local.code2flow.com', '/get/abcdef')).should.equal(5070);
-			dispatchTable.getTargetForReq(makeReq('test.code2flow.com', '/get/abcdef')).should.equal(5080);
+			dispatchTable.getTargetForReq(makeReq('test.code2flow.com', '/5080/abcdef')).should.equal('[2]');
 		});
 		it('should install proper transformer', function() {
-			var req = makeReq('test.code2flow.com', '/get/abcdef');
+			var req = makeReq('test.code2flow.com', '/5080/abcdef');
 			var target = dispatchTable.getTargetForReq(req);
 			assert(target, 'target should be found');
-			target.should.equal(5080);			
-//			console.log("DUPA ", req.hostMatch);
+			target.should.equal('[2]');			
 			req.hostMatch[1].should.equal('test');
+			req.pathMatch[1].should.equal('5080');
+			req.pathMatch[2].should.equal('abcdef');
+
+			var regexpHelper = require('../regexpHelper');
+			var out = regexpHelper(target, req.hostMatch, req.pathMatch);
+			out.should.equal('5080');
 		});
 });
 

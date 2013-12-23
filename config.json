@@ -5,7 +5,7 @@
 				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
 			},
 			"router": {
-				"local.code2flow.com": "127.0.0.1:80",
+				"local.code2flow.com/test/*": "127.0.0.1:80/[rest]",
         "imagoartdesign.pl": "127.0.0.1:3000",
         "www.imagoartdesign.pl": "127.0.0.1:3000",
         "traceroute6.rushbase.net": "127.0.0.1:3001",

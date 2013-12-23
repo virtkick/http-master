@@ -39,10 +39,14 @@ function preg_quote(str, delimiter) {
 function globStringToRegex(str, specialCh) {
 	if(!specialCh)
 		specialCh = '.';
-	var inside = preg_quote(str).replace(/^\\\*\\\./g, '(?:(.+)\\.)?').
-	replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');
+	var inside = preg_quote(str);
+	if(specialCh == '.')
+		inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)?');
+	else
+		inside = inside.replace(/\/\\\*$/g, '\/(?<rest>.*)');
+	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');
 
-	return new RegExp("^" + inside + "$");
+	return new XRegExp("^" + inside + "$");
 }
 
 function getRegexpIfNeeded(str, specialCh) {
@@ -128,6 +132,7 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
 	if(!entry.path)
 		return true;
 	var target;
+	var m;
 	if(entry.pathRegexp) {
 		m = req.url.match(entry.pathRegexp);
 		if (m) {
