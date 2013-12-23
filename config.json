@@ -1,11 +1,14 @@
 {
 	"ports": {
+
 		"4080" : {
 			"redirect": {
 				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
 			},
+			"errorHtmlPage": "/home/rush/Programowanie/rush-http-proxy/test.html",
 			"router": {
-				"local.code2flow.com/test/*": "127.0.0.1:80/[rest]",
+				"local.code2flow.com/test/*": "localhost:80/[rest]",
+				"local.code2flow.com/test2/*": "localhost:81/[rest]",
         "imagoartdesign.pl": "127.0.0.1:3000",
         "www.imagoartdesign.pl": "127.0.0.1:3000",
         "traceroute6.rushbase.net": "127.0.0.1:3001",
@@ -29,5 +32,9 @@
 			},
 			"static": {}
 		}
-	}
+	},
+  "logging": {
+    "logFile": "/home/rush/Programowanie/rush-http-proxy/access.json.log",
+    "appLog": "/home/rush/Programowanie/rush-http-proxy/app.log"
+  }
 }

@@ -29,15 +29,38 @@ function parseEntry(entry) {
 var proxy = httpProxy.createProxyServer({agent: null});
 var regexpHelper = require('../regexpHelper');
 
+var proxyFailErrorHandler;
+
 proxy.on('error', function(err, req, res) {
+	if(proxyFailErrorHandler) {
+		return proxyFailErrorHandler(err, req, res);
+	}
 	// forward to next route and save error for potential handler
 	req.err = err;
 	req.next();
 });
 
 module.exports = {
+	priority: 8,
 	middleware: function(config) {
 		if(!config.router) return;
+
+    if(config.errorHtmlFile) {
+      var content = fs.readFileSync(config.errorHtmlFile).toString('utf8');
+
+      content = content.replace(/src="(.+?)"/g, function(m, fileName) {
+        var imagePath = path.join(path.dirname(config.errorHtmlFile), fileName);
+        return 'src="data:image/'+path.extname(fileName).substr(1)+';base64,' + fs.readFileSync(imagePath).toString('base64') + '"';
+      });
+
+      proxyFailErrorHandler = function (err, req, res) {
+        res.writeHead(500, {
+          'Content-Type': 'text/html'
+        });
+        res.write(content);
+        res.end();
+      };
+    }
 
 		return new DispatchTable({
 			config: config.router,

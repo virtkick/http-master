@@ -12,10 +12,12 @@ module.exports = {
 
 		var logStream = process.stdout;
 		var watcher;
+
 		if(config.logging && config.logging.logFile) {
 			function openLogFile() {
 				logStream = fs.createWriteStream(config.logging.logFile, {'flags': 'a'});
 				logStream.on('open', function() {
+					console.log("Opened log stream");
 					watcher = fs.watch(config.logging.logFile, function(action, filename) {
 						if(action == 'rename') {
 							watcher.close();
