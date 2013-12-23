@@ -14,7 +14,11 @@ function parseEntry(entry) {
 	var m;
 	if(typeof entry == 'number')
 		entry = entry.toString();
+
+	var withPath = false;
 	if(typeof entry == 'string') {
+		withPath = !!entry.match(/(?:https?:\/\/)?.*\//);
+
 		if((m = entry.match(/^\d+(?:|\/.*)$/))) {
 			entry = '127.0.0.1:' + entry;
 		}
@@ -22,7 +26,6 @@ function parseEntry(entry) {
 			entry = 'http://' + entry;
 		}
 	}
-	var withPath = entry.match(/\//);
 	entry = url.parse(entry, true, true)
 	entry.withPath = withPath;
 	entry.ws = true;
