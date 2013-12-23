@@ -215,7 +215,7 @@ function handleConfigEntry(config, callback) {
     if(SNI) {
       for(key in SNI) {
         loadKeysForContext(SNI[key]);
-        SNI[key] = crypto.createCredentials(SNI[key]).context;
+        SNI[key] = crypto.createCredentials(SNI[key].toString()).context;
       }
     }
   }

@@ -69,14 +69,14 @@ module.exports = {
 				req.next = next;
 				if(req.pathMatch || req.hostMatch) {
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
-					req.url = target.path;
+//					req.url = target.path;
 				}
 				proxy.web(req, res, {target: target});
 			},
 			upgradeHandler: function(req, socket, head, target) {
 				if(req.pathMatch || req.hostMatch) {
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
-					req.url = target.path;
+	//				req.url = target.path;
 				}
 				proxy.ws(req, socket, head, {target: target});
 			},
