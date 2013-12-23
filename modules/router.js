@@ -11,17 +11,20 @@ function splitFirst(str, delim) {
 }
 
 function parseEntry(entry) {
+	var m;
 	if(typeof entry == 'number')
 		entry = entry.toString();
 	if(typeof entry == 'string') {
-		if(entry.match(/^\d+(?:|\/.*)$/)) {
+		if((m = entry.match(/^\d+(?:|\/.*)$/))) {
 			entry = '127.0.0.1:' + entry;
 		}
-		if(!entry.match('https?\/\/')) {
+		if(!entry.match(/https?\/\//)) {
 			entry = 'http://' + entry;
 		}
 	}
+	var withPath = entry.match(/\//);
 	entry = url.parse(entry, true, true)
+	entry.withPath = withPath;
 	entry.ws = true;
 	return entry;
 }
@@ -68,15 +71,20 @@ module.exports = {
 				req.connection.proxy = proxy;
 				req.next = next;
 				if(req.pathMatch || req.hostMatch) {
+					console.log(target);
+					var withPath = target.withPath;
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
-//					req.url = target.path;
+					if(withPath)
+						req.url = target.path;
 				}
 				proxy.web(req, res, {target: target});
 			},
 			upgradeHandler: function(req, socket, head, target) {
 				if(req.pathMatch || req.hostMatch) {
+					var withPath = target.withPath;
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
-	//				req.url = target.path;
+					if(withPath)
+						req.url = target.path;
 				}
 				proxy.ws(req, socket, head, {target: target});
 			},
