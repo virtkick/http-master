@@ -120,8 +120,8 @@ function DispatchTable(params) {
 			}
 		}
 	});
-//	console.log(self.table);
-//	console.log(self.regexpTable);
+	console.log(self.table);
+	console.log(self.regexpTable);
 }
 
 DispatchTable.prototype.checkPathForReq = function(req, entry) {

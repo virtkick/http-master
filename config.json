@@ -1,6 +1,9 @@
 {
 	"ports": {
 		"4080" : {
+			"redirect": {
+				"local.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
+			},
 			"router": {
 				"local.code2flow.com": "127.0.0.1:80",
         "imagoartdesign.pl": "127.0.0.1:3000",
