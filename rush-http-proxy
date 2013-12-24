@@ -131,6 +131,13 @@ function logError(str) {
 
 var logNotice = logError;
 
+function normalizeCert(cert) {
+  if(!cert.match(/\n$/g)) {
+    return cert + "\n";
+  }
+  return cert;
+}
+
 function loadKeysForContext(context) {
   Object.keys(context).forEach(function (key) {
     // If CA certs are specified, load those too.
@@ -140,11 +147,11 @@ function loadKeysForContext(context) {
           if (context.ca === undefined) {
             context.ca = [];
           }
-          context.ca[i] = fs.readFileSync(context[key][i], 'utf8');
+          context.ca[i] = normalizeCert(fs.readFileSync(context[key][i], 'utf8'));
         }
       }
       else {
-        var chain = fs.readFileSync(context.ca, 'utf8');
+        var chain = normalizeCert(fs.readFileSync(context.ca, 'utf8'));
         chain = chain.split("\n");
         context.ca = [];
         var cert = [];
@@ -159,7 +166,7 @@ function loadKeysForContext(context) {
         });
       }
     } else if(key !== 'SNI' && key !== 'SNICallback') {
-      context[key] = fs.readFileSync(context[key], 'utf8');
+      context[key] = normalizeCert(fs.readFileSync(context[key], 'utf8'));
     }
   });
 }
@@ -202,10 +209,13 @@ function handleConfigEntry(config, callback) {
       for(key in config.https.SNI) {
           SNImatchers[key] = new RegExp("^" + key + "$", 'i'); // domain names are case insensitive
       }
-      config.https.SNICallback = function(hostname) {
+      config.https.SNICallback = function(hostname, cb) {
         for(key in SNI) {
           if(hostname.match(SNImatchers[key])) {
-            return SNI[key];
+            if(cb) // since node 0.11.5
+              cb(null, SNI[key])
+            else
+              return SNI[key];
           }
         }
       }
@@ -263,7 +273,7 @@ function handleConfigEntry(config, callback) {
     server.removeAllListeners('listening'); // remove the above handler
     callback(err, server);
     server.removeListener('listening', listeningHandler);
-  }
+  }-
 
 
   server.once('listening', listeningHandler);
