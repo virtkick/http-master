@@ -32,7 +32,7 @@ function parseEntry(entry) {
 	return entry;
 }
 
-var proxy = httpProxy.createProxyServer({agent: null});
+var proxy = httpProxy.createProxyServer({agent: null, xfwd: true});
 var regexpHelper = require('../regexpHelper');
 
 var proxyFailErrorHandler;
