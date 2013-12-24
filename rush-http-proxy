@@ -209,18 +209,17 @@ function handleConfigEntry(config, callback) {
       for(key in config.https.SNI) {
           SNImatchers[key] = new RegExp("^" + key + "$", 'i'); // domain names are case insensitive
       }
-      config.https.SNICallback = function(key) { return function(hostname, cb) {
+      config.https.SNICallback = function(hostname, cb) {
         for(key in SNI) {
           if(hostname.match(SNImatchers[key])) {
             if(cb) // since node 0.11.5
-              cb(null, SNI[key])
+              return cb(null, SNI[key])
             else
               return SNI[key];
           }
         }
-        if(cb) // return asynchronously for 0.11.5 if no SNI found
-          cb(null);
-      };
+      }
+      return cb(null);
     }
 
     loadKeysForContext(config.https);
