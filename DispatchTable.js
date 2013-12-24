@@ -40,8 +40,10 @@ function globStringToRegex(str, specialCh) {
 	if(!specialCh)
 		specialCh = '.';
 	var inside = preg_quote(str);
-	if(specialCh == '.')
+	if(specialCh == '.') {
+		inside = inside.replace(/^\\\*$/g, '(?:(.+))');
 		inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)?');
+	}
 	else
 		inside = inside.replace(/\/\\\*$/g, '\/(?<rest>.*)');
 	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');

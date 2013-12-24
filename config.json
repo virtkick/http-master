@@ -3,7 +3,8 @@
 
 		"4080" : {
 			"redirect": {
-				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
+				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]",
+				"*/*" : "https://[1]/[2]",
 			},
 			"errorHtmlPage": "/home/rush/Programowanie/rush-http-proxy/test.html",
 			"router": {

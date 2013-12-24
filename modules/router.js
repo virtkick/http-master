@@ -74,7 +74,6 @@ module.exports = {
 				req.connection.proxy = proxy;
 				req.next = next;
 				if(req.pathMatch || req.hostMatch) {
-					console.log(target);
 					var withPath = target.withPath;
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
 					if(withPath)
