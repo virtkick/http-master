@@ -218,8 +218,8 @@ function handleConfigEntry(config, callback) {
               return SNI[key];
           }
         }
+        return cb(null);
       }
-      return cb(null);
     }
 
     loadKeysForContext(config.https);
