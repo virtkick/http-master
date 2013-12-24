@@ -41,7 +41,7 @@ function globStringToRegex(str, specialCh) {
 		specialCh = '.';
 	var inside = preg_quote(str);
 	if(specialCh == '.') {
-		inside = inside.replace(/^\\\*$/g, '(?:(.+))');
+		inside = inside.replace(/^\\\*$/g, '(?:(?<host>.+))');
 		inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)?');
 	}
 	else
