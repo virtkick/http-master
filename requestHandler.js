@@ -12,7 +12,6 @@ module.exports = function(config, middleware) {
 				if(i < length) {
 					middleware[i++](req, res, function(err) {
 						if(err) {
-							console.log("err occured", err);
 							return;
 						}
 						runMiddleware();

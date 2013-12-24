@@ -10,6 +10,7 @@ var path = require('path'),
     http = require('http'),
     https = require('https');
 
+
 var help = [
     "usage: rush-http-proxy [options] ",
     "",
@@ -209,7 +210,7 @@ function handleConfigEntry(config, callback) {
       for(key in config.https.SNI) {
           SNImatchers[key] = new RegExp("^" + key + "$", 'i'); // domain names are case insensitive
       }
-      config.https.SNICallback = function(hostname, cb) {
+      var sniCallback = function(hostname, cb) {
         for(key in SNI) {
           if(hostname.match(SNImatchers[key])) {
             if(cb) // since node 0.11.5
@@ -218,15 +219,19 @@ function handleConfigEntry(config, callback) {
               return SNI[key];
           }
         }
-        return cb(null);
+        if(cb)
+          return cb(null);
       }
+
+      config.https.SNICallback = sniCallback;
     }
 
     loadKeysForContext(config.https);
     if(SNI) {
       for(key in SNI) {
         loadKeysForContext(SNI[key]);
-        SNI[key] = crypto.createCredentials(SNI[key].toString()).context;
+        SNI[key] = crypto.createCredentials(SNI[key]).context;
+        
       }
     }
   }
