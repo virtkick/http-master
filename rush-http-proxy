@@ -166,7 +166,7 @@ function loadKeysForContext(context) {
           }
         });
       }
-    } else if(key !== 'SNI' && key !== 'SNICallback' && key !== 'spdy') {
+    } else if(key == "cert" || key == "key") {
       context[key] = normalizeCert(fs.readFileSync(context[key], 'utf8'));
     }
   });
