@@ -166,7 +166,7 @@ function loadKeysForContext(context) {
           }
         });
       }
-    } else if(key !== 'SNI' && key !== 'SNICallback') {
+    } else if(key !== 'SNI' && key !== 'SNICallback' && key !== 'spdy') {
       context[key] = normalizeCert(fs.readFileSync(context[key], 'utf8'));
     }
   });
@@ -200,14 +200,16 @@ function parseConfig(noExitOnError) {
 }
 
 function handleConfigEntry(config, callback) {
+  if(config.https) // compatibility with old 
+    config.ssl = config.https;
   //
-  // If `config.https` is set, then load the required file contents into the config options.
+  // If `config.ssl` is set, then load the required file contents into the config options.
   //
-  if (config.https) {
-    var SNI = config.https.SNI;
+  if (config.ssl) {
+    var SNI = config.ssl.SNI;
     var SNImatchers = {};
-    if(config.https.SNI) {
-      for(key in config.https.SNI) {
+    if(config.ssl.SNI) {
+      for(key in config.ssl.SNI) {
           SNImatchers[key] = new RegExp("^" + key + "$", 'i'); // domain names are case insensitive
       }
       var sniCallback = function(hostname, cb) {
@@ -223,10 +225,10 @@ function handleConfigEntry(config, callback) {
           return cb(null);
       }
 
-      config.https.SNICallback = sniCallback;
+      config.ssl.SNICallback = sniCallback;
     }
 
-    loadKeysForContext(config.https);
+    loadKeysForContext(config.ssl);
     if(SNI) {
       for(key in SNI) {
         loadKeysForContext(SNI[key]);
@@ -260,8 +262,9 @@ function handleConfigEntry(config, callback) {
 
   var server;
   try {
-    if(config.https) {
-      server = https.createServer(config.https, handler.request);
+    if(config.ssl) {
+      var baseModule = config.ssl.spdy ? require('spdy') : https;
+      server = baseModule.createServer(config.ssl, handler.request);
     }
     else {
       server = http.createServer(handler.request);
