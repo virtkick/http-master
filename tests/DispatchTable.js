@@ -168,7 +168,7 @@ describe('DispatchTable internal structure', function() {
 	describe('DispatchTable Multiple paths for entry', function() {
 		var config = {
 			'code2flow.com/^get/(?<letter>[a-f])/?': 5070,
-			'code2flow.com/admin': 5060,
+			'code2flow.com/admin2': 5060,
 			'code2flow.com/admin/*': 5061,
 			'code2flow.com/test': 5050,
 			'code2flow.com/*/test': 5040,
@@ -188,7 +188,9 @@ describe('DispatchTable internal structure', function() {
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/test')).should.equal(5050);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/get/a')).should.equal(5070);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/get/a/')).should.equal(5070);
-			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin')).should.equal(5060);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin2')).should.equal(5060);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin2/')).should.equal(5030);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin')).should.equal(5061);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa')).should.equal(5061);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/')).should.equal(5061);
 			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/dupa/3')).should.equal(5061);
