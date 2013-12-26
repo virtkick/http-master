@@ -1,3 +1,5 @@
+// todo - add tests for url rewriting
+
 var should = require('should');
 var mocha = require('mocha');
 var DispatchTable = require('../DispatchTable');
@@ -360,5 +362,4 @@ describe('DispatchTable dispatcher', function() {
 
 
 	});
-
 });

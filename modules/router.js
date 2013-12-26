@@ -75,6 +75,7 @@ module.exports = {
 				req.next = next;
 				if(req.pathMatch || req.hostMatch) {
 					var withPath = target.withPath;
+
 					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
 					if(withPath)
 						req.url = target.path;

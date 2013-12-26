@@ -8,7 +8,8 @@ function processMatch(target, m, offset) {
 			}
 			else
 				keyWithOffset = key;
-			target = target.replace("[" + keyWithOffset + "]", m[key]);
+			var replaceValue = m[key];
+			target = target.replace("[" + keyWithOffset + "]", replaceValue?replaceValue:"");
 		}
 	}
 	return target;
