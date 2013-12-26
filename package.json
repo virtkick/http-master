@@ -24,7 +24,7 @@
     "async": "~0.2.9",
     "xregexp": "~2.0.0",
     "node-static": "~0.7.2",
-    "spdy": "~1.17.14"
+    "spdy": "~1.17.16"
   },
   "devDependencies": {
     "mocha": "~1.16.1",
