@@ -165,7 +165,7 @@ describe('DispatchTable internal structure', function() {
 		});
 	});
 
-	describe('DispatchTable Multiple paths for entry', function() {
+	describe('Multiple paths for entry', function() {
 		var config = {
 			'code2flow.com/^get/(?<letter>[a-f])/?': 5070,
 			'code2flow.com/admin2': 5060,
@@ -204,6 +204,33 @@ describe('DispatchTable internal structure', function() {
 			req.pathMatch.letter.should.equal('a');
 
 		});
+	});
+
+	describe('explicit /* at end of path', function() {
+		var config = {
+			'code2flow.com/admin/*': 5061,
+			'code2flow.com/admin2/*': 5062,
+		};
+		var dispatchTable = new DispatchTable({
+			config: config
+		});
+		it('should not find any route', function() {
+			assert(!dispatchTable.getTargetForReq(makeReq('code2flow.com', '/adminwhatever')), "is null");
+			assert(!dispatchTable.getTargetForReq(makeReq('code2flow.com', '/adminw2hatever')), "is null");
+		});
+		it('should find proper routes', function() {
+
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin')).should.equal(5061);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/')).should.equal(5061);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/whatever')).should.equal(5061);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin/whatever/')).should.equal(5061);
+
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin2')).should.equal(5062);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin2/')).should.equal(5062);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin2/whatever')).should.equal(5062);
+			dispatchTable.getTargetForReq(makeReq('code2flow.com', '/admin2/whatever/')).should.equal(5062);
+		});
+
 	});
 
 });
