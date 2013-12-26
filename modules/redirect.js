@@ -21,7 +21,7 @@ module.exports = {
 				if(req.pathMatch || req.hostMatch)
 					target = regexpHelper(target, req.hostMatch, req.pathMatch);
 
-				target = target.replace("[path]", req.url);
+				target = target.replace("[path]", req.url.substring(1));
 				res.statusCode = 302;
 				res.setHeader("Location", target);
 				return res.end();
