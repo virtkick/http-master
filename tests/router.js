@@ -1,4 +1,3 @@
-
 var should = require('should');
 var mocha = require('mocha');
 var DispatchTable = require('../DispatchTable');
@@ -22,7 +21,7 @@ httpProxy.createProxyServer = function() {
 
 	return {
 		web: function(req, res, options) {
-			if(onTarget)
+			if (onTarget)
 				onTarget(options.target);
 		},
 		on: function() {}
@@ -32,35 +31,44 @@ httpProxy.createProxyServer = function() {
 
 var router = require('../modules/router');
 
+var middleware;
+
+function makeTest(host, path, cb) {
+	onTarget = cb;
+	middleware.handleRequest(makeReq(host, path), {}, function(err) {
+		onTarget({
+			href: ''
+		});
+	});
+}
+
+var assertPath = function(host, path, mustEqual) {
+	makeTest(host, path, function(target) {
+		target.href.should.equal(mustEqual);
+	});
+}
+
 describe('router module', function() {
 	it('should rewrite URL with implicit ending / to explicit /', function() {
 
 
-		var middleware = router.middleware({
+		middleware = router.middleware({
 			router: {
 				"jira.atlashost.eu/code2flow/*": "jira:14900/code2flow/[1]"
 			}
 		});
-
-
-		function makeTest(host, path, cb) {
-			onTarget = cb;
-			middleware.handleRequest(makeReq(host, path), {}, function(err) {
-				onTarget({href: ''});
-			});
-		}
-		
-		var assertPath = function(host, path, mustEqual) {
-			makeTest(host, path, function(target) {
-				target.href.should.equal(mustEqual);
-			});
-		}
-
-
 		assertPath('jira.atlashost.eu', '/code2flow', 'http://jira:14900/code2flow/');
 		assertPath('jira.atlashost.eu', '/code2flow/', 'http://jira:14900/code2flow/');
 		assertPath('jira.atlashost.eu', '/code2flow//', 'http://jira:14900/code2flow//');
 		assertPath('jira.atlashost.eu', '/code2flo', '');
 
+	});
+	it('try to connect to fake route', function() {
+		middleware = router.middleware({
+			router: {
+				"*": "localhost:0"
+			}
+		});
+		assertPath('jira.atlashost.eu', '/test', 'http://localhost:0/');
 	});
 });

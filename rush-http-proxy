@@ -403,7 +403,6 @@ if (cluster.isMaster) {
       }));
     };
 
-
     worker.sendMessage('start');
     worker.emitter = new EventEmitter();
     worker.on("message",  function(msg) {
@@ -516,4 +515,6 @@ if (cluster.isMaster) {
   });
 }
 
-
+process.on('uncaughtException', function (err) {
+    console.log( "[Uncought exception] " + err.stack || err.message );
+});
