@@ -53,8 +53,6 @@ var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(fun
   return (b.priority || 0) - (a.priority || 0);
 });
 
-var proxyFailErrorHandler;
-
 var droppedPrivileges = false;
 function dropPrivileges()
 {

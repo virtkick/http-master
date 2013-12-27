@@ -1,6 +1,7 @@
 var httpProxy = require('http-proxy');
 var DispatchTable = require('../DispatchTable');
 var url = require('url');
+var fs = require('fs');
 
 function splitFirst(str, delim) {
 	var index = str.indexOf(delim);
@@ -53,7 +54,6 @@ module.exports = {
 
     if(config.errorHtmlFile) {
       var content = fs.readFileSync(config.errorHtmlFile).toString('utf8');
-
       content = content.replace(/src="(.+?)"/g, function(m, fileName) {
         var imagePath = path.join(path.dirname(config.errorHtmlFile), fileName);
         return 'src="data:image/'+path.extname(fileName).substr(1)+';base64,' + fs.readFileSync(imagePath).toString('base64') + '"';
