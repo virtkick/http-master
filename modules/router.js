@@ -5,33 +5,32 @@ var fs = require('fs');
 var path = require('path');
 
 function splitFirst(str, delim) {
-	var index = str.indexOf(delim);
-	if(index == -1)
-		return [str];
-	return [str.substr(0,index), str.substr(index)];
-
+  var index = str.indexOf(delim);
+  if(index == -1)
+    return [str];
+  return [str.substr(0,index), str.substr(index)];
 }
 
 function parseEntry(entry) {
-	var m;
-	if(typeof entry == 'number')
-		entry = entry.toString();
+  var m;
+  if(typeof entry == 'number')
+    entry = entry.toString();
 
-	var withPath = false;
-	if(typeof entry == 'string') {
-		withPath = !!entry.match(/(?:https?:\/\/)?.*\//);
+  var withPath = false;
+  if(typeof entry == 'string') {
+    withPath = !!entry.match(/(?:https?:\/\/)?.*\//);
 
-		if((m = entry.match(/^\d+(?:|\/.*)$/))) {
-			entry = '127.0.0.1:' + entry;
-		}
-		if(!entry.match(/https?\/\//)) {
-			entry = 'http://' + entry;
-		}
-	}
-	entry = url.parse(entry, true, true)
-	entry.withPath = withPath;
-	entry.ws = true;
-	return entry;
+    if((m = entry.match(/^\d+(?:|\/.*)$/))) {
+      entry = '127.0.0.1:' + entry;
+    }
+    if(!entry.match(/https?\/\//)) {
+      entry = 'http://' + entry;
+    }
+  }
+  entry = url.parse(entry, true, true)
+  entry.withPath = withPath;
+  entry.ws = true;
+  return entry;
 }
 
 var proxy = httpProxy.createProxyServer({agent: null, xfwd: true});
@@ -40,18 +39,18 @@ var regexpHelper = require('../regexpHelper');
 var proxyFailErrorHandler;
 
 proxy.on('error', function(err, req, res) {
-	if(proxyFailErrorHandler) {
-		return proxyFailErrorHandler(err, req, res);
-	}
-	// forward to next route and save error for potential handler
-	req.err = err;
-	req.next();
+  if(proxyFailErrorHandler) {
+    return proxyFailErrorHandler(err, req, res);
+  }
+  // forward to next route and save error for potential handler
+  req.err = err;
+  req.next();
 });
 
 module.exports = {
-	priority: 8,
-	middleware: function(config) {
-		if(!config.router) return;
+  priority: 8,
+  middleware: function(config) {
+    if(!config.router) return;
 
     if(config.errorHtmlFile) {
       var content = fs.readFileSync(config.errorHtmlFile).toString('utf8');
@@ -69,33 +68,38 @@ module.exports = {
       };
     }
 
-		return new DispatchTable({
-			config: config.router,
-			requestHandler: function(req, res, next, target) {
-				req.connection.proxy = proxy;
-				req.next = next;
-				if(req.pathMatch || req.hostMatch) {
-					var withPath = target.withPath;
+    var rewriteTargetIfNeeded = function(req, target) {
+      if(req.pathMatch || req.hostMatch) {
+        return url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
+      } else {
+        return target;
+      }
+    };
 
-					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
-					if(withPath)
-						req.url = target.path;
-				}
-				proxy.web(req, res, {target: target});
-			},
-			upgradeHandler: function(req, socket, head, target) {
-				if(req.pathMatch || req.hostMatch) {
-					var withPath = target.withPath;
-					target = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
-					if(withPath)
-						req.url = target.path;
-				}
-				proxy.ws(req, socket, head, {target: target});
-			},
-			entryParser: function(entryKey, entry) {
-				return [entryKey,  parseEntry(entry)];
-			},
-			port: config.port
-		});
-		}
+    var rewritePathIfNeeded = function(req, target) {
+      if((req.pathMatch || req.hostMatch) && target.withPath) {
+        req.url = target.path;
+      }
+    };
+
+    return new DispatchTable({
+      config: config.router,
+      requestHandler: function(req, res, next, target) {
+        req.connection.proxy = proxy;
+        req.next = next;
+        target = rewriteTargetIfNeeded(req, target);
+        rewritePathIfNeeded(req, target);
+        proxy.web(req, res, {target: target});
+      },
+      upgradeHandler: function(req, socket, head, target) {
+        target = rewriteTargetIfNeeded(req, target);
+        rewritePathIfNeeded(req, target);
+        proxy.ws(req, socket, head, {target: target});
+      },
+      entryParser: function(entryKey, entry) {
+        return [entryKey,  parseEntry(entry)];
+      },
+      port: config.port
+    });
+  }
 };
