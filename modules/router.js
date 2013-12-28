@@ -59,7 +59,7 @@ module.exports = {
         return 'src="data:image/'+path.extname(fileName).substr(1)+';base64,' + fs.readFileSync(imagePath).toString('base64') + '"';
       });
 
-      proxyFailErrorHandler = function (err, req, res) {
+      proxyFailErrorHandler = function(err, req, res) {
         res.writeHead(500, {
           'Content-Type': 'text/html'
         });
@@ -68,18 +68,16 @@ module.exports = {
       };
     }
 
-    var rewriteTargetIfNeeded = function(req, target) {
-      if(req.pathMatch || req.hostMatch) {
-        return url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
-      } else {
+    var rewriteTargetAndPathIfNeeded = function(req, target) {
+      if(!(req.pathMatch || req.hostMatch)) {
         return target;
       }
-    };
 
-    var rewritePathIfNeeded = function(req, target) {
-      if((req.pathMatch || req.hostMatch) && target.withPath) {
-        req.url = target.path;
+      var newTarget = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
+      if(target.withPath) {
+        req.url = target.path
       }
+      return newTarget;
     };
 
     return new DispatchTable({
@@ -87,13 +85,11 @@ module.exports = {
       requestHandler: function(req, res, next, target) {
         req.connection.proxy = proxy;
         req.next = next;
-        target = rewriteTargetIfNeeded(req, target);
-        rewritePathIfNeeded(req, target);
+        target = rewriteTargetAndPathIfNeeded(req, target);
         proxy.web(req, res, {target: target});
       },
       upgradeHandler: function(req, socket, head, target) {
-        target = rewriteTargetIfNeeded(req, target);
-        rewritePathIfNeeded(req, target);
+        target = rewriteTargetAndPathIfNeeded(req, target);
         proxy.ws(req, socket, head, {target: target});
       },
       entryParser: function(entryKey, entry) {
