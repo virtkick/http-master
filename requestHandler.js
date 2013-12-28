@@ -2,23 +2,23 @@ var http = require('http');
 var url = require('url');
 
 module.exports = function(config, middleware) {
-	var length = middleware.length ;
-	
-	return {
-		request: function(req, res) {
-			var i = 0;
+  var length = middleware.length;
 
-			function runMiddleware() { 
-				if(i < length) {
-					middleware[i++](req, res, function(err) {
-						if(err) {
-							return;
-						}
-						runMiddleware();
-					});
-				}
-			}
-			runMiddleware();
-		}
-	};
+  return {
+    request: function(req, res) {
+      var i = 0;
+
+      function runMiddleware() {
+        if (i < length) {
+          middleware[i++](req, res, function(err) {
+            if (err) {
+              return;
+            }
+            runMiddleware();
+          });
+        }
+      }
+      runMiddleware();
+    }
+  };
 };
