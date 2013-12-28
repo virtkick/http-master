@@ -44,7 +44,16 @@ describe('domains config processor', function() {
   });
 
   it('should support simple string keys', function() {
-
+    var config = {
+      http: true,
+      domains: {
+        "code2flow.com:80": 4030
+      }
+    };
+    var config = processConfig(config);
+    config.ports.should.have.property("80");
+    config.ports["80"].should.have.property("code2flow.com");
+    config.ports["80"]["code2flow.com"].should.equal(4030);
   });
 
 });
