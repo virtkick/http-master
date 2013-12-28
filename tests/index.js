@@ -1,5 +1,5 @@
 require('./DispatchTable');
-require('./router');
+require('./proxy');
 
 require('./redirect');
 
