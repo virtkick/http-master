@@ -319,7 +319,7 @@ function handleConfigEntry(config, callback) {
 function handleConfig(config) {
 
   runModules('preprocessConfig', config);
-
+  
   async.parallel(Object.keys(config.ports).map(function(portEntry) {
 
     return function(asyncCallback) {
@@ -433,6 +433,7 @@ if (cluster.isMaster) {
       logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
       dropPrivileges();
       runModules("allWorkersStarted", config);
+
     });
 
   });
@@ -441,7 +442,9 @@ if (cluster.isMaster) {
     
     var startTime = new Date().getTime();
 
-    async.parallel(workers.map(function(worker) {
+    async.parallel(workers
+      .filter(function(worker){return !!worker;}) // dead workers leave undefined keys
+      .map(function(worker) {
       return function(asyncCallback) {
         worker.once('msg:unbindFinished', function() { 
 
@@ -475,12 +478,22 @@ if (cluster.isMaster) {
   });
 
   cluster.on('exit', function(worker, code, signal) {
-    logError("Worker failed with code " + code);
-    process.exit();
-    logError("Closing whole application ...");
+    logError("Worker " + worker.id + " failed with code " + code ,"... starting replacement");
+    workers[worker.id-1] = undefined;
+    var newWorker = initWorker(function() {
+      console.log("Worker", newWorker.id, "started in place of worker", worker.id);
+      workers[newWorker.id-1] = newWorker;
+    });
   });
 
+  // patch config for modules to know user/group from argv
+  config.user = config.user || argv.user;
+  config.group = config.group || argv.group;
   runModules("initMaster", config);
+
+  process.on('uncaughtException', function (err) {
+      logError( "[Uncaught exception in master] " + err.stack || err.message );
+  });
 
 } else { // worker
   var worker = cluster.worker;
@@ -495,6 +508,11 @@ if (cluster.isMaster) {
   process.on('message', function(msg) {
     var msg = JSON.parse(msg);
     process.emit('msg:' + msg.type, msg.data);
+  });
+
+  process.on('uncaughtException', function (err) {
+      logError( "[Uncaught exception] " + err.stack || err.message );
+      process.exit(1);
   });
 
   process.on('msg:start', function() {
@@ -513,6 +531,3 @@ if (cluster.isMaster) {
   });
 }
 
-process.on('uncaughtException', function (err) {
-    console.log( "[Uncought exception] " + err.stack || err.message );
-});

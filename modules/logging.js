@@ -24,17 +24,24 @@ function openLogFile(logFile) {
 	return stream;
 }
 
-function loadAppLog(file) {
+var uidNumber = require('uid-number');
+
+function loadAppLog(file, user, group) {
 	if(appStream)
 		appStream.end();
 	appStream = openLogFile(file);
+	if(user || group) {
+		uidNumber(user, group, function(err, userId, groupId) {
+			fs.chown(file, userId, groupId);
+		});
+	}
+
 	console.log = function() {
 	 	var args = Array.prototype.slice.call(arguments);
 	 	args.unshift('[' + new Date().toISOString() + ']');
 	 	str = util.format.apply(this, args) + "\n";
 	 	appStream.write(str);
 	}
-	console.log("Listening for appLog");
 	process.removeAllListeners('msg:appLog');
 	process.on('msg:appLog', function(data) {
 		appStream.write(data);
@@ -47,7 +54,7 @@ module.exports = {
 	initMaster: function(config) {
 		if (config.logging) {
 			if (config.logging.appLog) {
-				loadAppLog(config.logging.appLog);
+				loadAppLog(config.logging.appLog, config.user, config.group);
 			}
 		}
 	},

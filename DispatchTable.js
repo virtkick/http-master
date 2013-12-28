@@ -193,6 +193,7 @@ DispatchTable.prototype.handleUpgrade = DispatchTable.prototype.dispatchUpgrade;
 
 DispatchTable.prototype.dispatchRequest = function(req, res, next) {
 	var target = this.getTargetForReq(req);
+
 	if(target && this.requestHandler) {
 		return this.requestHandler(req, res, next, target);
 	}
