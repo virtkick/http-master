@@ -70,7 +70,7 @@ module.exports = function(config) {
     else { // assume it is int/string
       assert(typeof domainEntry == 'string' || typeof domainEntry == 'number', 'port num');
       var destination = domainEntry;
-      var m = domain.match(new XRegExp("^(?<host>[^:]*)(?::(?<port>\\d+))?$"));
+      var m = domain.match(new XRegExp("^(?<host>.*?)(?::(?<port>\\d+))?(?<path>\\/.*)?$"));
 
       assert(m.port, "port should be defined");
 
@@ -81,7 +81,7 @@ module.exports = function(config) {
       if(!ports[m.port][entry.module])
         ports[m.port][entry.module] = {};
 
-      ports[m.port][entry.module][m.host] = entry.value;
+      ports[m.port][entry.module][m.host + (m.path||"")] = entry.value;;
 
 
     }

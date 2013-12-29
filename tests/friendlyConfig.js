@@ -79,12 +79,12 @@ describe('domains config processor', function() {
 
   });
 
-  it('should support simple string keys with string target', function() {
+  it('should support simple string keys with string target and path', function() {
 
     assert.deepEqual(processConfig({
       https: true,
       domains: {
-        "code2flow.com:443": "redirect: https://sometarget"
+        "code2flow.com:443/test": "redirect: https://sometarget"
       }
     }), {
       ports: {
@@ -92,7 +92,7 @@ describe('domains config processor', function() {
           ssl: {
           },
           redirect: {
-            "code2flow.com": "https://sometarget"
+            "code2flow.com/test": "https://sometarget"
           }
         }
       }
