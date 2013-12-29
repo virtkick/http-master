@@ -7,54 +7,97 @@ var processConfig = require('../friendlyConfig');
 describe('domains config processor', function() {
 
   it('should generate \"ports\"" keys from list of ports', function() {
-    var config = {
+    assert.deepEqual(processConfig({
       http: [80, 8080],
       https: [443, 80443]
-    };
-    var config = processConfig(config);
-    config.should.have.property("ports");
-    config.ports.should.have.property("80");
-    config.ports.should.have.property("8080");
-    config.ports.should.have.property("443");
-    config.ports.should.have.property("80443");
+    }), {
+      ports: {
+        "80": {
+        },
+        "8080": {
+        },
+        "443": {
+          ssl: {
+          }
+        },
+        "80443": {
+          ssl: {
+          }
+        }
+      }
+    });
   });
 
   it('should support ssl config per port', function() {
-    var config = {
-      https: [{port: 443, cipherList: ['CIPHER1', 'CIPHER2'], spdy: true}]
-    };
-    var config = processConfig(config);
-    config.should.have.property("ports");
-    config.ports.should.have.property("443");
-    config.ports[443].should.have.property('ssl');
-    config.ports[443].ssl.should.have.property('cipherList');
-
-
+    assert.deepEqual(processConfig({
+      https: [{
+        port: 443,
+        cipherList: ['CIPHER1', 'CIPHER2'],
+        spdy: true
+      }]
+    }), {
+      ports: {
+        "443": {
+          ssl: {
+            cipherList: ['CIPHER1', 'CIPHER2'],
+            spdy: true
+          }
+        }
+      }
+    });
   });
 
   it('should support simplified http entry', function() {
-    var config = {
+    assert.deepEqual(processConfig({
       http: true,
       https: true
-    };
-    var config = processConfig(config);
-    config.should.have.property("ports");
-    config.ports.should.have.property("80");
-    config.ports.should.have.property("443");
+    }), {
+      ports: {
+        "80": {},
+        "443": {
+          ssl: {}
+        },
+      }
+    });
   });
 
-  it('should support simple string keys', function() {
-    var config = {
+  it('should support simple string keys with numerical target', function() {
+    assert.deepEqual(processConfig({
       http: true,
       domains: {
         "code2flow.com:80": 4030
       }
-    };
-    var config = processConfig(config);
-    config.ports.should.have.property("80");
-    config.ports["80"].should.have.property("code2flow.com");
-    config.ports["80"]["code2flow.com"].should.equal(4030);
+    }), {
+      ports: {
+        "80": {
+          proxy: {
+            "code2flow.com": 4030
+          }
+        }
+      }
+    });
+
+  });
+
+  it('should support simple string keys with string target', function() {
+
+    assert.deepEqual(processConfig({
+      https: true,
+      domains: {
+        "code2flow.com:443": "redirect: https://sometarget"
+      }
+    }), {
+      ports: {
+        "443": {
+          ssl: {
+          },
+          redirect: {
+            "code2flow.com": "https://sometarget"
+          }
+        }
+      }
+    });
+
   });
 
 });
-

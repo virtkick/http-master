@@ -14,10 +14,11 @@ XRegExp.install({
 module.exports = function(config) {
   var domains = config.domains || {};
 
-  if (!config.ports)
-    config.ports = {};
+  var newConfig = {};
+  if (!newConfig.ports)
+    newConfig.ports = {};
 
-  var ports = config.ports;
+  var ports = newConfig.ports;
 
   if (typeof config.http == 'boolean') {
     config.http = [80];
@@ -28,7 +29,7 @@ module.exports = function(config) {
 
   if (config.http) {
     config.http.forEach(function(portEntry) {
-      config.ports[portEntry.port || portEntry] = {};
+      ports[portEntry.port || portEntry] = {};
       if(portEntry.port)
         delete portEntry.port;
     });
@@ -41,13 +42,24 @@ module.exports = function(config) {
     config.https.forEach(function(portEntry) {
 
 
-      config.ports[portEntry.port || portEntry] = {
+      ports[portEntry.port || portEntry] = {
 
         ssl: typeof portEntry === 'object' ? portEntry : sslConfig
       };
       if(portEntry.port)
         delete portEntry.port;
     });
+  }
+
+  function parseEntry(entry) {
+    if(typeof entry == 'number')
+      return {module: 'proxy', value: entry};
+    else if(typeof entry == 'string') {
+      var m = entry.match(/^(?:(\w+)\s*:)?\s*(.*)$/);
+      return {module: m[1] || 'proxy', value: m[2]};
+    }
+    else
+      throw new Error("unsupported entry");
   }
 
   Object.keys(domains).forEach(function(domain) {
@@ -62,7 +74,14 @@ module.exports = function(config) {
 
       assert(m.port, "port should be defined");
 
-      ports[m.port][m.host] = domainEntry;
+      var entry = parseEntry(domainEntry);
+
+      if(ports[m.port])
+
+      if(!ports[m.port][entry.module])
+        ports[m.port][entry.module] = {};
+
+      ports[m.port][entry.module][m.host] = entry.value;
 
 
     }
@@ -70,5 +89,5 @@ module.exports = function(config) {
   });
 
 
-  return config;
+  return newConfig;
 };
