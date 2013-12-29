@@ -1,9 +1,9 @@
 [Unit]
-Description=Rush HTTP Proxy
+Description=HTTP Master
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/rush-http-proxy --config=/etc/http-proxy/config.json
+ExecStart=/usr/bin/http-master --config=/etc/http-master/config.json
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=always
 

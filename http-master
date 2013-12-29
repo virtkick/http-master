@@ -12,9 +12,9 @@ var path = require('path'),
 
 
 var help = [
-  "usage: rush-http-proxy [options] ",
+  "usage: http-master [options] ",
   "",
-  "Starts a rush-http-daemon server using the specified command-line options",
+  "Starts a http-master server using the specified command-line options",
   "",
   "options:",
   "  --config CONFIGFILE     Location of the configuration file for the proxy server",

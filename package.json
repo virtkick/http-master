@@ -1,8 +1,8 @@
 {
-  "name": "rush-http-proxy",
-  "version": "0.2.0",
-  "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Based on excellent node-http-proxy.",
-  "main": "rush-http-proxy",
+  "name": "http-master",
+  "version": "0.3.0",
+  "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
+  "main": "http-master",
   "scripts": {
     "test": "mocha tests/"
   },
@@ -12,7 +12,7 @@
     "https",
     "proxy"
   ],
-  "bin": "./rush-http-proxy",
+  "bin": "./http-master",
   "author": "Damian Kaczmarek <rushpl@gmail.com>",
   "license": "BSD",
   "dependencies": {
@@ -24,7 +24,7 @@
     "async": "~0.2.9",
     "xregexp": "~2.0.0",
     "node-static": "~0.7.2",
-    "spdy": "~1.17.21",
+    "spdy": "~1.17.22",
     "uid-number": "0.0.3"
   },
   "devDependencies": {
