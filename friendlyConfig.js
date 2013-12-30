@@ -109,10 +109,10 @@ module.exports = function(config) {
 
     var domainInput = parseDomainInput(domain);
 
-
-    var interfacesToAssign = domainInput.interfaces || [null];
-
-    
+    // bind to interfaces defined in group, if not defined
+    //     bind to interfaces defined globally, if not defined
+    //         bind to all interfaces
+    var interfacesToAssign = domainInput.interfaces || config.interfaces || [null];
 
     interfacesToAssign.forEach(function(interfaceToAssign) {
 
