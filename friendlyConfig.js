@@ -18,6 +18,8 @@ module.exports = function(config) {
   if (!newConfig.ports)
     newConfig.ports = {};
 
+  var allPorts = [];
+
   var ports = newConfig.ports;
 
   if (typeof config.http == 'boolean') {
@@ -29,8 +31,10 @@ module.exports = function(config) {
 
   if (config.http) {
     config.http.forEach(function(portEntry) {
+      allPorts.push(portEntry.port || portEntry);
+
       ports[portEntry.port || portEntry] = {};
-      if(portEntry.port)
+      if (portEntry.port)
         delete portEntry.port;
     });
   }
@@ -41,50 +45,95 @@ module.exports = function(config) {
   if (config.https) {
     config.https.forEach(function(portEntry) {
 
+      allPorts.push(portEntry.port || portEntry);
 
       ports[portEntry.port || portEntry] = {
 
         ssl: typeof portEntry === 'object' ? portEntry : sslConfig
       };
-      if(portEntry.port)
+      if (portEntry.port)
         delete portEntry.port;
     });
   }
 
+  var groups = config.groups || {};
+  Object.keys(groups).forEach(function(groupName) {
+
+  });
+
+
   function parseEntry(entry) {
-    if(typeof entry == 'number')
-      return {module: 'proxy', value: entry};
-    else if(typeof entry == 'string') {
+    if (typeof entry == 'number')
+      return {
+        module: 'proxy',
+        value: entry
+      };
+    else if (typeof entry == 'string') {
       var m = entry.match(/^(?:(\w+)\s*:)?\s*(.*)$/);
-      return {module: m[1] || 'proxy', value: m[2]};
-    }
-    else
+      return {
+        module: m[1] || 'proxy',
+        value: m[2]
+      };
+    } else
       throw new Error("unsupported entry");
+  }
+
+
+  function parseDomainInput(domain) {
+    var m = domain.match(new XRegExp("^(?:(?<group>[^/ \t]*)\\s*\\|)?\\s*(?<host>.*?)(?::(?<port>\\d+))?(?<path>\\/.*)?$"));
+
+    var group = groups[m.group || ""] || {};
+
+    return {
+      ports: m.port ? [m.port] : (group.ports ? group.ports : allPorts),
+      interfaces: group.interfaces,
+      host: m.host,
+      path: m.path
+    };
   }
 
   Object.keys(domains).forEach(function(domain) {
     var domainEntry = domains[domain];
+    var entry;
+
+    if (typeof domainEntry != 'object') {
+      entry = parseEntry(domainEntry);
+    }
+    else {
+      assert(false, 'object entries not yet handled');
+    }
     
-    if(typeof domainEntry == 'object') {
-    }
-    else { // assume it is int/string
-      assert(typeof domainEntry == 'string' || typeof domainEntry == 'number', 'port num');
-      var destination = domainEntry;
-      var m = domain.match(new XRegExp("^(?<host>.*?)(?::(?<port>\\d+))?(?<path>\\/.*)?$"));
-
-      assert(m.port, "port should be defined");
-
-      var entry = parseEntry(domainEntry);
-
-      if(ports[m.port])
-
-      if(!ports[m.port][entry.module])
-        ports[m.port][entry.module] = {};
-
-      ports[m.port][entry.module][m.host + (m.path||"")] = entry.value;;
+    assert(typeof domainEntry == 'string' || typeof domainEntry == 'number', 'port num');
+    var destination = domainEntry;
 
 
-    }
+    var domainInput = parseDomainInput(domain);
+
+
+    var interfacesToAssign = domainInput.interfaces || [null];
+
+    
+
+    interfacesToAssign.forEach(function(interfaceToAssign) {
+
+      domainInput.ports.forEach(function(port) {
+        if (interfaceToAssign) {
+          if (interfaceToAssign.match(/:/)) // ipv6
+            port = "[" + interfaceToAssign + "]:" + port;
+          else
+            port = interfaceToAssign + ":" + port;
+        }
+
+        if (!ports[port])
+          ports[port] = {};
+
+        if (!ports[port][entry.module])
+          ports[port][entry.module] = {};
+
+        ports[port][entry.module][domainInput.host + (domainInput.path || "")] = entry.value;;
+      });
+
+    });
 
   });
 
