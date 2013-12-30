@@ -206,4 +206,27 @@ describe('domains config processor', function() {
     };
     assert.deepEqual(processConfig(input), expected);
   });
+  it('should handle global multiple interfaces', function() {
+    var input = {
+      interfaces: ["127.0.0.1", "::1"],
+      domains: {
+        "code2flow.com:80/test": 3040
+      }
+    };
+    var expected = {
+      ports: {
+        "127.0.0.1:80": {
+          proxy: {
+            "code2flow.com/test" : 3040
+          }
+        },
+        "[::1]:80": {
+          proxy: {
+            "code2flow.com/test" : 3040
+          }
+        }
+      }
+    };
+    assert.deepEqual(processConfig(input), expected);
+  });
 });
