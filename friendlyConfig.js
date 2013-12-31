@@ -62,23 +62,6 @@ module.exports = function(config) {
   });
 
 
-  function parseEntry(entry) {
-    if (typeof entry == 'number')
-      return {
-        module: 'proxy',
-        value: entry
-      };
-    else if (typeof entry == 'string') {
-      var m = entry.match(/^(?:(\w+)\s*:)?\s*(.*)$/);
-      return {
-        module: m[1] || 'proxy',
-        value: m[2]
-      };
-    } else
-      throw new Error("unsupported entry");
-  }
-
-
   function parseDomainInput(domain) {
     var m = domain.match(new XRegExp("^(?:(?<group>[^/ \t]*)\\s*\\|)?\\s*(?<host>.*?)(?::(?<port>\\d+))?(?<path>\\/.*)?$"));
 
@@ -92,47 +75,86 @@ module.exports = function(config) {
     };
   }
 
-  Object.keys(domains).forEach(function(domain) {
-    var domainEntry = domains[domain];
-    var entry;
-
-    if (typeof domainEntry != 'object') {
-      entry = parseEntry(domainEntry);
+  function parseEntry(entry) {
+    function parseString(entry) {
+      var m = entry.target.match(/^(?:(\w+)\s*:)?\s*(.*)$/);
+      return {
+        matchDescription: entry.matchDescription,
+        module: m[1] || 'proxy',
+        value: m[2]
+      };
     }
-    else {
-      assert(false, 'object entries not yet handled');
+    function parseNumber(entry) {
+      return {
+        matchDescription: entry.matchDescription,
+        module: 'proxy',
+        value: entry.target
+      };
     }
-    
-    assert(typeof domainEntry == 'string' || typeof domainEntry == 'number', 'port num');
-    var destination = domainEntry;
+    function parseSingleEntry(entry) {
+      if (typeof entry.target == 'number')
+        return parseNumber(entry);
+      else if (typeof entry.target == 'string') {
+        return parseString(entry);
+      }
+      else
+        throw new Error('unsupported entry');
+    }
 
-
-    var domainInput = parseDomainInput(domain);
-
-    // bind to interfaces defined in group, if not defined
-    //     bind to interfaces defined globally, if not defined
-    //         bind to all interfaces
-    var interfacesToAssign = domainInput.interfaces || config.interfaces || [null];
-
-    interfacesToAssign.forEach(function(interfaceToAssign) {
-
-      domainInput.ports.forEach(function(port) {
-        if (interfaceToAssign) {
-          if (interfaceToAssign.match(/:/)) // ipv6
-            port = "[" + interfaceToAssign + "]:" + port;
-          else
-            port = interfaceToAssign + ":" + port;
-        }
-
-        if (!ports[port])
-          ports[port] = {};
-
-        if (!ports[port][entry.module])
-          ports[port][entry.module] = {};
-
-        ports[port][entry.module][domainInput.host + (domainInput.path || "")] = entry.value;;
+    if(typeof entry.target == 'object') {
+      
+      return Object.keys(entry.target.subdomains).map(function(entryKey) {
+        var subdomainInput = entryKey;
+        var subdomainTarget = entry.target.subdomains[entryKey];
+        return parseSingleEntry({target: subdomainTarget, matchDescription: subdomainInput + entry.matchDescription});
       });
+    }
+    else { // declares as simple string or port number
 
+      
+      return [parseSingleEntry(entry)];
+    }
+  }
+
+
+  Object.keys(domains).forEach(function(domain) {
+
+    var entries = parseEntry({matchDescription: domain, target: domains[domain]});
+
+
+    entries.forEach(function(entry) {
+      var destination = entry.target;
+      var domainInput = parseDomainInput(entry.matchDescription);
+
+      // bind to interfaces defined in group, if not defined
+      //     bind to interfaces defined globally, if not defined
+      //         bind to all interfaces
+      var interfacesToAssign = domainInput.interfaces || config.interfaces || ["*"];
+
+      // if "*" is on the list, discard other interfaces since they are redunundand
+      if (interfacesToAssign.indexOf("*") != -1)
+        interfacesToAssign = ["*"];
+
+      interfacesToAssign.forEach(function(interfaceToAssign) {
+
+        domainInput.ports.forEach(function(port) {
+          if (interfaceToAssign && interfaceToAssign != "*") {
+            if (interfaceToAssign.match(/:/)) // ipv6
+              port = "[" + interfaceToAssign + "]:" + port;
+            else
+              port = interfaceToAssign + ":" + port;
+          }
+
+          if (!ports[port])
+            ports[port] = {};
+
+          if (!ports[port][entry.module])
+            ports[port][entry.module] = {};
+
+          ports[port][entry.module][domainInput.host + (domainInput.path || "")] = entry.value;
+        });
+
+      });
     });
 
   });

@@ -125,8 +125,7 @@ describe('domains config processor', function() {
           }
         }
       }
-    }
-
+    };
     assert.deepEqual(processConfig(input), expected);
   });
   it('should handle entry without port as belonging to all ports', function() {
@@ -178,7 +177,7 @@ describe('domains config processor', function() {
     };
     assert.deepEqual(processConfig(input), expected);
   });
-  it('should handle gorup with multiple interfaces', function() {
+  it('should handle group with multiple interfaces', function() {
     var input = {
       groups: {
         localOnlyHttp: {
@@ -194,12 +193,12 @@ describe('domains config processor', function() {
       ports: {
         "127.0.0.1:80": {
           proxy: {
-            "code2flow.com/test" : 3040
+            "code2flow.com/test": 3040
           }
         },
         "[::1]:80": {
           proxy: {
-            "code2flow.com/test" : 3040
+            "code2flow.com/test": 3040
           }
         }
       }
@@ -217,16 +216,87 @@ describe('domains config processor', function() {
       ports: {
         "127.0.0.1:80": {
           proxy: {
-            "code2flow.com/test" : 3040
+            "code2flow.com/test": 3040
           }
         },
         "[::1]:80": {
           proxy: {
-            "code2flow.com/test" : 3040
+            "code2flow.com/test": 3040
           }
         }
       }
     };
     assert.deepEqual(processConfig(input), expected);
   });
+
+  it('should discard other interfaces if "*" is defined', function() {
+    var input = {
+      interfaces: ["127.0.0.1", "::1", "*"],
+      domains: {
+        "code2flow.com:80/test": 3040
+      }
+    };
+    var expected = {
+      ports: {
+        "80": {
+          proxy: {
+            "code2flow.com/test": 3040
+          }
+        }
+      }
+    };
+    assert.deepEqual(processConfig(input), expected);
+  });
+
+  it('should allow by group subdomain definitions', function() {
+    var input = {
+      groups: {
+        "www": {
+          subdomains: {
+            "": "[target]",
+            "www": "[target]"
+          }
+        }
+      },
+      domains: {
+        "www | code2flow.com": 567
+      }
+    };
+    var expected = {
+      "ports": {
+        "80": {
+          "proxy": {
+            "code2flow.com": 567,
+            "www.code2flow.com": 567
+          }
+        }
+      }
+    };
+    assert.deepEqual(processConfig(input), expected);
+  });
+
+  it('should allow subdomain definitions in object', function() {
+    var input = {
+      domains: {
+        "code2flow.com:80": {
+          subdomains: {
+            "www.": 3040
+          }
+        }
+      }
+    };
+    var expected = {
+      "ports": {
+        "80": {
+          "proxy": {
+            "www.code2flow.com": 3040
+          }
+        }
+      }
+    };
+    var util = require('util');
+
+    assert.deepEqual(processConfig(input), expected);
+  });
+
 });
