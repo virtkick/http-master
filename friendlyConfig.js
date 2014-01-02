@@ -2,6 +2,8 @@ var assert = require('assert');
 
 var XRegExp = require('xregexp').XRegExp;
 
+var extend = require('extend');
+
 XRegExp.install({
   // Overrides native regex methods with fixed/extended versions that support named
   // backreferences and fix numerous cross-browser bugs
@@ -62,7 +64,8 @@ module.exports = function(config) {
   });
 
 
-  function parseDomainInput(domain) {
+  function parseDomainInput(domain, entry) {
+
     var m = domain.match(new XRegExp("^(?:(?<group>[^/ \t]*)\\s*\\|)?\\s*(?<host>.*?)(?::(?<port>\\d+))?(?<path>\\/.*)?$"));
 
     var group = groups[m.group || ""] || {};
@@ -71,7 +74,8 @@ module.exports = function(config) {
       ports: m.port ? [m.port] : (group.ports ? group.ports : allPorts),
       interfaces: group.interfaces,
       host: m.host,
-      path: m.path
+      path: m.path,
+      group: group
     };
   }
 
@@ -81,63 +85,119 @@ module.exports = function(config) {
       return {
         matchDescription: entry.matchDescription,
         module: m[1] || 'proxy',
-        value: m[2]
+        value: m[2],
+        interfaces: entry.interfaces,
+        ports: entry.ports
       };
     }
+
     function parseNumber(entry) {
       return {
         matchDescription: entry.matchDescription,
         module: 'proxy',
-        value: entry.target
+        value: entry.target,
+        interfaces: entry.interfaces,
+        ports: entry.ports
       };
     }
+
     function parseSingleEntry(entry) {
       if (typeof entry.target == 'number')
         return parseNumber(entry);
       else if (typeof entry.target == 'string') {
         return parseString(entry);
-      }
-      else
+      } else {
         throw new Error('unsupported entry');
+      }
     }
 
-    if(typeof entry.target == 'object') {
-      
-      return Object.keys(entry.target.subdomains).map(function(entryKey) {
-        var subdomainInput = entryKey;
-        var subdomainTarget = entry.target.subdomains[entryKey];
-        return parseSingleEntry({target: subdomainTarget, matchDescription: subdomainInput + entry.matchDescription});
+
+    var group = parseDomainInput(entry.matchDescription, entry).group;
+
+    var subdomains = {};
+    if (entry.target && entry.target.subdomains) {
+      subdomains = extend(subdomains, entry.target.subdomains);
+    }
+    if (group.subdomains) {
+
+
+      Object.keys(group.subdomains).forEach(function(key) {
+        var value = group.subdomains[key];
+        subdomains[key] = value.replace("[target]", entry.target);
       });
     }
-    else { // declares as simple string or port number
 
-      
-      return [parseSingleEntry(entry)];
+    //    if(typeof subdomains[''] == 'undefined') {
+    //      subdomains[''] = entry.target;
+    //    }
+
+    if (typeof entry.target == 'object') {
+
+      return Object.keys(subdomains).map(function(key) {
+        var subdomainInput = key;
+        var subdomainTarget = subdomains[key];
+
+        var matchDescription = parseDomainInput(entry.matchDescription, entry);
+
+        return parseSingleEntry({
+          target: subdomainTarget,
+          matchDescription: subdomainInput + entry.matchDescription,
+          interfaces: matchDescription.interfaces,
+          ports: matchDescription.ports
+        });
+      });
+    } else { // declares as simple string or port number
+      if (typeof subdomains[''] == 'undefined') {
+        subdomains[''] = entry.target;
+      }
+      return Object.keys(subdomains).map(function(key) {
+        var subdomainInput = key;
+        var subdomainTarget = subdomains[key];
+
+        var matchDescription = parseDomainInput(entry.matchDescription, entry);
+
+        return parseSingleEntry({
+          target: subdomainTarget,
+          matchDescription: subdomainInput + entry.matchDescription.replace(/^.*?\|\s*/, ''),
+          interfaces: matchDescription.interfaces,
+          ports: matchDescription.ports
+        });
+      });
+
+      // return [parseSingleEntry(entry)];
     }
   }
 
 
   Object.keys(domains).forEach(function(domain) {
 
-    var entries = parseEntry({matchDescription: domain, target: domains[domain]});
+    var entries = parseEntry({
+      matchDescription: domain,
+      target: domains[domain]
+    });
 
+    if (entries.length) {
+      //console.log(entries[0].matchDescription);
+    }
 
     entries.forEach(function(entry) {
       var destination = entry.target;
-      var domainInput = parseDomainInput(entry.matchDescription);
+      var domainInput = parseDomainInput(entry.matchDescription, entry);
+
 
       // bind to interfaces defined in group, if not defined
       //     bind to interfaces defined globally, if not defined
       //         bind to all interfaces
-      var interfacesToAssign = domainInput.interfaces || config.interfaces || ["*"];
+      var interfacesToAssign = entry.interfaces || config.interfaces || ["*"];
 
       // if "*" is on the list, discard other interfaces since they are redunundand
       if (interfacesToAssign.indexOf("*") != -1)
         interfacesToAssign = ["*"];
 
+
       interfacesToAssign.forEach(function(interfaceToAssign) {
 
-        domainInput.ports.forEach(function(port) {
+        entry.ports.forEach(function(port) {
           if (interfaceToAssign && interfaceToAssign != "*") {
             if (interfaceToAssign.match(/:/)) // ipv6
               port = "[" + interfaceToAssign + "]:" + port;
@@ -150,6 +210,8 @@ module.exports = function(config) {
 
           if (!ports[port][entry.module])
             ports[port][entry.module] = {};
+
+          //          console.log(domainInput.subdomains);
 
           ports[port][entry.module][domainInput.host + (domainInput.path || "")] = entry.value;
         });

@@ -254,12 +254,12 @@ describe('domains config processor', function() {
         "www": {
           subdomains: {
             "": "[target]",
-            "www": "[target]"
+            "www.": "[target]"
           }
         }
       },
       domains: {
-        "www | code2flow.com": 567
+        "www | code2flow.com:80": 567
       }
     };
     var expected = {
