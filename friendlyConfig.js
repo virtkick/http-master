@@ -64,7 +64,7 @@ module.exports = function(config) {
   });
 
 
-  function parseDomainInput(domain, entry) {
+  function parseDomainInput(domain) {
 
     var m = domain.match(new XRegExp("^(?:(?<group>[^/ \t]*)\\s*\\|)?\\s*(?<host>.*?)(?::(?<port>\\d+))?(?<path>\\/.*)?$"));
 
@@ -82,23 +82,28 @@ module.exports = function(config) {
   function parseEntry(entry) {
     function parseString(entry) {
       var m = entry.target.match(/^(?:(\w+)\s*:)?\s*(.*)$/);
-      return {
+
+      var domainInput = parseDomainInput(entry.matchDescription);
+
+      return extend(domainInput, {
         matchDescription: entry.matchDescription,
         module: m[1] || 'proxy',
         value: m[2],
         interfaces: entry.interfaces,
         ports: entry.ports
-      };
+      });
     }
 
     function parseNumber(entry) {
-      return {
+      var domainInput = parseDomainInput(entry.matchDescription);
+
+      return extend(domainInput, {
         matchDescription: entry.matchDescription,
         module: 'proxy',
         value: entry.target,
         interfaces: entry.interfaces,
         ports: entry.ports
-      };
+      });
     }
 
     function parseSingleEntry(entry) {
@@ -141,9 +146,7 @@ module.exports = function(config) {
 
         return parseSingleEntry({
           target: subdomainTarget,
-          matchDescription: subdomainInput + entry.matchDescription,
-          interfaces: matchDescription.interfaces,
-          ports: matchDescription.ports
+          matchDescription: subdomainInput + entry.matchDescription
         });
       });
     } else { // declares as simple string or port number
