@@ -1,4 +1,5 @@
 var XRegExp = require('xregexp').XRegExp;
+var url = require('url');
 
 XRegExp.install({
 	// Overrides native regex methods with fixed/extended versions that support named
@@ -45,10 +46,11 @@ function globStringToRegex(str, specialCh) {
 		inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)?');
 	}
 	else
-		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
+		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>[^?#]+|)|)(?:[?](?<params>.*|)|)');
 	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');
 
-	return new XRegExp("^" + inside + "$");
+	var regexp = new XRegExp("^" + inside + "$");
+  return regexp;
 }
 
 function getRegexpIfNeeded(str, specialCh) {
@@ -126,8 +128,6 @@ function DispatchTable(params) {
 			}
 		}
 	});
-//	console.log(self.table);
-	//console.log(self.regexpEntries);
 }
 
 DispatchTable.prototype.checkPathForReq = function(req, entry) {
@@ -135,6 +135,7 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
 		return true;
 	var target;
 	var m;
+
 	if(entry.pathRegexp) {
 		m = req.url.match(entry.pathRegexp);
 		if (m) {
@@ -170,7 +171,6 @@ DispatchTable.prototype.getTargetForReq = function(req) {
 		for (i = 0; i < regexpEntries.length; ++i) {
 			var entry = regexpEntries[i];
 			m = host.match(entry.regexp);
-//			console.log(entry.regexp);
 			if (m) {
 				req.hostMatch = m;
 				if(this.checkPathForReq(req, entry))

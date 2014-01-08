@@ -1,4 +1,3 @@
-
 var should = require('should');
 var mocha = require('mocha');
 var DispatchTable = require('../DispatchTable');

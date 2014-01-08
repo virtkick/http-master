@@ -48,6 +48,7 @@ var assertPath = function(host, path, mustEqual) {
 	});
 }
 
+
 describe('proxy module', function() {
 	it('should rewrite URL with implicit ending / to explicit /', function() {
 
@@ -73,10 +74,9 @@ describe('proxy module', function() {
 	});
   it('should forward path with request parameters', function() {
 
-
     middleware = proxy.middleware({
       proxy: {
-        "jira.atlashost.eu/code2flow/*": "jira:14900/code2flow/[1]"
+        "jira.atlashost.eu/code2flow/*": "jira:14900/code2flow/[1]?[params]"
       }
     });
 
