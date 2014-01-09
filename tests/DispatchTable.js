@@ -10,7 +10,8 @@ function makeReq(host, path) {
 		url: path,
 		headers: {
 			host: host
-		}
+		},
+    parsedUrl: require('url').parse(path)
 	};
 }
 

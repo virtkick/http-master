@@ -46,7 +46,7 @@ function globStringToRegex(str, specialCh) {
 		inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)?');
 	}
 	else
-		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>[^?#]+|)|)(?:[?](?<params>.*|)|)');
+		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>[^?#]+|)|)');
 	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');
 
 	var regexp = new XRegExp("^" + inside + "$");
@@ -136,14 +136,17 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
 	var target;
 	var m;
 
+  var parsedUrl = req.parsedUrl;
+  var pathname = parsedUrl.pathname || '';
+
 	if(entry.pathRegexp) {
-		m = req.url.match(entry.pathRegexp);
+		m = pathname.match(entry.pathRegexp);
 		if (m) {
 			req.pathMatch = m;
 			return true;
 		} 
 	}
-	else if(req.url == entry.path) {
+	else if(pathname == entry.path) {
 		return true;
 	}
 	return false;
@@ -152,6 +155,7 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
 DispatchTable.prototype.getTargetForReq = function(req) {
 	var i, m;
 	var host = req.headers.host;
+
 	if (this.table[host]) {
 		if (this.table[host].target) {
 			if(this.checkPathForReq(req, this.table[host])) {
@@ -193,7 +197,6 @@ DispatchTable.prototype.handleUpgrade = DispatchTable.prototype.dispatchUpgrade;
 
 DispatchTable.prototype.dispatchRequest = function(req, res, next) {
 	var target = this.getTargetForReq(req);
-
 	if(target && this.requestHandler) {
 		return this.requestHandler(req, res, next, target);
 	}

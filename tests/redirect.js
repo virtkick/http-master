@@ -9,6 +9,7 @@ function makeReq(host, path) {
 		headers: {
 			host: host
 		},
+    parsedUrl: require('url').parse(path),
 		connection: {},
 	};
 }

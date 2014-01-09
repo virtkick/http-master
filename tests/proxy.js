@@ -2,6 +2,7 @@ var should = require('should');
 var mocha = require('mocha');
 var DispatchTable = require('../DispatchTable');
 var assert = require('assert');
+var url = require('url');
 
 function makeReq(host, path) {
 	return {
@@ -10,6 +11,7 @@ function makeReq(host, path) {
 			host: host
 		},
 		connection: {},
+    parsedUrl: url.parse(path)
 	};
 }
 
@@ -44,7 +46,10 @@ function makeTest(host, path, cb) {
 
 var assertPath = function(host, path, mustEqual) {
 	makeTest(host, path, function(target) {
-		target.href.should.equal(mustEqual);
+    if(target.query) {
+      target.search = '?' + target.query;
+    }
+		url.format(target).should.equal(mustEqual);
 	});
 }
 
@@ -76,7 +81,7 @@ describe('proxy module', function() {
 
     middleware = proxy.middleware({
       proxy: {
-        "jira.atlashost.eu/code2flow/*": "jira:14900/code2flow/[1]?[params]"
+        "jira.atlashost.eu/code2flow/*": "jira:14900/code2flow/[rest]"
       }
     });
 
