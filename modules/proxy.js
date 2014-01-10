@@ -73,10 +73,14 @@ module.exports = {
         return target;
       }
 
-      var newTarget = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
+      var processed = regexpHelper(target.href, req.hostMatch, req.pathMatch);
+            
+      if(req.parsedUrl.search)
+        processed += req.parsedUrl.search;
+
+      var newTarget = url.parse(processed);
       if(target.withPath) {
         req.url = newTarget.path;
-        newTarget.withPath = true;
       }
       return newTarget;
     };
@@ -87,13 +91,13 @@ module.exports = {
         req.connection.proxy = proxy;
         req.next = next;
         target = rewriteTargetAndPathIfNeeded(req, target);
-        target.query = req.parsedUrl.query;
+//        target.query = req.parsedUrl.query;
         proxy.web(req, res, {target: target});
       },
       upgradeHandler: function(req, socket, head, target) {
         target = rewriteTargetAndPathIfNeeded(req, target);
 
-        target.query = req.parsedUrl.query;
+  //      target.query = req.parsedUrl.query;
         proxy.ws(req, socket, head, {target: target});
       },
       entryParser: function(entryKey, entry) {
