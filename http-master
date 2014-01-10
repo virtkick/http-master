@@ -157,7 +157,7 @@ function loadKeysForContext(context) {
             return;
           cert.push(line);
           if (line.match(/-END CERTIFICATE-/)) {
-            context.ca.push(cert.join("\n"))
+            context.ca.push(cert.join("\n") + "\n");
             cert = [];
           }
         });
