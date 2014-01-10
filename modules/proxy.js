@@ -73,10 +73,10 @@ module.exports = {
         return target;
       }
 
-
       var newTarget = url.parse(regexpHelper(target.href, req.hostMatch, req.pathMatch));
       if(target.withPath) {
-        req.url = target.path;
+        req.url = newTarget.path;
+        newTarget.withPath = true;
       }
       return newTarget;
     };

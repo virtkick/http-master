@@ -24,7 +24,7 @@ httpProxy.createProxyServer = function() {
 	return {
 		web: function(req, res, options) {
 			if (onTarget)
-				onTarget(options.target);
+				onTarget(options.target, req);
 		},
 		on: function() {}
 	};
@@ -37,19 +37,40 @@ var middleware;
 
 function makeTest(host, path, cb) {
 	onTarget = cb;
-	middleware.handleRequest(makeReq(host, path), {}, function(err) {
+  var req = makeReq(host, path);
+	middleware.handleRequest(req, {}, function(err) {
 		onTarget({
 			href: ''
-		});
+		}, {});
 	});
 }
 
 var assertPath = function(host, path, mustEqual) {
-	makeTest(host, path, function(target) {
+	makeTest(host, path, function(target, req) {
     if(target.query) {
       target.search = '?' + target.query;
     }
-		url.format(target).should.equal(mustEqual);
+
+
+    if(target.withPath) {
+      var formatted = url.format(target);
+
+      //if(!(mustEqual == '' && formatted == '/')) // this is correct
+      if(mustEqual.match(/^https?:\/\/[^/]+$/))
+        formatted.should.equal(mustEqual + '/');
+      else
+        formatted.should.equal(mustEqual);
+      if(target && target.path)
+        req.url.should.equal(target.path);
+    }
+    else { // ignore path from target
+      target.path = req.url;
+      target.pathname = req.url;
+      if(target.pathname) // remove query parameters
+        target.pathname.replace(/\?.*/, '');
+      var formatted = url.format(target);
+      formatted.should.equal(mustEqual);
+    }
 	});
 }
 
@@ -75,7 +96,7 @@ describe('proxy module', function() {
 				"*": "localhost:0"
 			}
 		});
-		assertPath('jira.atlashost.eu', '/test', 'http://localhost:0/');
+		assertPath('jira.atlashost.eu', '/test', 'http://localhost:0/test');
 	});
   it('should forward path with request parameters', function() {
 
@@ -95,11 +116,13 @@ describe('proxy module', function() {
   it('should handle simple url rewrite', function() {
     middleware = proxy.middleware({
       proxy: {
-        "jira.atlashost.eu/waysgo/*": "jira:14900/waysgo/[1]"
+        "jira.atlashost.eu/waysgo/*": "jira:14900/waysgo/[1]",
+        "dragon.rushbase.net/rush/*": "127.0.0.1:8080/~rush/[1]"
       }
     });
 
     assertPath('jira.atlashost.eu', '/waysgo/secure/MyJiraHome.jspa', 'http://jira:14900/waysgo/secure/MyJiraHome.jspa');
+    assertPath('dragon.rushbase.net', '/rush/test.js', 'http://127.0.0.1:8080/~rush/test.js');
 
   });
 });
