@@ -91,13 +91,10 @@ module.exports = {
         req.connection.proxy = proxy;
         req.next = next;
         target = rewriteTargetAndPathIfNeeded(req, target);
-//        target.query = req.parsedUrl.query;
         proxy.web(req, res, {target: target});
       },
       upgradeHandler: function(req, socket, head, target) {
         target = rewriteTargetAndPathIfNeeded(req, target);
-
-  //      target.query = req.parsedUrl.query;
         proxy.ws(req, socket, head, {target: target});
       },
       entryParser: function(entryKey, entry) {
