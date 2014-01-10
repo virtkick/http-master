@@ -46,7 +46,7 @@ function globStringToRegex(str, specialCh) {
 		inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)?');
 	}
 	else
-		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>[^?#]+|)|)');
+		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
 	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');
 
 	var regexp = new XRegExp("^" + inside + "$");

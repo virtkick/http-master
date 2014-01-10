@@ -91,4 +91,15 @@ describe('proxy module', function() {
     assertPath('jira.atlashost.eu', '/code2flow/test?params', 'http://jira:14900/code2flow/test?params');
     assertPath('jira.atlashost.eu', '/code2flo', '');
   });
+
+  it('should handle simple url rewrite', function() {
+    middleware = proxy.middleware({
+      proxy: {
+        "jira.atlashost.eu/waysgo/*": "jira:14900/waysgo/[1]"
+      }
+    });
+
+    assertPath('jira.atlashost.eu', '/waysgo/secure/MyJiraHome.jspa', 'http://jira:14900/waysgo/secure/MyJiraHome.jspa');
+
+  });
 });
