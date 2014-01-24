@@ -1,7 +1,7 @@
-rush-http-proxy
+http-master
 ===============
 
-rush-http-proxy is based on node-http-proxy, the extra features are:
+http-master is based on node-http-proxy, the extra features are:
 * Run multiple host/port configurations on a single instance.
 * Run worker instances to parallelize workload. Number of workers defaults to CPU number
 * Support reading SSL SNI configurations from file and CRT bundle files. This means handling multiple SSL certificates on the same domain.
@@ -19,7 +19,7 @@ Future plans:
 Usage
 ===============
 
-`rush-http-proxy --config config.json`
+`http-master --config config.json`
 
 Example config:
 
@@ -70,7 +70,7 @@ You may also trigger reload manually by sending USR1 signal to the master proces
 
 Use config preprocessor
 ===============
-`rush-http-proxy --config myconfig.conf --preprocessor ./myconfig.js`
+`http-master --config myconfig.conf --preprocessor ./myconfig.js`
 The above will feed `myconfig.conf` to a module loaded by `require("./myconfig.js")`. Feeding will also happen in the event of config reload due to changes or USR1 signal.
 
 The module needs to define a function such as below that would return the configuration object.
@@ -130,7 +130,7 @@ Log to file:
 ```
 {
   "logging": {
-    "logFile": "/var/log/rush-http-proxy.log"
+    "logFile": "/var/log/http-master.log"
   },
   "ports": {
     ...
