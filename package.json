@@ -1,22 +1,25 @@
 {
   "name": "http-master",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "http-master",
   "scripts": {
     "test": "mocha tests/"
   },
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CodeCharmLtd/http-master"
+  },
   "keywords": [
     "http",
     "https",
     "proxy"
   ],
   "bin": "./http-master",
-  "author": "Damian Kaczmarek <rushpl@gmail.com>",
+  "author": "Damian Kaczmarek <damian@codecharm.co.uk>",
   "license": "BSD",
   "dependencies": {
-    "http-proxy": "git://github.com/nodejitsu/node-http-proxy.git#caronte",
+    "http-proxy": "~1.0.1",
     "optimist": "~0.6.0",
     "extend": "~1.2.0",
     "jsonlint-lines": "~1.6.0",
