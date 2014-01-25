@@ -21,7 +21,7 @@
   "dependencies": {
     "http-proxy": "~1.0.1",
     "optimist": "~0.6.0",
-    "extend": "~1.2.0",
+    "extend": "~1.2.1",
     "jsonlint-lines": "~1.6.0",
     "node-watch": "~0.3.4",
     "async": "~0.2.9",

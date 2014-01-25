@@ -168,6 +168,8 @@ function loadKeysForContext(context) {
   });
 }
 
+var friendlyConfig = require('./friendlyConfig');
+
 function parseConfig(noExitOnError) {
   if (!argv.config) {
     logError("--config is mandatory");
@@ -184,6 +186,9 @@ function parseConfig(noExitOnError) {
       data = data.replace("\n", "\r\n");
       config = jsonLint.parse(data);
     }
+    config = extend(true, {}, config, friendlyConfig(config));
+    if(argv['show-rules'])
+      console.log(config.ports);
 
   } catch (ex) {
     logError('Config ' + ex.stack);
