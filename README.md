@@ -1,20 +1,20 @@
 http-master
 ===============
 
-http-master is based on node-http-proxy, the extra features are:
-* Run multiple host/port configurations on a single instance.
-* Run worker instances to parallelize workload. Number of workers defaults to CPU number
-* Support reading SSL SNI configurations from file and CRT bundle files. This means handling multiple SSL certificates on the same domain.
-* Watch for config changes and reloads the proxy logic without any downtime.
-* Simple redirect. Redirect http to https or any simple direct directs. No regexp yet.
+http-master is designed to run as a front end http service/reverse-proxy with easy setup of proxying logic.
+Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one way, in http-master and even non-SSL compatible http server can be provided with HTTPS.
+
+Some of the features:
+* Allow for fast host-based matching and any regexp matching rules.
+* Match by host-only, host and path or path-only. Allow for regexp path matching.
+* Single instance can cover multiple IP/Port configurations each with different logic.
+* Multi-core/cpu friendly. Runs multiple instances and each will compete to serve a new connection.
+* Support reading SSL SNI configurations from file and CRT bundle files. This means handling multiple SSL certificates on the same domain is very easy.
+* Watches for config changes and reloads the logic without any downtime. Simply start the deamon and add new rules while having the http-master online.
+* Redirect and URL rewrite support.
 * Asynchronous logging module. Logs either to stdout or to file.
 * Link to custom config preprocessor so that you may devise your own config file format.
-* Drop privileges to user/group once started.
-
-Future plans:
-* Improve logging to format string to apache format.
-* Logging per route.
-* Regexps in redirect.
+* Drops privileges to user/group once started.
 
 Usage
 ===============
@@ -27,17 +27,17 @@ Example config:
 {
   "ports": {
     "80": {
-        "router": {
+        "proxy": {
             "code2flow.*": "127.0.0.1:8099",
-            ".*": "127.0.0.1:8080"
+            "*": "127.0.0.1:8080"
         }
     },
     "443": {
-        "router": {
+        "proxy": {
             "code2flow.*": "127.0.0.1:9991",
-            "service.myapp.com/downloads/.*": "127.0.0.1:10443",
-            "service.myapp.com/uploads/.*": "127.0.0.1:15000",
-            ".*": "127.0.0.1:4443"
+            "service.myapp.com/downloads/*": "127.0.0.1:10443",
+            "service.myapp.com/uploads/*": "127.0.0.1:15000",
+            "*": "127.0.0.1:4443"
         },
         "https": {
             "SNI": {
