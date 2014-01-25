@@ -2,7 +2,7 @@ http-master
 ===============
 
 http-master is designed to run as a front end http service/reverse-proxy with easy setup of proxying logic.
-Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one way, in http-master and even non-SSL compatible http server can be provided with HTTPS.
+Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
 
 Some of the features:
 * Allow for fast host-based matching and any regexp matching rules.
