@@ -198,13 +198,17 @@ function fetchConfig(finish) {
   fs.readFile(argv.config, function(err, data) {
     if(err) return finish(err);
     data = data.toString('utf8');
-    configloader(argv, data, function(err, config) {
-      if(err) return finish(err);
-      config = extend(true, {}, config, friendlyConfig(config));
-      if(argv['show-rules'])
-        logNotice(config.ports);
-      finish(err, config);
-    });
+    try {
+      configloader(argv, data, function(err, config) {
+        if(err) return finish(err);
+        config = extend(true, {}, config, friendlyConfig(config));
+        if(argv['show-rules'])
+          logNotice(config.ports);
+        finish(err, config);
+      });
+    } catch(err) {
+      finish(err);
+    }
 
   });
 
