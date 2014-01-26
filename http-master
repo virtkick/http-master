@@ -18,11 +18,12 @@ var help = [
   "",
   "options:",
   "  --config CONFIGFILE     Location of the configuration file for the proxy server",
-  "  --preprocessor JS-FILE  Provide js file as config preprocessor",
-  "  --preprocessor-test     Test config preprocessor by printing out its output",
+  "  --configloader JS-FILE  Provide js file as config loader",
+  "  --configloader-test     Test config configloader by printing out its output",
   "  --silent                Silence the log output from the proxy server",
   "  --user   USER           User to drop privileges to once server socket is bound",
   "  --group  GROUP          Group to drop privileges to once server socket is bound",
+  "  --show-rules            Show all rules upon every config load",
   "  -h, --help              You're staring at it"
 ].join('\n');
 
@@ -35,8 +36,16 @@ var location, config = {},
 
 var jsonLint = require('jsonlint-lines');
 
-if (argv['preprocessor-test']) {
-  console.log(JSON.stringify(require(argv.preprocessor)(argv, fs.readFileSync(argv.config).toString("utf8")), null, 4));
+if (argv['configloader-test']) {
+  require(argv.configloader)(argv, fs.readFileSync(argv.config).toString("utf8"), function(err, config) {
+    if(err) throw err;
+    console.log(JSON.stringify(config));
+  });
+  return;
+}
+
+if (!argv.config) {
+  logError("--config is mandatory");
   process.exit();
 }
 
@@ -170,33 +179,35 @@ function loadKeysForContext(context) {
 
 var friendlyConfig = require('./friendlyConfig');
 
-function parseConfig(noExitOnError) {
-  if (!argv.config) {
-    logError("--config is mandatory");
-    process.exit();
-  }
-  //
-  // If we were passed a config, parse it
-  //
-  try {
-    var data = fs.readFileSync(argv.config).toString("utf8");
-    if (argv.preprocessor) {
-      config = require(argv.preprocessor)(argv, data);
-    } else {
-      data = data.replace("\n", "\r\n");
-      config = jsonLint.parse(data);
-    }
-    config = extend(true, {}, config, friendlyConfig(config));
-    if(argv['show-rules'])
-      console.log(config.ports);
+function fetchConfig(finish) {
 
-  } catch (ex) {
-    logError('Config ' + ex.stack);
-    if (!noExitOnError)
-      process.exit(1);
-    return false;
-  }
-  return true;
+  var configloader;
+  if (argv.configloader) {
+    configloader = require(argv.configloader);
+  } else {
+    configloader = function(argv, data, finish) {
+      data = data.replace("\n", "\r\n");
+      try {
+        finish(null, jsonLint.parse(data));
+      } catch(err) {
+        finish(err);
+      }
+    };
+  }  
+
+  fs.readFile(argv.config, function(err, data) {
+    if(err) return finish(err);
+    data = data.toString('utf8');
+    configloader(argv, data, function(err, config) {
+      if(err) return finish(err);
+      config = extend(true, {}, config, friendlyConfig(config));
+      if(argv['show-rules'])
+        logNotice(config.ports);
+      finish(err, config);
+    });
+
+  });
+
 }
 
 function handleConfigEntry(config, callback) {
@@ -375,23 +386,12 @@ function unbindAll(cb) {
   cb();
 }
 
-function reloadConfigs() {
-  if (parseConfig(true)) {
-    handleConfig(config);
-  }
-}
-
 var numCPUs = require('os').cpus().length;
 var cluster = require('cluster');
-
 var EventEmitter = require('events').EventEmitter;
-
-
 
 if (cluster.isMaster) {
   var startTime = new Date().getTime();
-
-  parseConfig();
 
   function initWorker(cb) {
     var worker = cluster.fork();
@@ -402,7 +402,7 @@ if (cluster.isMaster) {
       }));
     };
 
-    worker.sendMessage('start');
+    worker.sendMessage('start', config);
     worker.emitter = new EventEmitter();
     worker.on("message", function(msg) {
       var msg = JSON.parse(msg);
@@ -416,85 +416,101 @@ if (cluster.isMaster) {
     return worker;
   }
 
-  var worker;
-  var workers = [];
+  fetchConfig(function(err, parsedConfig) {
+    if(err) {
+      throw err;
+    }
+    config = parsedConfig;
 
-  worker = initWorker(function() {
-    workers.push(worker);
-    async.times((config.workerCount || argv.workers || numCPUs) - 1, function(n, next) {
-      workers.push(initWorker(function() {
-        next(null);
-      }));
-    }, function(err) {
-      if (err) {
-        logError("Workers failed to start");
-        process.exit();
-      }
-      logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
-      dropPrivileges();
-      runModules("allWorkersStarted", config);
+    var worker;
+    var workers = [];
+
+    worker = initWorker(function() {
+      workers.push(worker);
+      async.times((config.workerCount || argv.workers || numCPUs) - 1, function(n, next) {
+        workers.push(initWorker(function() {
+          next(null);
+        }));
+      }, function(err) {
+        if (err) {
+          logError("Workers failed to start");
+          process.exit();
+        }
+        logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
+        dropPrivileges();
+        runModules("allWorkersStarted", config);
+
+      });
 
     });
 
-  });
+    function reloadAllWorkers() {
 
-  function reloadAllWorkers() {
+      var startTime = new Date().getTime();
 
-    var startTime = new Date().getTime();
+      async.parallel(workers
+        .filter(function(worker) {
+          return !!worker;
+        }) // dead workers leave undefined keys
+        .map(function(worker) {
+          return function(asyncCallback) {
+            worker.once('msg:unbindFinished', function() {
 
-    async.parallel(workers
-      .filter(function(worker) {
-        return !!worker;
-      }) // dead workers leave undefined keys
-      .map(function(worker) {
-        return function(asyncCallback) {
-          worker.once('msg:unbindFinished', function() {
-
-            worker.once('msg:started', function() {
-              asyncCallback();
+              worker.once('msg:started', function() {
+                asyncCallback();
+              });
+              worker.sendMessage('reload', config);
             });
-            worker.sendMessage('reload');
-          });
-          worker.sendMessage('unbind');
-        };
-      }), function(err) {
-        logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
-      });;
-  }
+            worker.sendMessage('unbind');
+          };
+        }), function(err) {
+          logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
+        });;
+    }
 
 
-  var watch = require('node-watch');
+    var watch = require('node-watch');
 
-  if (config.watchConfig || argv.watch) {
-    watch(argv.config, function() {
-      if (!parseConfig(true)) return;
-      logNotice("Reloading workers due to config change");
-      reloadAllWorkers();
+    if (config.watchConfig || argv.watch) {
+      watch(argv.config, function() {
+        logNotice("Reloading workers due to config change");
+        fetchConfig(function(err, parsedConfig) {
+          if(err) return logNotice("Skipping reload due to config error");
+          config = parsedConfig;
+          reloadAllWorkers();        
+        });
+      });
+    }
+
+    process.on('SIGUSR1', function() {
+      logNotice("USR1: Reloading config");
+
+      // TODO: assure it is not called in the middle of reload
+      fetchConfig(function(err, parsedConfig) {
+        if(err) return logNotice("Skipping reload due to config error");
+        config = parsedConfig;
+        reloadAllWorkers();
+      });
     });
-  }
 
-  process.on('SIGUSR1', function() {
-    logNotice("USR1: Reloading config");
-    if (!parseConfig(true)) return;
-    reloadAllWorkers();
-  });
-
-  cluster.on('exit', function(worker, code, signal) {
-    logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
-    workers[worker.id - 1] = undefined;
-    var newWorker = initWorker(function() {
-      console.log("Worker", newWorker.id, "started in place of worker", worker.id);
-      workers[newWorker.id - 1] = newWorker;
+    cluster.on('exit', function(worker, code, signal) {
+      logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
+      workers[worker.id - 1] = undefined;
+      var newWorker = initWorker(function() {
+        console.log("Worker", newWorker.id, "started in place of worker", worker.id);
+        workers[newWorker.id - 1] = newWorker;
+      });
     });
-  });
 
-  // patch config for modules to know user/group from argv
-  config.user = config.user || argv.user;
-  config.group = config.group || argv.group;
-  runModules("initMaster", config);
+    // patch config for modules to know user/group from argv
+    config.user = config.user || argv.user;
+    config.group = config.group || argv.group;
+    runModules("initMaster", config);
 
-  process.on('uncaughtException', function(err) {
-    logError("[Uncaught exception in master] " + err.stack || err.message);
+    process.on('uncaughtException', function(err) {
+      logError("[Uncaught exception in master] " + err.stack || err.message);
+    });
+
   });
 
 } else { // worker
@@ -517,8 +533,7 @@ if (cluster.isMaster) {
     process.exit(1);
   });
 
-  process.on('msg:start', function() {
-    parseConfig();
+  process.on('msg:start', function(config) {
     runModules("initWorker", config);
     handleConfig(config);
   });
@@ -528,7 +543,7 @@ if (cluster.isMaster) {
       process.sendMessage("unbindFinished");
     });
   });
-  process.on('msg:reload', function() {
-    reloadConfigs();
+  process.on('msg:reload', function(config) {
+    handleConfig(config);
   });
 }
