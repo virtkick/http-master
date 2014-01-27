@@ -60,7 +60,7 @@ Example config:
 ```
 
 Each entry in the `ports` is the format that would be normally fed to `node-http-proxy`.
-Consult https://github.com/nodejitsu/node-http-proxy
+
 
 Watch config for changes
 ===============
@@ -68,17 +68,9 @@ Add `--watch` or add to config `"watchConfig": true`.
 
 You may also trigger reload manually by sending USR1 signal to the master process. (only on *nix)
 
-Use config preprocessor
+Use custom config loader
 ===============
-`http-master --config myconfig.conf --preprocessor ./myconfig.js`
-The above will feed `myconfig.conf` to a module loaded by `require("./myconfig.js")`. Feeding will also happen in the event of config reload due to changes or USR1 signal.
-
-The module needs to define a function such as below that would return the configuration object.
-```
-  module.exports = function(argv, data) { 
-    return JSON.parse(data); // this does the same as default loading
-  }
-```
+See this repository for an example CodeCharmLtd/http-master-example-httploader
 
 Redirect
 ===============
