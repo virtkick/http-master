@@ -8,8 +8,17 @@ var path = require('path'),
   extend = require('extend'),
   net = require('net'),
   http = require('http'),
-  https = require('https');
+  https = require('https'),
+  jsonLint = require('jsonlint-lines'),
+  extend = require('extend'),
+  async = require('async');
 
+function logError(str) {
+  if (argv.silent || config.silent)
+    return;
+  console.log(str);
+}
+var logNotice = logError;
 
 var help = [
   "usage: http-master [options] ",
@@ -34,8 +43,6 @@ if (argv.h || argv.help || Object.keys(argv).length === 2) {
 var location, config = {},
   target = argv.target;
 
-var jsonLint = require('jsonlint-lines');
-
 if (argv['configloader-test']) {
   require(argv.configloader)(argv, fs.readFileSync(argv.config).toString("utf8"), function(err, config) {
     if(err) throw err;
@@ -44,23 +51,13 @@ if (argv['configloader-test']) {
   return;
 }
 
-if (!argv.config) {
-  logError("--config is mandatory");
+if (!argv.config && !argv.configloader) {
+  logError("either --config or --configloader is mandatory");
   process.exit();
 }
 
-var extend = require('extend');
-var async = require('async');
-
-var servers = [];
-var tcpServers = {};
-var path = require('path');
-
-var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(function(file) {
-  return require('./modules/' + file);
-}).sort(function(a, b) { // sort modules according to priority
-  return (b.priority || 0) - (a.priority || 0);
-});
+var common = require('./common');
+var runModules = common.runModules;
 
 var droppedPrivileges = false;
 
@@ -88,94 +85,6 @@ function dropPrivileges() {
   droppedPrivileges = true;
 }
 
-function runModules(cb) {
-  var args = Array.prototype.slice.call(arguments, 1);
-  var results = [];
-
-  var name;
-  if (typeof cb === 'string') {
-    name = cb;
-  } else {
-    name = args.shift();
-  }
-
-  modules.forEach(function(module) {
-    if (module[name]) {
-      var ret = module[name].apply(module[name], args);
-      if (ret && typeof cb === 'function')
-        cb(name, ret);
-    }
-  });
-}
-
-
-function getTcpServer(port, host, cb) {
-  var entry = (host ? host + ":" + port : port);
-  if (tcpServers[entry]) {
-    cb(null, tcpServers[entry]);
-  } else {
-    var tcpServer = tcpServers[entry] = net.createServer();
-
-    function handler(err) {
-      if (err) return cb(err);
-      cb(null, tcpServer);
-    }
-    if (host)
-      tcpServer.listen(port, host, handler);
-    else
-      tcpServer.listen(port, handler);
-  }
-}
-
-function logError(str) {
-  if (argv.silent || config.silent)
-    return;
-  if (cluster.worker) {
-    str = '[' + cluster.worker.id + '] ' + str;
-  }
-  console.log(str);
-}
-
-var logNotice = logError;
-
-function normalizeCert(cert) {
-  if (!cert.match(/\n$/g)) {
-    return cert + "\n";
-  }
-  return cert;
-}
-
-function loadKeysForContext(context) {
-  Object.keys(context).forEach(function(key) {
-    // If CA certs are specified, load those too.
-    if (key === "ca") {
-      if (typeof context.ca == 'object') {
-        for (var i = 0; i < context.ca.length; i++) {
-          if (context.ca === undefined) {
-            context.ca = [];
-          }
-          context.ca[i] = normalizeCert(fs.readFileSync(context[key][i], 'utf8'));
-        }
-      } else {
-        var chain = normalizeCert(fs.readFileSync(context.ca, 'utf8'));
-        chain = chain.split("\n");
-        context.ca = [];
-        var cert = [];
-        chain.forEach(function(line) {
-          if (line.length == 0)
-            return;
-          cert.push(line);
-          if (line.match(/-END CERTIFICATE-/)) {
-            context.ca.push(cert.join("\n") + "\n");
-            cert = [];
-          }
-        });
-      }
-    } else if (key == "cert" || key == "key") {
-      context[key] = normalizeCert(fs.readFileSync(context[key], 'utf8'));
-    }
-  });
-}
 
 var friendlyConfig = require('./friendlyConfig');
 
@@ -214,340 +123,142 @@ function fetchConfig(finish) {
 
 }
 
-function handleConfigEntry(config, callback) {
-  if (config.https) // compatibility with old 
-    config.ssl = config.https;
-  //
-  // If `config.ssl` is set, then load the required file contents into the config options.
-  //
-  if (config.ssl) {
-    var SNI = config.ssl.SNI;
-    var SNImatchers = {};
-    if (config.ssl.SNI) {
-      for (key in config.ssl.SNI) {
-        SNImatchers[key] = new RegExp("^" + key + "$", 'i'); // domain names are case insensitive
-      }
-      var sniCallback = function(hostname, cb) {
-        for (key in SNI) {
-          if (hostname.match(SNImatchers[key])) {
-            if (cb) // since node 0.11.5
-              return cb(null, SNI[key])
-            else
-              return SNI[key];
-          }
-        }
-        if (cb)
-          return cb(null);
-      }
-
-      config.ssl.SNICallback = sniCallback;
-    }
-
-    loadKeysForContext(config.ssl);
-    if (SNI) {
-      for (key in SNI) {
-        loadKeysForContext(SNI[key]);
-        SNI[key] = crypto.createCredentials(SNI[key]).context;
-
-      }
-    }
-  }
-
-  //
-  // Check to see if we should silence the logs
-  //
-  config.silent = typeof argv.silent !== 'undefined' ? argv.silent : config.silent;
-
-  var middlewares = [];
-
-  var requestHandlers = [];
-  var upgradeHandlers = [];
-
-  runModules(function(name, middleware) {
-    middlewares.push(middleware);
-    if (typeof middleware == 'function')
-      requestHandlers.push(middleware);
-    else if (middleware.requestHandler)
-      requestHandlers.push(middleware.handleRequest.bind(middleware));
-    if (middleware.upgradeHandler)
-      upgradeHandlers.push(middleware.handleUpgrade.bind(middleware));
-  }, "middleware", config);
-
-  var handler = require('./requestHandler')(config, requestHandlers);
-
-  var server;
-  try {
-    if (config.ssl) {
-      var baseModule = config.ssl.spdy ? require('spdy') : https;
-      server = baseModule.createServer(config.ssl, handler.request);
-    } else {
-      server = http.createServer(handler.request);
-    }
-  } catch (err) {
-    return callback(err, null);
-  }
-
-  function listeningHandler() {
-    server.removeAllListeners('error'); // remove the below handler
-    callback(null, server);
-    server.removeListener('error', errorHandler);
-  }
-
-  function errorHandler(err) {
-    server.removeAllListeners('listening'); // remove the above handler
-    callback(err, server);
-    server.removeListener('listening', listeningHandler);
-  } -
-
-
-  server.once('listening', listeningHandler);
-
-  server.once('error', errorHandler);
-
-  server.on('upgrade', function(req, socket, head) {
-    for (var i = 0; i < upgradeHandlers.length; ++i) {
-      if (upgradeHandlers[i](req, socket, head)) { // ws handled
-        break;
-      }
-    }
-  });
-
-  getTcpServer(config.port, config.host, function(err, tcpServer) {
-
-    if (err) return callback(err, server);
-
-    tcpServer.removeAllListeners();
-    tcpServer.on('connection', function(socket) {
-      server.emit('connection', socket);
-    });
-    tcpServer.on('error', function(err) {
-      server.emit('error', err);
-    });
-    tcpServer.on('close', function(err) {
-      server.emit('close');
-    });
-    server.emit('listening');
-    // FIXME: this should run at every config reload
-
-    runModules('onServerListening', config, server);
-  });
-}
-
-function handleConfig(config) {
-
-  runModules('preprocessConfig', config);
-
-  async.parallel(Object.keys(config.ports).map(function(portEntry) {
-
-    return function(asyncCallback) {
-
-      var m;
-      // TODO: IPV6?
-      if ((m = portEntry.match(/((\S+):)?(\d+)(?:(?:\s*=>\s*)?(\S+):(\d+)?)?/))) {
-        var host = m[2];
-        var port = parseInt(m[3]);
-        var targetHost = m[4];
-        var targetPort = m[5];
-
-        var portConfig = config.ports[portEntry];
-        var configEntry = extend({
-          targetHost: targetHost,
-          targetPort: targetPort,
-          host: host,
-          port: port,
-        }, portConfig);
-
-
-
-        handleConfigEntry(configEntry, function(err, server) {
-          var entryString = (configEntry.host ? configEntry.host + ":" + configEntry.port : "port " + configEntry.port);
-          if (err) {
-            logError("Error while starting entry " + entryString + " : " + err.toString());
-          }
-          if (server) {
-            logNotice("Listening on port: " + entryString);
-          } else
-            logNotice("Entry " + entryString + " is unusable");
-          asyncCallback(err, server);
-        });
-      };
-    };
-  }), function(err, results) {
-    if (err) {
-      return process.exit();
-    }
-    logNotice("Start successful");
-    dropPrivileges();
-    process.sendMessage("started");
-    servers = results;
-  });
-}
-
-function unbindAll(cb) {
-  servers.forEach(function(server) {
-    server.removeAllListeners();
-  });
-  cb();
-}
-
 var numCPUs = require('os').cpus().length;
+// hacky way to ensure that our cluster is a locally loaded one
+// use this until https://github.com/joyent/node/pull/3367 is merged
+var oldCluster = require.cache[require.resolve('cluster')];
+delete require.cache[require.resolve('cluster')];
 var cluster = require('cluster');
+require.cache[require.resolve('cluster')] = oldCluster;
+
 var EventEmitter = require('events').EventEmitter;
 
-if (cluster.isMaster) {
-  var startTime = new Date().getTime();
+cluster.setupMaster({
+  exec: './worker.js',
+  args: []
+});
 
-  function initWorker(cb) {
-    var worker = cluster.fork();
-    worker.sendMessage = function(type, data) {
-      worker.send(JSON.stringify({
-        type: type,
-        data: data
-      }));
-    };
+var startTime = new Date().getTime();
 
-    worker.sendMessage('start', config);
-    worker.emitter = new EventEmitter();
-    worker.on("message", function(msg) {
-      var msg = JSON.parse(msg);
-      process.emit('msg:' + msg.type, msg.data, worker);
-      worker.emit('msg:' + msg.type, msg.data);
-    });
-    worker.on("listening", function(host, port) {});
-    worker.once('msg:started', function() {
-      cb();
-    });
-    return worker;
-  }
-
-  fetchConfig(function(err, parsedConfig) {
-    if(err) {
-      throw err;
-    }
-    config = parsedConfig;
-
-    var worker;
-    var workers = [];
-
-    worker = initWorker(function() {
-      workers.push(worker);
-      async.times((config.workerCount || argv.workers || numCPUs) - 1, function(n, next) {
-        workers.push(initWorker(function() {
-          next(null);
-        }));
-      }, function(err) {
-        if (err) {
-          logError("Workers failed to start");
-          process.exit();
-        }
-        logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
-        dropPrivileges();
-        runModules("allWorkersStarted", config);
-
-      });
-
-    });
-
-    function reloadAllWorkers() {
-
-      var startTime = new Date().getTime();
-
-      async.parallel(workers
-        .filter(function(worker) {
-          return !!worker;
-        }) // dead workers leave undefined keys
-        .map(function(worker) {
-          return function(asyncCallback) {
-            worker.once('msg:unbindFinished', function() {
-
-              worker.once('msg:started', function() {
-                asyncCallback();
-              });
-              worker.sendMessage('reload', config);
-            });
-            worker.sendMessage('unbind');
-          };
-        }), function(err) {
-          logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
-        });;
-    }
-
-
-    var watch = require('node-watch');
-
-    if (config.watchConfig || argv.watch) {
-      watch(argv.config, function() {
-        logNotice("Reloading workers due to config change");
-        fetchConfig(function(err, parsedConfig) {
-          if(err) return logNotice("Skipping reload due to config error");
-          config = parsedConfig;
-          reloadAllWorkers();        
-        });
-      });
-    }
-
-    process.on('SIGUSR1', function() {
-      logNotice("USR1: Reloading config");
-
-      // TODO: assure it is not called in the middle of reload
-      fetchConfig(function(err, parsedConfig) {
-        if(err) return logNotice("Skipping reload due to config error");
-        config = parsedConfig;
-        reloadAllWorkers();
-      });
-    });
-
-    cluster.on('exit', function(worker, code, signal) {
-      logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
-      workers[worker.id - 1] = undefined;
-      var newWorker = initWorker(function() {
-        console.log("Worker", newWorker.id, "started in place of worker", worker.id);
-        workers[newWorker.id - 1] = newWorker;
-      });
-    });
-
-    // patch config for modules to know user/group from argv
-    config.user = config.user || argv.user;
-    config.group = config.group || argv.group;
-    runModules("initMaster", config);
-
-    process.on('uncaughtException', function(err) {
-      logError("[Uncaught exception in master] " + err.stack || err.message);
-    });
-
-  });
-
-} else { // worker
-  var worker = cluster.worker;
-
-  process.sendMessage = function(type, data) {
-    process.send(JSON.stringify({
+function initWorker(cb) {
+  var worker = cluster.fork();
+  worker.sendMessage = function(type, data) {
+    worker.send(JSON.stringify({
       type: type,
       data: data
     }));
   };
 
-  process.on('message', function(msg) {
+  worker.sendMessage('start', {
+    config: config,
+    argv: argv
+  });
+  worker.emitter = new EventEmitter();
+  worker.on("message", function(msg) {
     var msg = JSON.parse(msg);
-    process.emit('msg:' + msg.type, msg.data);
+    process.emit('msg:' + msg.type, msg.data, worker);
+    worker.emit('msg:' + msg.type, msg.data);
+  });
+  worker.on("listening", function(host, port) {});
+  worker.once('msg:started', function() {
+    cb();
+  });
+  return worker;
+}
+
+fetchConfig(function(err, parsedConfig) {
+  if(err) {
+    throw err;
+  }
+  config = parsedConfig;
+
+  var worker;
+  var workers = [];
+
+  worker = initWorker(function() {
+    workers.push(worker);
+    async.times((config.workerCount || argv.workers || numCPUs) - 1, function(n, next) {
+      workers.push(initWorker(function() {
+        next(null);
+      }));
+    }, function(err) {
+      if (err) {
+        logError("Workers failed to start");
+        process.exit();
+      }
+      logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
+      dropPrivileges();
+      runModules("allWorkersStarted", config);
+
+    });
+
   });
 
-  process.on('uncaughtException', function(err) {
-    logError("[Uncaught exception] " + err.stack || err.message);
-    process.exit(1);
-  });
+  function reloadAllWorkers() {
 
-  process.on('msg:start', function(config) {
-    runModules("initWorker", config);
-    handleConfig(config);
-  });
-  process.on('msg:unbind', function() {
-    logNotice('Reloading config');
-    unbindAll(function() {
-      process.sendMessage("unbindFinished");
+    var startTime = new Date().getTime();
+
+    async.parallel(workers
+      .filter(function(worker) {
+        return !!worker;
+      }) // dead workers leave undefined keys
+      .map(function(worker) {
+        return function(asyncCallback) {
+          worker.once('msg:unbindFinished', function() {
+
+            worker.once('msg:started', function() {
+              asyncCallback();
+            });
+            worker.sendMessage('reload', config);
+          });
+          worker.sendMessage('unbind');
+        };
+      }), function(err) {
+        logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
+      });;
+  }
+
+
+  var watch = require('node-watch');
+
+  if (config.watchConfig || argv.watch) {
+    watch(argv.config, function() {
+      logNotice("Reloading workers due to config change");
+      fetchConfig(function(err, parsedConfig) {
+        if(err) return logNotice("Skipping reload due to config error");
+        config = parsedConfig;
+        reloadAllWorkers();        
+      });
+    });
+  }
+
+  process.on('SIGUSR1', function() {
+    logNotice("USR1: Reloading config");
+
+    // TODO: assure it is not called in the middle of reload
+    fetchConfig(function(err, parsedConfig) {
+      if(err) return logNotice("Skipping reload due to config error");
+      config = parsedConfig;
+      reloadAllWorkers();
     });
   });
-  process.on('msg:reload', function(config) {
-    handleConfig(config);
+
+  cluster.on('exit', function(worker, code, signal) {
+    logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
+    workers[worker.id - 1] = undefined;
+    var newWorker = initWorker(function() {
+      console.log("Worker", newWorker.id, "started in place of worker", worker.id);
+      workers[newWorker.id - 1] = newWorker;
+    });
   });
-}
+
+  // patch config for modules to know user/group from argv
+  config.user = config.user || argv.user;
+  config.group = config.group || argv.group;
+  runModules("initMaster", config);
+
+  process.on('uncaughtException', function(err) {
+    logError("[Uncaught exception in master] " + err.stack || err.message);
+  });
+
+});
