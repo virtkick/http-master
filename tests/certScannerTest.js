@@ -15,7 +15,7 @@ describe('SSL directory scanner', function() {
 
   it('scan and build SSL config', function() {
     // TODO: This assert depends on hash order. It shouldn't.
-    assert.sameMembers(scanner.scan(), {
+    assert.deepEqual(scanner.scan(), {
       '*.pacmanvps.com': {
         'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem'
       },
