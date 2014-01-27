@@ -70,7 +70,7 @@ You may also trigger reload manually by sending USR1 signal to the master proces
 
 Use custom config loader
 ===============
-See this repository for an example CodeCharmLtd/http-master-example-httploader
+See this repository for an example https://github.com/CodeCharmLtd/http-master-example-httploader
 
 Redirect
 ===============
