@@ -51,11 +51,27 @@ function loadAppLog(file, user, group) {
 
 module.exports = {
   name: 'logging',
-  initMaster: function(config) {
+  initMaster: function(master, config) {
     if (config.logging) {
       if (config.logging.appLog) {
         loadAppLog(config.logging.appLog, config.user, config.group);
       }
+      master.on('allWorkersStarted', function() {
+        var logStream = process.stdout;
+
+        if (config.logging) {
+          if (config.logging.accessLog)
+            logStream = openLogFile(config.logging.accessLog);
+          if (config.logging.appLog) {
+            loadAppLog(config.logging.appLog);
+          }
+        }
+
+        process.on('msg:log', function(data) {
+          var str = JSON.stringify(data) + "\n";
+          logStream.write(str);
+        });
+      });
     }
   },
   initWorker: function(config) {
@@ -71,24 +87,6 @@ module.exports = {
         }
       }
     }
-  },
-  allWorkersStarted: function(config) {
-    var logStream = process.stdout;
-
-    if (config.logging) {
-
-      if (config.logging.accessLog)
-        logStream = openLogFile(config.logging.accessLog);
-      if (config.logging.appLog) {
-        loadAppLog(config.logging.appLog);
-      }
-
-    }
-
-    process.on('msg:log', function(data) {
-      var str = JSON.stringify(data) + "\n";
-      logStream.write(str);
-    });
   },
   priority: 10, // make sure it is run first
   middleware: function(configEntry) {

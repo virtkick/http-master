@@ -2,16 +2,10 @@
 
 var path = require('path'),
   fs = require('fs'),
-  util = require('util'),
   argv = require('optimist').argv,
-  crypto = require('crypto'),
   extend = require('extend'),
   net = require('net'),
-  http = require('http'),
-  https = require('https'),
-  jsonLint = require('jsonlint-lines'),
-  extend = require('extend'),
-  async = require('async');
+  jsonLint = require('jsonlint-lines');
 
 function logError(str) {
   if (argv.silent || config.silent)
@@ -55,9 +49,6 @@ if (!argv.config && !argv.configloader) {
   logError("either --config or --configloader is mandatory");
   process.exit();
 }
-
-var common = require('./common');
-var runModules = common.runModules;
 
 var droppedPrivileges = false;
 
@@ -123,142 +114,69 @@ function fetchConfig(finish) {
 
 }
 
-var numCPUs = require('os').cpus().length;
-// hacky way to ensure that our cluster is a locally loaded one
-// use this until https://github.com/joyent/node/pull/3367 is merged
-var oldCluster = require.cache[require.resolve('cluster')];
-delete require.cache[require.resolve('cluster')];
-var cluster = require('cluster');
-require.cache[require.resolve('cluster')] = oldCluster;
-
-var EventEmitter = require('events').EventEmitter;
-
-cluster.setupMaster({
-  exec: './worker.js',
-  args: []
-});
+var HttpMaster = require('./master');
 
 var startTime = new Date().getTime();
+var master = new HttpMaster();
 
-function initWorker(cb) {
-  var worker = cluster.fork();
-  worker.sendMessage = function(type, data) {
-    worker.send(JSON.stringify({
-      type: type,
-      data: data
-    }));
-  };
+master.on('logNotice', logNotice);
+master.on('logError', logError);
 
-  worker.sendMessage('start', {
-    config: config,
-    argv: argv
-  });
-  worker.emitter = new EventEmitter();
-  worker.on("message", function(msg) {
-    var msg = JSON.parse(msg);
-    process.emit('msg:' + msg.type, msg.data, worker);
-    worker.emit('msg:' + msg.type, msg.data);
-  });
-  worker.on("listening", function(host, port) {});
-  worker.once('msg:started', function() {
-    cb();
-  });
-  return worker;
-}
 
 fetchConfig(function(err, parsedConfig) {
   if(err) {
     throw err;
   }
   config = parsedConfig;
+  master.init(config, function(err) {
+    if(err) { 
+      logError("Workers failed to start");
+      throw err;
+    }
+    logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
+    dropPrivileges();
 
-  var worker;
-  var workers = [];
 
-  worker = initWorker(function() {
-    workers.push(worker);
-    async.times((config.workerCount || argv.workers || numCPUs) - 1, function(n, next) {
-      workers.push(initWorker(function() {
-        next(null);
-      }));
-    }, function(err) {
-      if (err) {
-        logError("Workers failed to start");
-        process.exit();
-      }
-      logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
-      dropPrivileges();
-      runModules("allWorkersStarted", config);
-
-    });
-
-  });
-
-  function reloadAllWorkers() {
-
-    var startTime = new Date().getTime();
-
-    async.parallel(workers
-      .filter(function(worker) {
-        return !!worker;
-      }) // dead workers leave undefined keys
-      .map(function(worker) {
-        return function(asyncCallback) {
-          worker.once('msg:unbindFinished', function() {
-
-            worker.once('msg:started', function() {
-              asyncCallback();
-            });
-            worker.sendMessage('reload', config);
+    var watch = require('node-watch');
+    if (config.watchConfig || argv.watch) {
+      watch(argv.config, function() {
+        logNotice("Reloading workers due to config change");
+        fetchConfig(function(err, parsedConfig) {
+          if(err) return logNotice("Skipping reload due to config error");
+          config = parsedConfig;
+          var startTime = new Date().getTime();
+          master.reload(config, function(err) {
+            logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
           });
-          worker.sendMessage('unbind');
-        };
-      }), function(err) {
-        logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
-      });;
-  }
+        });
+      });
+    }
 
+    process.on('SIGUSR1', function() {
+      logNotice("USR1: Reloading config");
 
-  var watch = require('node-watch');
-
-  if (config.watchConfig || argv.watch) {
-    watch(argv.config, function() {
-      logNotice("Reloading workers due to config change");
+      // TODO: assure it is not called in the middle of reload
       fetchConfig(function(err, parsedConfig) {
         if(err) return logNotice("Skipping reload due to config error");
         config = parsedConfig;
-        reloadAllWorkers();        
+        var startTime = new Date().getTime();
+        master.reload(config, function(err) {
+          logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
+        });
       });
     });
-  }
 
-  process.on('SIGUSR1', function() {
-    logNotice("USR1: Reloading config");
+    // patch config for modules to know user/group from argv
+    config.user = config.user || argv.user;
+    config.group = config.group || argv.group;
 
-    // TODO: assure it is not called in the middle of reload
-    fetchConfig(function(err, parsedConfig) {
-      if(err) return logNotice("Skipping reload due to config error");
-      config = parsedConfig;
-      reloadAllWorkers();
+    process.on('uncaughtException', function(err) {
+      logError("[Uncaught exception in master] " + err.stack || err.message);
     });
+
+
   });
 
-  cluster.on('exit', function(worker, code, signal) {
-    logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
-    workers[worker.id - 1] = undefined;
-    var newWorker = initWorker(function() {
-      console.log("Worker", newWorker.id, "started in place of worker", worker.id);
-      workers[newWorker.id - 1] = newWorker;
-    });
-  });
 
-  // patch config for modules to know user/group from argv
-  config.user = config.user || argv.user;
-  config.group = config.group || argv.group;
-  runModules("initMaster", config);
-
-  process.on('uncaughtException', function(err) {
-    logError("[Uncaught exception in master] " + err.stack || err.message);
-  });
 
 });
