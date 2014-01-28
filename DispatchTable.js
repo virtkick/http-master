@@ -174,6 +174,11 @@ DispatchTable.prototype.getTargetForReq = function(req) {
 		var regexpEntries = this.regexpEntries;
 		for (i = 0; i < regexpEntries.length; ++i) {
 			var entry = regexpEntries[i];
+      if(!entry.regexp) {
+        // TODO: research this
+        console.log("Should not happen", (new Error()).toString());
+        continue;
+      }
 			m = host.match(entry.regexp);
 			if (m) {
 				req.hostMatch = m;
