@@ -142,7 +142,7 @@ fetchConfig(function(err, parsedConfig) {
       watch(argv.config, function() {
         logNotice("Reloading workers due to config change");
         fetchConfig(function(err, parsedConfig) {
-          if(err) return logNotice("Skipping reload due to config error");
+          if(err) return logNotice("Skipping reload due to config error: " + err.stack.toString());
           config = parsedConfig;
           var startTime = new Date().getTime();
           master.reload(config, function(err) {

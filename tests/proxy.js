@@ -19,19 +19,32 @@ function makeReq(host, path) {
 var onTarget;
 
 var httpProxy = require('http-proxy');
-httpProxy.createProxyServer = function() {
+var oldProxyServer = httpProxy.createProxyServer;
 
-	return {
-		web: function(req, res, options) {
-			if (onTarget)
-				onTarget(options.target, req);
-		},
-		on: function() {}
-	};
-};
+function patchProxyServer() {
+  httpProxy.createProxyServer = function() {
+
+    return {
+      web: function(req, res, options) {
+        if (onTarget)
+          onTarget(options.target, req);
+      },
+      on: function() {}
+    };
+  };
+}
+
+function unpatchProxyServer() {
+  httpProxy.createProxyServer = oldProxyServer;
+}
 
 
+patchProxyServer();
 var proxy = require('../modules/proxy');
+delete require.cache[require.resolve('../modules/proxy')];
+// clear the patched module from cache so that other tests can
+// resolve unpatched module
+unpatchProxyServer();
 
 var middleware;
 
@@ -64,6 +77,8 @@ var assertPath = function(host, path, mustEqual) {
 
 
 describe('proxy module', function() {
+  
+
 	it('should rewrite URL with implicit ending / to explicit /', function() {
 
 
@@ -119,4 +134,6 @@ describe('proxy module', function() {
     assertPath('test.net', '/test/path?query', 'http://127.0.0.1:1000/test/path?query');
 
   });
+  
 });
+

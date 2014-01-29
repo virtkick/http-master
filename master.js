@@ -1,15 +1,10 @@
 var async = require('async');
-
 var numCPUs = require('os').cpus().length;
 
-
-
 var config = {};
-
 var argv = {}; // remove dependency
 
 var EventEmitter = require('events').EventEmitter;
-
 var common = require('./common');
 var runModules = common.runModules;
 
@@ -83,6 +78,7 @@ HttpMaster.prototype.logError = function(msg) {
 var workers = [];
 
 HttpMaster.prototype.reload = function(parsedConfig, reloadDone) {
+  var self = this;
   config = parsedConfig;
 
   var startTime = new Date().getTime();
@@ -112,9 +108,27 @@ HttpMaster.prototype.init = function(parsedConfig, initDone) {
   config = parsedConfig;
   var worker;
   var self = this;
-  worker = initWorker.call(self, function() {
-    workers.push(worker);
-    async.times((config.workerCount || argv.workers || numCPUs) - 1, function(n, next) {
+
+
+  if(config.workerCount === 0) {
+    var singleWorker = this.singleWorker = new (require('./workerLogic'))();
+    singleWorker.on('logNotice', self.logNotice.bind(this));
+    singleWorker.on('logError', self.logError.bind(this));
+    this.singleWorker.loadConfig(config, function(err) {
+      if (err) {
+        return initDone(err);
+      }
+      self.emit('allWorkersStarted');
+
+
+
+      runModules("allWorkersStarted", config);
+      initDone()
+
+    });
+  }
+  else {
+    async.times((config.workerCount || argv.workers || numCPUs), function(n, next) {
       workers.push(initWorker.call(self, function() {
         next(null);
       }));
@@ -128,8 +142,7 @@ HttpMaster.prototype.init = function(parsedConfig, initDone) {
       runModules("allWorkersStarted", config);
       initDone()
     });
-  });
-
+  }
 }
 
 module.exports = HttpMaster;

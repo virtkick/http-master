@@ -5,6 +5,7 @@ var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(fun
   return (b.priority || 0) - (a.priority || 0);
 });
 
+
 function runModules(cb) {
   var args = Array.prototype.slice.call(arguments, 1);
   var results = [];
@@ -15,12 +16,15 @@ function runModules(cb) {
   } else {
     name = args.shift();
   }
-
+  
   modules.forEach(function(module) {
     if (module[name]) {
+
       var ret = module[name].apply(module[name], args);
-      if (ret && typeof cb === 'function')
+
+      if (ret && typeof cb === 'function') {
         cb(name, ret);
+      }
     }
   });
 }
