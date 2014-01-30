@@ -1,5 +1,4 @@
 var async = require('async');
-var numCPUs = require('os').cpus().length;
 
 var EventEmitter = require('events').EventEmitter;
 var common = require('./common');
@@ -159,7 +158,7 @@ HttpMaster.prototype.init = function(config, initDone) {
     });
   }
   else {
-    async.times((config.workerCount || numCPUs), function(n, next) {
+    async.times((config.workerCount), function(n, next) {
       workers.push(initWorker.call(self, function() {
         next(null);
       }));

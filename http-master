@@ -127,7 +127,7 @@ var master = new HttpMaster();
 master.on('logNotice', logNotice);
 master.on('logError', logError);
 
-
+var numCPUs = require('os').cpus().length;
 fetchConfig(function(err, parsedConfig) {
   if(err) {
     throw err;
@@ -143,6 +143,11 @@ fetchConfig(function(err, parsedConfig) {
     config.group = argv.group;
   if(argv.silent)
     config.silent = argv.silent;
+
+  if(typeof config.workerCount == 'undefined') {
+    logNotice("Setting workerCount to number of CPUs");
+    config.workerCount = numCPUs;
+  }
 
   master.init(config, function(err) {
     if(err) { 
