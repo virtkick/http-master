@@ -138,9 +138,9 @@ HttpMaster.prototype.init = function(config, initDone) {
   var workers = this.workers;
 
   runModules("initMaster", this, config);
-  this.workerCount = config.workerCount;
+  this.workerCount = config.workerCount || 0;
 
-  if(config.workerCount === 0) {
+  if(this.workerCount === 0) {
     var singleWorker = this.singleWorker = new (require('./workerLogic'))();
     singleWorker.on('logNotice', self.logNotice.bind(this));
     singleWorker.on('logError', self.logError.bind(this));
