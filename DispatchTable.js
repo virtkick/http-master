@@ -154,7 +154,7 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
 
 DispatchTable.prototype.getTargetForReq = function(req) {
 	var i, m;
-	var host = req.headers.host;
+	var host = req.unicodeHost || req.headers.host;
 
 	if (this.table[host]) {
 		if (this.table[host].target) {

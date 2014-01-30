@@ -158,6 +158,18 @@ describe('HttpMasterWorker', function() {
 
   });
 
+  it('should support unicode domains', function(finished) {
+    var tester = testPortConfig({
+      proxy: {
+        "źdźbło.pl": 40881
+      }
+    }, 40881);
+    tester.request('http://źdźbło.pl', function(err) {
+      finished(err);
+      tester.finish();
+    });
+  });
+
   it('should redirect multiple requests', function(finished) {
     var tester = testPortConfig({
       redirect: {
