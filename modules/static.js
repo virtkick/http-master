@@ -12,11 +12,8 @@ module.exports = {
       config: config.static,
       requestHandler: function(req, res, next, target) {
         var fileServer = target.server;
-        console.log(req.url);
         target = target.target;
-        console.log(target);
         target = target.replace('[path]', req.url);
-
 
         req.url = regexpHelper(target, req.hostMatch, req.pathMatch);
 
@@ -35,9 +32,9 @@ module.exports = {
         });
       },
       entryParser: function(entryKey, entry) {
-        var entrySplit = entry.split(':');
+        
 
-        return [entryKey,  {server: new nodeStatic.Server(entrySplit[0]), target: entrySplit[1]||"[path]"}];
+        return [entryKey,  {server: new nodeStatic.Server(entry.path || entry), target: entry.target || "[path]"}];
       },
       port: config.port
     });
