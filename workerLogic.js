@@ -7,7 +7,8 @@ var path = require('path'),
   http = require('http'),
   https = require('https'),
   cluster = require('cluster'),
-  async = require('async');
+  async = require('async'),
+  regexpQuote = require('./DispatchTable').regexpQuote;
 
 var EventEmitter = require('events').EventEmitter;
 
@@ -16,6 +17,7 @@ var argv = {}; // will be sent by master
 
 var common = require('./common');
 var runModules = common.runModules;
+var punycode = require('punycode');
 
 function getTcpServer(port, host, cb) {
   var tcpServers = this.tcpServers;
@@ -83,13 +85,14 @@ function loadKeysForContext(context, callback) {
     } else if (key == "cert" || key == "key") {
 
       fs.readFile(context[key], function(err, data) {
+        if(err) return keyFinished(err);
         context[key] = normalizeCert(data.toString('utf8'));
-        keyFinished(err);
+        keyFinished();
       });
     } else
       keyFinished();
-  }, function() {
-    callback(context);
+  }, function(err) {
+    callback(err);
   });
 }
 
@@ -99,10 +102,11 @@ function loadKeysforConfigEntry(config, callback) {
     var SNI = config.ssl.SNI;
     var SNImatchers = {};
     if (config.ssl.SNI) {
-      for (key in config.ssl.SNI) {
-        SNImatchers[key] = new RegExp("^" + key + "$", 'i'); // domain names are case insensitive
+      for (key in config.ssl.SNI) {        
+        SNImatchers[key] = new RegExp(regexpQuote(key).replace(/^\\\*\\\./g, '^([^.]+\\.)?'), 'i'); // domain names are case insensitive
       }
       var sniCallback = function(hostname, cb) {
+        hostname = punycode.toUnicode(hostname);
         for (key in SNI) {
           if (hostname.match(SNImatchers[key])) {
             if (cb) // since node 0.11.5
@@ -117,17 +121,19 @@ function loadKeysforConfigEntry(config, callback) {
       config.ssl.SNICallback = sniCallback;
     }
 
-    loadKeysForContext(config.ssl, function() {
+    loadKeysForContext(config.ssl, function(err) {
+      if (err) return sniLoaded(err);
+
       if (SNI) {
         var todo = [];
         for (key in SNI)
           todo.push(key);
-
         async.each(todo, function(key, sniLoaded) {
           loadKeysForContext(SNI[key], function(err) {
             if (err) return sniLoaded(err);
             try {
-              SNI[key] = crypto.createCredentials(SNI[key]).context;
+              var credentials = crypto.createCredentials(SNI[key]);
+              SNI[key] = credentials.context;
               sniLoaded();
             } catch (err) {
               sniLoaded(err);
