@@ -4,6 +4,7 @@ var numCPUs = require('os').cpus().length;
 var EventEmitter = require('events').EventEmitter;
 var common = require('./common');
 var runModules = common.runModules;
+var path = require('path');
 
 // TODO: Windows support?
 function exitIfEACCES(err)
@@ -26,7 +27,7 @@ function HttpMaster()
   require.cache[require.resolve('cluster')] = oldCluster;
 
   this.cluster.setupMaster({
-    exec: './worker.js',
+    exec: path.join(__dirname, 'worker.js'),
     args: []
   });
 
