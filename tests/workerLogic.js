@@ -158,7 +158,7 @@ describe('HttpMasterWorker', function() {
 
   });
 
-  it('should proxy multiple requests', function(finished) {
+  it('should redirect multiple requests', function(finished) {
     var tester = testPortConfig({
       redirect: {
         "*": 'http://[1]:40881/[path]'

@@ -30,10 +30,18 @@ function getTcpServer(port, host, cb) {
       if (err) return cb(err);
       cb(null, tcpServer);
     }
-    if (host)
-      tcpServer.listen(port, host, handler);
-    else
-      tcpServer.listen(port, handler);
+    try {
+      if (host)
+        tcpServer.listen(port, host, handler);
+      else
+        tcpServer.listen(port, handler);
+      tcpServer.once('error', function(err) {
+        delete tcpServers[entry];
+        cb(err);
+      });
+    } catch(err) {
+      cb(err);
+    }
   }
 }
 

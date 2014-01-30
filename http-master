@@ -38,6 +38,11 @@ var location, config = {},
   target = argv.target;
 
 if (argv['configloader-test']) {
+  if(!argv.configloader) {
+    console.log("Please provide valid script as argument for --configloader");
+    process.exit(1);
+  }
+
   require(argv.configloader)(argv, fs.readFileSync(argv.config).toString("utf8"), function(err, config) {
     if(err) throw err;
     console.log(JSON.stringify(config));
@@ -55,14 +60,14 @@ var droppedPrivileges = false;
 function dropPrivileges() {
   var strInfo;
   if (process.setgid) {
-    var group = argv.group || config.group;
+    var group = config.group;
     if (typeof group === 'string') {
       process.setgid(group);
       strInfo = group;
     }
   }
   if (process.setuid) {
-    var user = argv.user || config.user;
+    var user = config.user;
     if (typeof user === 'string') {
       process.setuid(user);
       if (strInfo)
@@ -128,6 +133,17 @@ fetchConfig(function(err, parsedConfig) {
     throw err;
   }
   config = parsedConfig;
+  if(typeof argv.workers !== 'undefined') {
+    config.workerCount = argv.workers;
+  }
+
+  if(argv.user)
+    config.user = argv.user;
+  if(argv.group)
+    config.group = argv.group;
+  if(argv.silent)
+    config.silent = argv.silent;
+
   master.init(config, function(err) {
     if(err) { 
       logError("Workers failed to start");
@@ -165,10 +181,6 @@ fetchConfig(function(err, parsedConfig) {
         });
       });
     });
-
-    // patch config for modules to know user/group from argv
-    config.user = config.user || argv.user;
-    config.group = config.group || argv.group;
 
     process.on('uncaughtException', function(err) {
       logError("[Uncaught exception in master] " + err.stack || err.message);

@@ -1,5 +1,4 @@
 
-var argv = {};
 var config = {};
 var cluster = require('cluster');
 
@@ -9,23 +8,24 @@ var runModules = common.runModules;
 var droppedPrivileges = false;
 
 function logError(str) {
-  if (argv.silent || config.silent)
+  if (config.silent)
     return;
   console.log('[' + cluster.worker.id + '] ' + str);
 }
 var logNotice = logError;
 
+// TODO: move to common
 function dropPrivileges() {
   var strInfo;
   if (process.setgid) {
-    var group = argv.group || config.group;
+    var group = config.group;
     if (typeof group === 'string') {
       process.setgid(group);
       strInfo = group;
     }
   }
   if (process.setuid) {
-    var user = argv.user || config.user;
+    var user = config.user;
     if (typeof user === 'string') {
       process.setuid(user);
       if (strInfo)
@@ -64,10 +64,12 @@ process.on('uncaughtException', function(err) {
 });
 
 process.on('msg:start', function(data) {
+  config = data.config;
   runModules("initWorker", data.config);
-  argv = data.argv;
+  dropPrivileges();
   worker.loadConfig(data.config, function(err) {
     if(err) {
+      process.sendMessage('exception', err);
       logError("Exitting worker due to error: " + err.toString())
       return process.exit();
     }
@@ -77,13 +79,21 @@ process.on('msg:start', function(data) {
 
 process.on('msg:unbind', function() {
   logNotice('Reloading config');
-  unbindAll(function() {
+  worker.unbindAll(function() {
     process.sendMessage("unbindFinished");
   });
 });
 process.on('msg:reload', function(config) {
-  handleConfig(config);
+  worker.loadConfig(config, function(err) {
+    if(err) {
+      process.sendMessage('exception', err);
+      logError("Exitting worker due to error: " + err.toString())
+      return process.exit();
+    }
+    process.sendMessage("started");
+  });
 });
 
-
-
+process.on('msg:unregister', function() {
+  process.removeAllListeners();
+});

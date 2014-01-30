@@ -1,12 +1,18 @@
 var async = require('async');
 var numCPUs = require('os').cpus().length;
 
-var config = {};
-var argv = {}; // remove dependency
-
 var EventEmitter = require('events').EventEmitter;
 var common = require('./common');
 var runModules = common.runModules;
+
+// TODO: Windows support?
+function exitIfEACCES(err)
+{
+  if(err && err.syscall == 'bind' && err.code == 'EACCES') {
+    this.logError("Unable to bind to port, exiting! Hopefully we will be restarted with privileges to bind the port.");
+    process.exit(1);
+  }
+}
 
 function HttpMaster()
 {
@@ -24,10 +30,13 @@ function HttpMaster()
     args: []
   });
 
-  runModules("initMaster", this, config);
+  
+  this.autoRestartWorkers = true;
 
   var self = this;
   cluster.on('exit', function(worker, code, signal) {
+    if(!self.autoRestartWorkers)
+      return;
     self.logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
     workers[worker.id - 1] = undefined;
     var newWorker = initWorker.call(self, function() {
@@ -39,6 +48,7 @@ function HttpMaster()
 }
 
 function initWorker(cb) {
+  var self = this;
   var worker = this.cluster.fork();
   worker.sendMessage = function(type, data) {
     worker.send(JSON.stringify({
@@ -48,8 +58,7 @@ function initWorker(cb) {
   };
 
   worker.sendMessage('start', {
-    config: config,
-    argv: argv
+    config: this.config
   });
   worker.emitter = new EventEmitter();
   worker.on("message", function(msg) {
@@ -60,6 +69,9 @@ function initWorker(cb) {
   worker.on("listening", function(host, port) {});
   worker.once('msg:started', function() {
     cb();
+  });
+  worker.on('msg:exception', function(err) {
+    exitIfEACCES.call(self, err);
   });
   return worker;
 }
@@ -75,40 +87,58 @@ HttpMaster.prototype.logError = function(msg) {
   this.emit('logError', msg);
 }
 
-var workers = [];
 
-HttpMaster.prototype.reload = function(parsedConfig, reloadDone) {
+
+HttpMaster.prototype.reload = function(config, reloadDone) {
   var self = this;
-  config = parsedConfig;
+  this.config = config;
+  var workers = this.workers;
 
   var startTime = new Date().getTime();
 
-  async.parallel(workers.filter(function(worker) {
-      return !!worker;
-    }) // dead workers leave undefined keys
-    .map(function(worker) {
-      return function(asyncCallback) {
-        worker.once('msg:unbindFinished', function() {
+  if(config.workerCount != this.workerCount) {
+    this.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
+    process.exit(1);
+    return;
+  }
 
-          worker.once('msg:started', function() {
-            asyncCallback();
-          });
-          worker.sendMessage('reload', config);
-        });
-        worker.sendMessage('unbind');
-      };
-    }), function(err) {
-      self.emit('allWorkersReloaded');
+  if(this.singleWorker) {
+    this.singleWorker.loadConfig(config, function(err) {
+      exitIfEACCES.call(self, err);
       reloadDone(err);
-    });;
+    });
+  }
+  else {
+    async.parallel(workers.filter(function(worker) {
+        return !!worker;
+      }) // dead workers leave undefined keys
+      .map(function(worker) {
+        return function(asyncCallback) {
+          worker.once('msg:unbindFinished', function() {
+
+            worker.once('msg:started', function() {
+              asyncCallback();
+            });
+            worker.sendMessage('reload', config);
+          });
+          worker.sendMessage('unbind');
+        };
+      }), function(err) {
+        self.emit('allWorkersReloaded');
+        reloadDone(err);
+      });;
+  }
 };
 
 
-HttpMaster.prototype.init = function(parsedConfig, initDone) {
-  config = parsedConfig;
+HttpMaster.prototype.init = function(config, initDone) {
+  this.config = config;
   var worker;
   var self = this;
+  var workers = this.workers;
 
+  runModules("initMaster", this, config);
+  this.workerCount = config.workerCount;
 
   if(config.workerCount === 0) {
     var singleWorker = this.singleWorker = new (require('./workerLogic'))();
@@ -128,7 +158,7 @@ HttpMaster.prototype.init = function(parsedConfig, initDone) {
     });
   }
   else {
-    async.times((config.workerCount || argv.workers || numCPUs), function(n, next) {
+    async.times((config.workerCount || numCPUs), function(n, next) {
       workers.push(initWorker.call(self, function() {
         next(null);
       }));
