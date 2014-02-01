@@ -83,6 +83,7 @@ process.on('msg:start', function(data) {
   config = data.config;
   runModules("initWorker", data.config);
   dropPrivileges();
+  worker.token = data.token;
   worker.loadConfig(data.config, function(err) {
     if (err) {
       process.sendMessage('exception', err);

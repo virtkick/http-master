@@ -193,6 +193,12 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
       server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
 
+      if(self.token) {
+        server._setServerData({
+          ticketKeys: self.token
+        });
+      }
+
       if(config.ssl.honorCipherOrder !== false) {
         // prefer server ciphers over clients - prevents BEAST attack
         config.ssl.honorCipherOrder = true;

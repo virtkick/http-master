@@ -5,6 +5,11 @@ var common = require('./common');
 var runModules = common.runModules;
 var path = require('path');
 
+var token;
+require('crypto').randomBytes(48, function(ex, buf) {
+  token = buf.toString('hex');
+});
+
 // TODO: Windows support?
 function exitIfEACCES(err)
 {
@@ -59,7 +64,8 @@ function initWorker(cb) {
   };
 
   worker.sendMessage('start', {
-    config: this.config
+    config: this.config,
+    token: this.token
   });
   worker.emitter = new EventEmitter();
   worker.on("message", function(msg) {
@@ -166,14 +172,16 @@ HttpMaster.prototype.init = function(config, initDone) {
       }
       self.emit('allWorkersStarted');
 
-
-
       runModules("allWorkersStarted", config);
       initDone()
 
     });
   }
   else {
+    
+    while(!token); // busy wait in case we have not got it yet..
+    self.token = token;
+
     async.times((config.workerCount), function(n, next) {
       workers.push(initWorker.call(self, function() {
         next(null);
@@ -188,7 +196,7 @@ HttpMaster.prototype.init = function(config, initDone) {
       runModules("allWorkersStarted", config);
       initDone()
     });
-  }
+  };
 }
 
 module.exports = HttpMaster;
