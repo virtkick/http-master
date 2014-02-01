@@ -84,6 +84,24 @@ function dropPrivileges() {
 
 var friendlyConfig = require('./friendlyConfig');
 
+function patchConfigWithArgv(config) {
+  if(typeof argv.workers !== 'undefined') {
+    config.workerCount = argv.workers;
+  }
+
+  if(argv.user)
+    config.user = argv.user;
+  if(argv.group)
+    config.group = argv.group;
+  if(argv.silent)
+    config.silent = argv.silent;
+
+  if(typeof config.workerCount == 'undefined') {
+    logNotice("Setting workerCount to number of CPUs");
+    config.workerCount = numCPUs;
+  }
+}
+
 function fetchConfig(finish) {
 
   var configloader;
@@ -109,6 +127,8 @@ function fetchConfig(finish) {
         config = extend(true, {}, config, friendlyConfig(config));
         if(argv['show-rules'])
           logNotice(config.ports);
+        patchConfigWithArgv(config);
+
         finish(err, config);
       });
     } catch(err) {
@@ -133,21 +153,6 @@ fetchConfig(function(err, parsedConfig) {
     throw err;
   }
   config = parsedConfig;
-  if(typeof argv.workers !== 'undefined') {
-    config.workerCount = argv.workers;
-  }
-
-  if(argv.user)
-    config.user = argv.user;
-  if(argv.group)
-    config.group = argv.group;
-  if(argv.silent)
-    config.silent = argv.silent;
-
-  if(typeof config.workerCount == 'undefined') {
-    logNotice("Setting workerCount to number of CPUs");
-    config.workerCount = numCPUs;
-  }
 
   master.init(config, function(err) {
     if(err) { 
