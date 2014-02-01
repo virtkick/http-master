@@ -122,7 +122,7 @@ function loadKeysforConfigEntry(config, callback) {
     }
 
     loadKeysForContext(config.ssl, function(err) {
-      if (err) return sniLoaded(err);
+      if (err) return callback(err);
 
       if (SNI) {
         var todo = [];
@@ -151,12 +151,16 @@ function loadKeysforConfigEntry(config, callback) {
 
 function handleConfigEntry(config, callback) {
   var self = this;
-  loadKeysforConfigEntry(config, function() {
+  loadKeysforConfigEntry(config, function(err) {
+    if(err) {
+      return callback(err);
+    }
     handleConfigEntryAfterLoadingKeys.call(self, config, callback);
   });
 }
 
 function handleConfigEntryAfterLoadingKeys(config, callback) {
+  var self = this;
   //
   // Check to see if we should silence the logs
   //
@@ -185,6 +189,15 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
     if (config.ssl) {
       var baseModule = config.ssl.spdy ? require('spdy') : https;
       server = baseModule.createServer(config.ssl, handler.request);
+
+      server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
+      server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
+
+      if(config.ssl.honorCipherOrder !== false) {
+        // prefer server ciphers over clients - prevents BEAST attack
+        config.ssl.honorCipherOrder = true;
+      }
+
     } else {
       server = http.createServer(handler.request);
     }
@@ -272,7 +285,8 @@ function handleConfig(config, configHandled) {
             self.logNotice("Listening on port: " + entryString);
           } else
             self.logNotice("Entry " + entryString + " is unusable");
-          asyncCallback(err, server);
+          // ignore error to not crash the entire proxy
+          asyncCallback(null, server);
         });
       };
     };
@@ -285,7 +299,9 @@ function handleConfig(config, configHandled) {
     // TODO
     //dropPrivileges();
     
-    self.servers = results;
+    self.servers = results.filter(function(server) {
+      return !!server;
+    });
     configHandled();
   });
 }
@@ -302,8 +318,22 @@ function unbindAll(cb) {
 }
 
 
-function HttpMasterWorker()
+function HttpMasterWorker(config)
 {
+  config = config || {};
+  var store = {};
+  this.tlsSessionStore = config.tlsSessionStore || {
+    get: function(id, cb) {
+      id = id.toString('base64');
+      cb(null, store[id], null);
+    },
+    set: function(id, data, cb) {
+      id = id.toString('base64');
+      store[id] = data;
+      if(cb)
+        cb();
+    }
+  };
   this.tcpServers = {};
   this.servers = [];
 }

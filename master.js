@@ -17,6 +17,7 @@ function exitIfEACCES(err)
 function HttpMaster()
 {
   var workers = this.workers = [];
+  this.tlsSessionStore = {};
 
   // hacky way to ensure that our cluster is a locally loaded one
   // use this until https://github.com/joyent/node/pull/3367 is merged
@@ -73,6 +74,21 @@ function initWorker(cb) {
   worker.on('msg:exception', function(err) {
     exitIfEACCES.call(self, err);
   });
+
+  worker.on('msg:tlsSession:set', function(msg) {
+    self.tlsSessionStore[msg.id] = {
+      data: msg.data,
+      created: new Date()
+    };
+  });
+
+  worker.on('msg:tlsSession:get', function(id) {
+    var data = '';
+    if(self.tlsSessionStore[id])
+      data = self.tlsSessionStore[id].data;
+    worker.sendMessage('session:'+id, data);
+  });
+
   return worker;
 }
 

@@ -1,4 +1,3 @@
-
 var config = {};
 var cluster = require('cluster');
 
@@ -41,7 +40,24 @@ function dropPrivileges() {
 
 
 var HttpMasterWorker = require('./workerLogic');
-var worker = new HttpMasterWorker();
+var worker = new HttpMasterWorker({
+  tlsSessionStore: {
+    get: function(id, cb) {
+      process.once('msg:session:' + id.toString('base64'), function(data) {
+        cb(null, new Buffer(data, 'base64'), null);
+      });
+      process.sendMessage('tlsSession:get', id.toString('base64'));
+    },
+    set: function(id, data, cb) {
+      process.sendMessage('tlsSession:set', {
+        id: id.toString('base64'),
+        data: data.toString('base64')
+      });
+      if(cb)
+        cb();
+    }
+  }
+});
 
 worker.on('logNotice', logNotice);
 worker.on('logError', logError);
@@ -68,7 +84,7 @@ process.on('msg:start', function(data) {
   runModules("initWorker", data.config);
   dropPrivileges();
   worker.loadConfig(data.config, function(err) {
-    if(err) {
+    if (err) {
       process.sendMessage('exception', err);
       logError("Exitting worker due to error: " + err.toString())
       return process.exit();
@@ -85,7 +101,7 @@ process.on('msg:unbind', function() {
 });
 process.on('msg:reload', function(config) {
   worker.loadConfig(config, function(err) {
-    if(err) {
+    if (err) {
       process.sendMessage('exception', err);
       logError("Exitting worker due to error: " + err.toString())
       return process.exit();
