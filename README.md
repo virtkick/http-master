@@ -41,7 +41,7 @@ Example config:
         },
         "https": {
             "SNI": {
-                ".*service.myapp.com": {
+                "*.service.myapp.com": {
                     "key": "/etc/keys/myapp_com.key",
                     "cert": "/etc/keys/myapp_com.pem",
                     "ca": [
