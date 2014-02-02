@@ -101,8 +101,6 @@ ports: { # each port gets a separate configuration
 }
 ```
 
-Each entry in the `ports` is the format that would be normally fed to `node-http-proxy`.
-
 <a name="module"/>
 ## Usage as a module
 
