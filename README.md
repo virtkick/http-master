@@ -1,20 +1,33 @@
 http-master
 ===============
 
-http-master is designed to run as a front end http service/reverse-proxy with easy setup of proxying logic.
-Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
+
+
+http-master is a front end http service/reverse-proxy with easy setup of proxying/redirecting/other-actions logic.
+iT can run as a module or as a standalone application. Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
 
 Some of the features:
-* Allow for fast host-based matching and any regexp matching rules.
-* Match by host-only, host and path or path-only. Allow for regexp path matching.
-* Single instance can cover multiple IP/Port configurations each with different logic.
-* Multi-core/cpu friendly. Runs multiple instances and each will compete to serve a new connection.
-* Support reading SSL SNI configurations from file and CRT bundle files. This means handling multiple SSL certificates on the same domain is very easy.
-* Watches for config changes and reloads the logic without any downtime. Simply start the deamon and add new rules while having the http-master online.
-* Redirect and URL rewrite support.
+* Easy all in one place configuration for every listening port (eg. 80 and 443 together)
+  * Setup reverse proxy with optional URL rewriting and optional regexp matching of host and/or path.
+  * Setup redirect with optional regexp matching to construct final URL.
+  * Setup basic static server for a given route.
+* Multi-core/cpu friendly. Runs multiple instances/workers which will serve connections in a round-robin fashion.
+* Support SNI extension - multiple SSL certificates on the same IP.
+* SSL tweaked to reasonable security level supporting TLS session resumption.
+* Automatically watches for config changes and reloads the logic without any downtime (*). Simply start the deamon and add new rules while having the http-master online.
 * Asynchronous logging module. Logs either to stdout or to file.
-* Link to custom config preprocessor so that you may devise your own config file format.
-* Drops privileges to user/group once started.
+* Possibility to load config from Redis/etcd or another remote resource. (**)
+* May drop privileges to user/group once started.
+
+Ongoing development on:
+* Easier and easier configuration format.
+* Automatic loading of certificates from specific directory. Zero-effort HTTPS configuration.
+* Automatic management of time expiration of certificates.
+* Request/response filters. (including ability to add headers, modify data)
+
+
+(*) Zero downtime is possible, currently downtime may be few milliseconds.
+(**) Needs writing a custom config loader.
 
 Usage
 ===============
