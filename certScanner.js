@@ -1,7 +1,8 @@
+'use strict';
 require('es6-shim');
-var pem = require('pem');
 var x509 = require('x509');
 var fs = require('fs');
+
 
 module.exports = function(sslDirectory) {
   var that = this;
@@ -88,7 +89,7 @@ module.exports = function(sslDirectory) {
     var certs = [];
     possibleCerts.forEach(function(cert) {
       var endTokenIndex = cert.indexOf(endCertToken);
-      if (endTokenIndex == -1) {
+      if (endTokenIndex === -1) {
         return null;
       }
       var rawCert = cert.substring(0, endTokenIndex);

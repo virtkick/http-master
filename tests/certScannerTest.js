@@ -1,4 +1,5 @@
-var mocha = require('mocha');
+'use strict';
+require('mocha');
 var assert = require('chai').assert;
 var fs = require('fs');
 
