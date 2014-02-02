@@ -14,7 +14,7 @@ XRegExp.install({
 });
 
 module.exports = function(config) {
-  var domains = config.domains || {};
+  var domains = config.routes || config.domains || {};
 
   var newConfig = {};
   if (!newConfig.ports)

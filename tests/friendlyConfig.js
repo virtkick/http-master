@@ -78,7 +78,7 @@ describe('domains config processor', function() {
   it('should support simple string keys with numerical target', function() {
     var input = {
       http: true,
-      domains: {
+      routes: {
         "code2flow.com:80": 4030
       }
     };
@@ -102,7 +102,7 @@ describe('domains config processor', function() {
         key: 'key.pem',
         cert: 'cert.pem'
       }],
-      domains: {
+      routes: {
         'somehost:80': 50,
         "code2flow.com:443/test": "redirect: https://sometarget"
       }
@@ -132,7 +132,7 @@ describe('domains config processor', function() {
     var input = {
       http: [80, 81],
       https: [443, 444],
-      domains: {
+      routes: {
         'somehost': 50,
         "code2flow.com/test": "redirect: https://sometarget"
       }
@@ -185,7 +185,7 @@ describe('domains config processor', function() {
           ports: [80]
         }
       },
-      domains: {
+      routes: {
         "localOnlyHttp | code2flow.com/test": 3040
       }
     };
@@ -208,7 +208,7 @@ describe('domains config processor', function() {
   it('should handle global multiple interfaces', function() {
     var input = {
       interfaces: ["127.0.0.1", "::1"],
-      domains: {
+      routes: {
         "code2flow.com:80/test": 3040
       }
     };
@@ -232,7 +232,7 @@ describe('domains config processor', function() {
   it('should discard other interfaces if "*" is defined', function() {
     var input = {
       interfaces: ["127.0.0.1", "::1", "*"],
-      domains: {
+      routes: {
         "code2flow.com:80/test": 3040
       }
     };
@@ -258,7 +258,7 @@ describe('domains config processor', function() {
           }
         }
       },
-      domains: {
+      routes: {
         "www | code2flow.com:80": 567
       }
     };
@@ -277,7 +277,7 @@ describe('domains config processor', function() {
 
   it('should allow subdomain definitions in object', function() {
     var input = {
-      domains: {
+      routes: {
         "code2flow.com:80": {
           subdomains: {
             "www.": 3040
