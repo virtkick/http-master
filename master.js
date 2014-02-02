@@ -127,7 +127,14 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
   if(this.singleWorker) {
     this.singleWorker.loadConfig(config, function(err) {
       exitIfEACCES.call(self, err);
-      reloadDone(err);
+      if(!err)
+        self.emit('allWorkersReloaded');
+      else
+        self.emit('error', err);
+
+      self.emit('allWorkersReloaded');
+      if(reloadDone)
+        reloadDone(err);
     });
   }
   else {
@@ -146,8 +153,12 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
           worker.sendMessage('unbind');
         };
       }), function(err) {
-        self.emit('allWorkersReloaded');
-        reloadDone(err);
+        if(!err)
+          self.emit('allWorkersReloaded');
+        else
+          self.emit('error', err);
+        if(reloadDone)
+          reloadDone(err);
       });;
   }
 };
@@ -173,7 +184,8 @@ HttpMaster.prototype.init = function(config, initDone) {
       self.emit('allWorkersStarted');
 
       runModules("allWorkersStarted", config);
-      initDone()
+      if(initDone)
+        initDone()
 
     });
   }
@@ -194,7 +206,8 @@ HttpMaster.prototype.init = function(config, initDone) {
       self.emit('allWorkersStarted');
 
       runModules("allWorkersStarted", config);
-      initDone()
+      if(initDone)
+        initDone()
     });
   };
 }
