@@ -3,7 +3,7 @@ Description=HTTP Master
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/http-master --config=/etc/http-master/config.json
+ExecStart=/usr/bin/http-master --config=/etc/http-master/http-master.conf
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=always
 

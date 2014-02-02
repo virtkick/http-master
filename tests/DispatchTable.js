@@ -55,11 +55,13 @@ describe('DispatchTable internal structure', function() {
 	describe('Wildcards', function() {
 
 		var config = {
-			'host2.???': {
+			'host2.*': {
 				key1: '1'
 			},
 			'*.host2.com': 'stringTarget',
-			'host3.*.net': 400
+			'host3.*.net': 400,
+      '*?.host4.com': 'stringTarget',
+      'host5.*?.*': 400
 		};
 
 		var dispatchTable = new DispatchTable({
@@ -92,12 +94,12 @@ describe('DispatchTable internal structure', function() {
 			assert('host2.net'.match(entry.regexp))
 			assert('host2.org'.match(entry.regexp))
 			assert(!'host2.co.uk'.match(entry.regexp))
-			assert(!'host2.pl'.match(entry.regexp))
+			// assert(!'host2.pl'.match(entry.regexp))
 			assert(!'.host2.com'.match(entry.regexp))
 			assert(!'www.host2.com'.match(entry.regexp))
 			entry = dispatchTable.regexpEntries[1];
 
-			assert('host2.com'.match(entry.regexp))
+			assert(!'host2.com'.match(entry.regexp))
 			assert(!'hhost2.com'.match(entry.regexp))
 			assert(!'.host2.com'.match(entry.regexp))
 			assert('www.host2.com'.match(entry.regexp))
@@ -109,6 +111,17 @@ describe('DispatchTable internal structure', function() {
 			assert('host3.test.net'.match(entry.regexp))
 			assert(!'host3.test.test2.net'.match(entry.regexp))
 			assert(!'host3.net'.match(entry.regexp))
+
+      entry = dispatchTable.regexpEntries[3];
+      assert('host4.com'.match(entry.regexp))
+      assert(!'hhost4.com'.match(entry.regexp))
+      assert(!'.host4.com'.match(entry.regexp))
+      assert('www.host4.com'.match(entry.regexp))
+      assert('www.test.host4.com'.match(entry.regexp))
+
+      entry = dispatchTable.regexpEntries[4];
+      assert('host5.com'.match(entry.regexp))
+      assert('host5.co.uk'.match(entry.regexp))
 
 		});
 
@@ -269,7 +282,7 @@ describe('DispatchTable various routes', function() {
 describe('DispatchTable dispatcher', function() {
 	var config = {
 		'code2flow.com': 5040,
-		'*.atlashost.eu': 'https://atlashost.eu',
+		'*?.atlashost.eu': 'https://atlashost.eu',
 		'^(www|test|indigo)\\.testowo\\.pl': 'localhost:5040'
 	};
 

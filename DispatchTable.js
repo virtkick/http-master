@@ -46,11 +46,13 @@ function globStringToRegex(str, specialCh) {
 	var inside = regexpQuote(str);
 	if(specialCh == '.') {
 		inside = inside.replace(/^\\\*$/g, '(?:(?<host>.+))');
-		inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)?');
+	  inside = inside.replace(/^\\\*\\\?\\\./g, '(?:(.+)\\.)?');
+  	inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)');
+    inside = inside.replace(/\\\.\\\*\\\?/g, '(?:\\.([^'+specialCh+']+))?');    
 	}
 	else
 		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
-	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)').replace(/\\\?/g, '.');
+	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)');
 
 	var regexp = new XRegExp("^" + inside + "$");
   return regexp;
