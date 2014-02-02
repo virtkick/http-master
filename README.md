@@ -4,14 +4,14 @@
 
 
 http-master is a front end http service/reverse-proxy with easy setup of proxying/redirecting/other-actions logic.
-iT can run as a module or as a standalone application. Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
+It can run as a module or as a standalone application. Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
 
 Some of the features:
 * Easy all in one place configuration for every listening port (eg. 80 and 443 together)
   * Setup reverse proxy with optional URL rewriting and optional regexp matching of host and/or path.
   * Setup redirect with optional regexp matching to construct final URL.
   * Setup basic static server for a given route.
-* Multi-core/cpu friendly. Runs multiple instances/workers which will serve connections in a round-robin fashion.
+* Multi-core/cpu friendly. Runs multiple instances/workers which will serve connections in a round-robin fashion. You of course choose to run in the same process without any workers if you use http-master as a module.
 * Support SNI extension - multiple SSL certificates on the same IP.
 * SSL tweaked to reasonable security level supporting TLS session resumption.
 * Automatically watches for config changes and reloads the logic without any downtime (*). Simply start the deamon and add new rules while having the http-master online.
