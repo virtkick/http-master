@@ -1,4 +1,3 @@
-var should = require('should');
 var mocha = require('mocha');
 var assert = require('chai').assert;
 var fs = require('fs');
@@ -21,9 +20,8 @@ describe('SSL directory scanner', function() {
 
   var useFiles = function() {
     var files = null;
-    if (arguments[0] == '*') {
+    if (arguments[0] === '*') {
       files = fs.readdirSync(realSslDir);
-      console.log(files)
     } else {
       files = Array.prototype.slice.call(arguments, 0);
     }
@@ -35,22 +33,22 @@ describe('SSL directory scanner', function() {
     });
   };
 
-  it('get all domains from certificate file', function() {
+  it('finds all domains from certificate file', function() {
     useFiles('unizeto-jira-e-instruments.com.pem');
-    domains = scanner.getDomainsFrom(sslDir + 'unizeto-jira-e-instruments.com.pem');
+    var domains = scanner.getDomainsFrom(sslDir + 'unizeto-jira-e-instruments.com.pem');
     assert.sameMembers(domains, ['www.jira-e-instruments.com', 'jira-e-instruments.com']);
   });
 
-  it('find all certificates', function() {
+  it('finds all certificates', function() {
     useFiles('startssl-wildcard.pacmanvps.com.pem',
         'unizeto-jira-e-instruments.com.pem',
         'unizeto-wildcard.softwaremill.com.pem');
 
     assert.deepEqualIgnoreOrder(scanner.scan(), {
-      '*.pacmanvps.com': {
+      'pacmanvps.com': {
         'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem'
       },
-      'pacmanvps.com': {
+      '*.pacmanvps.com': {
         'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem'
       },
       'jira-e-instruments.com': {
@@ -68,7 +66,39 @@ describe('SSL directory scanner', function() {
     });
   });
 
-  it('find certificate and its CA when organization name and organizational unit name match', function() {
+  it('finds all certificates and its CA', function() {
+    useFiles('startssl-wildcard.pacmanvps.com.pem', 'startssl.pem',
+        'unizeto-jira-e-instruments.com.pem', 'unizeto-wildcard.softwaremill.com.pem', 'unizeto.pem');
+
+    assert.deepEqualIgnoreOrder(scanner.scan(), {
+      'pacmanvps.com': {
+        'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem',
+        'ca': sslDir + 'startssl.pem'
+      },
+      '*.pacmanvps.com': {
+        'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem',
+        'ca': sslDir + 'startssl.pem'
+      },
+      'jira-e-instruments.com': {
+        'cert': sslDir + 'unizeto-jira-e-instruments.com.pem',
+        'ca': sslDir + 'unizeto.pem'
+      },
+      'www.jira-e-instruments.com': {
+        'cert': sslDir + 'unizeto-jira-e-instruments.com.pem',
+        'ca': sslDir + 'unizeto.pem'
+      },
+      'softwaremill.com': {
+        'cert': sslDir + 'unizeto-wildcard.softwaremill.com.pem',
+        'ca': sslDir + 'unizeto.pem'
+      },
+      '*.softwaremill.com': {
+        'cert': sslDir + 'unizeto-wildcard.softwaremill.com.pem',
+        'ca': sslDir + 'unizeto.pem'
+      }
+    });
+  });
+
+  it('finds certificate and its CA when organization name and organizational unit name match', function() {
     useFiles('startssl-wildcard.pacmanvps.com.pem', 'startssl.pem');
 
     assert.deepEqualIgnoreOrder(scanner.scan(), {
@@ -82,19 +112,50 @@ describe('SSL directory scanner', function() {
       }
     });
   });
+
+  it('find certificate and its CA when CA file contains many certificates', function() {
+    useFiles('unizeto-wildcard.softwaremill.com.pem', 'unizeto.pem');
+
+    assert.deepEqualIgnoreOrder(scanner.scan(), {
+      '*.softwaremill.com': {
+        'cert': sslDir + 'unizeto-wildcard.softwaremill.com.pem',
+        'ca': sslDir + 'unizeto.pem'
+      },
+      'softwaremill.com': {
+        'cert': sslDir + 'unizeto-wildcard.softwaremill.com.pem',
+        'ca': sslDir + 'unizeto.pem'
+      }
+    });
+  });
+
+  it('reads all certificates from single CA file', function() {
+    useFiles('startssl.pem');
+
+    var certs = scanner.getCaCertsFromFile(sslDir + 'startssl.pem');
+    assert.equal(certs.length, 4);
+  });
+
+  it('reads all certificates from single CA file with some content between END and BEGIN', function() {
+    useFiles('unizeto.pem');
+
+    var certs = scanner.getCaCertsFromFile(sslDir + 'unizeto.pem');
+    assert.equal(certs.length, 12);
+  });
+
 });
 
 function cleanDir(dirPath) {
   try {
     fs.mkdirSync(dirPath);
   } catch(e) {
-    if (e.code != 'EEXIST') {
+    if (e.code !== 'EEXIST') {
       throw e;
     }
   }
 
+  var files = null;
   try {
-    var files = fs.readdirSync(dirPath);
+    files = fs.readdirSync(dirPath);
   } catch (ignored) {
     return;
   }

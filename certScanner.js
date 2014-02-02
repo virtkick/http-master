@@ -43,32 +43,58 @@ module.exports = function(sslDirectory) {
     var files = fs.readdirSync(this.sslDirectory);
     var ca = files.filter(function(certFile) {
       var certPath = that.sslDirectory + certFile;
-      var cert = x509.parseCert(certPath);
-      if (cert.altNames.length > 0) {
+      var certs = that.getCaCertsFromFile(certPath);
+      if (that.isDomainCert(certs)) {
         return false;
       }
-      var foundIssuer = cert.issuer;
-
-//      console.log();
-//      console.log(expectedIssuer);
-//      console.log(foundIssuer);
-//      console.log();
-
-      return expectedIssuer.countryName == foundIssuer.countryName &&
-          expectedIssuer.organizationName == foundIssuer.organizationName &&
-          expectedIssuer.organizationalUnitName == foundIssuer.organizationalUnitName;
+      return certs.some(function(cert) {
+        return that.issuerMatches(cert, expectedIssuer);
+      });
     });
 
     ca = ca.map(function(fileName) {
       return that.sslDirectory + fileName;
     });
 
-    if (ca.length == 0) {
+    if (ca.length === 0) {
       return null;
-    } else if (ca.length == 1) {
+    } else if (ca.length === 1) {
       return ca[0];
     } else {
       return ca;
     }
+  };
+
+  this.isDomainCert = function(certs) {
+    return certs.some(function(cert) {
+      return cert.altNames.length > 0;
+    });
+  };
+
+  this.issuerMatches = function(cert, expectedIssuer) {
+    var foundIssuer = cert.issuer;
+
+    return expectedIssuer.countryName === foundIssuer.countryName &&
+        expectedIssuer.organizationName === foundIssuer.organizationName &&
+        expectedIssuer.organizationalUnitName === foundIssuer.organizationalUnitName;
+  };
+
+  var beginCertToken = '-----BEGIN CERTIFICATE-----';
+  var endCertToken = '-----END CERTIFICATE-----';
+  this.getCaCertsFromFile = function(certPath) {
+    // TODO: This can possibly be replaced with some regexp.
+    var certFileContent = fs.readFileSync( certPath).toString();
+    var possibleCerts = certFileContent.split(beginCertToken);
+    var certs = [];
+    possibleCerts.forEach(function(cert) {
+      var endTokenIndex = cert.indexOf(endCertToken);
+      if (endTokenIndex == -1) {
+        return null;
+      }
+      var rawCert = cert.substring(0, endTokenIndex);
+      var parsedCert = beginCertToken + rawCert + endCertToken;
+      certs.push(x509.parseCert(parsedCert));
+    });
+    return certs;
   };
 };
