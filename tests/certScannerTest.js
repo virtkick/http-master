@@ -6,6 +6,7 @@ var fs = require('fs');
 
 describe('SSL directory scanner', function() {
   var SslScanner = require('../certScanner');
+  var realSslDir = './tests/certs/';
   var sslDir = './tests/.work/';
   var scanner = null;
 
@@ -19,8 +20,16 @@ describe('SSL directory scanner', function() {
   });
 
   var useFiles = function() {
-    Array.prototype.slice.call(arguments, 0).forEach(function(file) {
-      var fromReal = fs.realpathSync('./tests/certs/' + file);
+    var files = null;
+    if (arguments[0] == '*') {
+      files = fs.readdirSync(realSslDir);
+      console.log(files)
+    } else {
+      files = Array.prototype.slice.call(arguments, 0);
+    }
+
+    files.forEach(function(file) {
+      var fromReal = fs.realpathSync(realSslDir + file);
       var toReal = fs.realpathSync(sslDir) + '/' + file;
       fs.symlinkSync(fromReal, toReal);
     });
@@ -37,8 +46,7 @@ describe('SSL directory scanner', function() {
         'unizeto-jira-e-instruments.com.pem',
         'unizeto-wildcard.softwaremill.com.pem');
 
-    // TODO: This assert depends on hash order. It shouldn't.
-    assert.deepEqual(scanner.scan(), {
+    assert.deepEqualIgnoreOrder(scanner.scan(), {
       '*.pacmanvps.com': {
         'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem'
       },
@@ -59,6 +67,21 @@ describe('SSL directory scanner', function() {
       }
     });
   });
+
+  it('find certificate and its CA when organization name and organizational unit name match', function() {
+    useFiles('startssl-wildcard.pacmanvps.com.pem', 'startssl.pem');
+
+    assert.deepEqualIgnoreOrder(scanner.scan(), {
+      '*.pacmanvps.com': {
+        'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem',
+        'ca': sslDir + 'startssl.pem'
+      },
+      'pacmanvps.com': {
+        'cert': sslDir + 'startssl-wildcard.pacmanvps.com.pem',
+        'ca': sslDir + 'startssl.pem'
+      }
+    });
+  });
 });
 
 function cleanDir(dirPath) {
@@ -72,8 +95,7 @@ function cleanDir(dirPath) {
 
   try {
     var files = fs.readdirSync(dirPath);
-  }
-  catch (ignored) {
+  } catch (ignored) {
     return;
   }
 
@@ -81,3 +103,19 @@ function cleanDir(dirPath) {
     fs.unlinkSync(dirPath + '/' + fileName);
   });
 }
+
+assert.deepEqualIgnoreOrder = function(actual, expected, message) {
+  var sortObjectKeys = function(unsortedObject) {
+    if (typeof unsortedObject !== 'object') {
+      return unsortedObject;
+    }
+    var sortedObject = {};
+    Object.keys(unsortedObject).sort().forEach(function(k) {
+      sortedObject[k] = sortObjectKeys(unsortedObject[k]);
+    });
+    return sortedObject;
+  };
+
+  assert.deepEqual(sortObjectKeys(actual), sortObjectKeys(expected), message);
+};
+
