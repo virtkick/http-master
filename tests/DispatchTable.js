@@ -324,6 +324,24 @@ describe('DispatchTable dispatcher', function() {
 		});
 	});
 
+
+  it('should run second entry', function(finish) {
+    var dispatchTable = new DispatchTable({
+      config: config,
+      requestHandler: function(req, res, next, target) {
+        target.should.equal('https://atlashost.eu');
+        finish();
+      }
+    });
+    dispatchTable.dispatchRequest({
+      headers: {
+        host: 'atlashost.eu'
+      }
+    }, {}, function(err) {
+      finish(false);
+    });
+  });
+
 	it('should run third entry', function(finish) {
 		var dispatchTable = new DispatchTable({
 			config: config,

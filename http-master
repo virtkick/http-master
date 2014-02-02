@@ -102,6 +102,8 @@ function patchConfigWithArgv(config) {
   }
 }
 
+yaml = require('js-yaml');
+
 function fetchConfig(finish) {
 
   var configloader;
@@ -110,9 +112,13 @@ function fetchConfig(finish) {
   } else {
     configloader = function(argv, data, finish) {
       data = data.replace("\n", "\r\n");
+      var oldWarn = console.warn;
       try {
-        finish(null, jsonLint.parse(data));
+        console.warn = function() {}
+        finish(null, yaml.safeLoad(data));
+        console.warn = oldWarn;
       } catch(err) {
+        console.warn = oldWarn;
         finish(err);
       }
     };
