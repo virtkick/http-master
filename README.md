@@ -14,9 +14,9 @@ Some of the features:
 * Multi-core/cpu friendly. Runs multiple instances/workers which will serve connections in a round-robin fashion. You of course choose to run in the same process without any workers if you use http-master as a module.
 * Support SNI extension - multiple SSL certificates on the same IP.
 * SSL tweaked to reasonable security level supporting TLS session resumption.
-* Automatically watches for config changes and reloads the logic without any downtime (*). Simply start the deamon and add new rules while having the http-master online.
+* Automatically watches for config changes and reloads the logic without any downtime (\*). Simply start the deamon and add new rules while having the http-master online.
 * Asynchronous logging module. Logs either to stdout or to file.
-* Possibility to load config from Redis/etcd or another remote resource. (**)
+* Possibility to load config from Redis/etcd or another remote resource. (\*\*)
 * May drop privileges to user/group once started.
 
 Ongoing development on:
@@ -26,13 +26,17 @@ Ongoing development on:
 * Request/response filters. (including ability to add headers, modify data)
 
 
-(*) Zero downtime is possible, currently downtime may be few milliseconds.
-(**) Needs writing a custom config loader.
+(\*) Zero downtime is possible, currently downtime may be few milliseconds.
+(\*\*) Needs writing a custom config loader.
 
-Usage
-===============
 
-`http-master --config config.json`
+## Installation and usage
+Refer to section [Usage as a module](#module) if you are interested in that use-case.
+
+To install:
+`npm install -g http-master` (may be needed to run as root depending on your setup)
+
+To run: `http-master --config config.json`
 
 Example config:
 
@@ -41,7 +45,7 @@ Example config:
   "ports": {
     "80": {
         "proxy": {
-            "code2flow.*": "127.0.0.1:8099",
+            "code2flow.com": "127.0.0.1:8099",
             "*": "127.0.0.1:8080"
         }
     },
@@ -73,6 +77,53 @@ Example config:
 ```
 
 Each entry in the `ports` is the format that would be normally fed to `node-http-proxy`.
+
+<a name="module"/>
+## Usage as a module
+
+```
+npm install --save http-master
+```
+```
+var HttpMaster = require('http-master');
+var httpMaster = new HttpMaster();
+httpMaster.init({
+ // your config in here
+}, function(err) {
+ // listening
+});;
+```
+####Class: HttpMaster
+
+####Event: 'allWorkersStarted'
+`function()`
+Emitted after succesful `.init()`
+
+####Event: 'allWorkersReloaded'
+`function()`
+Emitted after succesful `.reload()`
+
+####Event: 'logNotice'
+`function(msg)`
+Helpful logging information in case something got wrong.
+
+####Event: 'logError'
+`function(msg)`
+Information about errors that could be logged.
+
+####Event: 'error'
+`function(err)`
+Emitted on failure to listen on any sockets/routes or failure to use given configuration.
+
+#### httpMaster.init(config, [callback])
+Initialize http master with a given config. See the section about config to learn about acceptable input.
+Callback if given will call `function(err)`. This function should be called only once.
+
+#### httpMaster.reload(config, [callback])
+Perform a zero-downtime reload of configuration. Should be very fast and ports will not stop listening.
+Stopping httpMaster may be done using `httpMaster.reload({})`. Which should close all servers.
+
+Note: Changing workerCount is the only thing that may not change.
 
 
 Watch config for changes
