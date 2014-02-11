@@ -45,7 +45,7 @@ function globStringToRegex(str, specialCh) {
 		specialCh = '.';
 	var inside = regexpQuote(str);
 	if(specialCh == '.') {
-		inside = inside.replace(/^\\\*$/g, '(?:(?<host>.+))');
+		inside = inside.replace(/^\\\*$/g, '(?:(?<host>.*))');
 	  inside = inside.replace(/^\\\*\\\?\\\./g, '(?:(.+)\\.)?');
   	inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)');
     inside = inside.replace(/\\\.\\\*\\\?/g, '(?:\\.([^'+specialCh+']+))?');    
@@ -159,7 +159,7 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
 
 DispatchTable.prototype.getTargetForReq = function(req) {
 	var i, m;
-	var host = req.unicodeHost || req.headers.host;
+	var host = req.unicodeHost || req.headers.host || ''; // host can be undefined
 
 	if (this.table[host]) {
 		if (this.table[host].target) {
