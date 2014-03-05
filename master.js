@@ -46,7 +46,7 @@ function HttpMaster()
     self.logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
     workers[worker.id - 1] = undefined;
     var newWorker = initWorker.call(self, function() {
-      self.logNotice("Worker", newWorker.id, "started in place of worker", worker.id);
+      self.logNotice("Worker " + newWorker.id + " started in place of worker " + worker.id);
       workers[newWorker.id - 1] = newWorker;
     });
   });
