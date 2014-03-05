@@ -47,6 +47,8 @@ proxy.on('error', function(err, req, res) {
   req.next();
 });
 
+var httpAuth = require('http-auth');
+
 module.exports = {
   priority: 8,
   middleware: function(config) {
@@ -87,18 +89,33 @@ module.exports = {
 
     return new DispatchTable({
       config: config.proxy,
-      requestHandler: function(req, res, next, target) {
+      requestHandler: function(req, res, next, dispatchTarget) {
         req.connection.proxy = proxy;
         req.next = next;
-        target = rewriteTargetAndPathIfNeeded(req, target);
-        proxy.web(req, res, {target: target});
+
+        var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget.target);
+        if(dispatchTarget.auth) {
+          dispatchTarget.auth(req, res, function(err) {
+            // delete the authorization header
+            delete req.headers.authorization;
+            proxy.web(req, res, {target: proxyTarget});
+          });
+        }
+        else {
+          proxy.web(req, res, {target: proxyTarget});
+        }
       },
       upgradeHandler: function(req, socket, head, target) {
         target = rewriteTargetAndPathIfNeeded(req, target);
         proxy.ws(req, socket, head, {target: target});
       },
       entryParser: function(entryKey, entry) {
-        return [entryKey,  parseEntry(entry)];
+        var parsedEntry = parseEntry(entry.target || entry);
+        var entryResult = {
+          target: parsedEntry,
+          auth: ((typeof entry.auth === 'object')? httpAuth.connect(httpAuth.basic(entry.auth)): undefined)
+        };
+        return [entryKey, entryResult];
       },
       port: config.port
     });

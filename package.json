@@ -29,7 +29,8 @@
     "node-static": "~0.7.2",
     "spdy": "~1.17.22",
     "uid-number": "0.0.3",
-    "js-yaml": "~3.0.1"
+    "js-yaml": "~3.0.1",
+    "http-auth": "~2.1.6"
   },
   "devDependencies": {
     "mocha": "~1.16.1",
