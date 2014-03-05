@@ -111,9 +111,21 @@ module.exports = {
       },
       entryParser: function(entryKey, entry) {
         var parsedEntry = parseEntry(entry.target || entry);
+
+        var authConfig = entry.auth;
+        if(typeof authConfig === 'object') {
+          authConfig.realm = authConfig.realm || 'Enter password';
+        }
+        else if(typeof authConfig === 'string') {
+          authConfig = {
+            file: authConfig,
+            realm: 'Enter password'
+          }
+        }
+
         var entryResult = {
           target: parsedEntry,
-          auth: ((typeof entry.auth === 'object')? httpAuth.connect(httpAuth.basic(entry.auth)): undefined)
+          auth: ((typeof authConfig === 'object')? httpAuth.connect(httpAuth.basic(authConfig)): undefined)
         };
         return [entryKey, entryResult];
       },
