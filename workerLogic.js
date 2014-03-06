@@ -203,7 +203,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       var baseModule = config.ssl.spdy ? require('spdy') : https;
       server = baseModule.createServer(config.ssl, handler.request);
 
-      if(config.ssl.skipWorkerSessionResumption) {
+      if(!config.ssl.skipWorkerSessionResumption) {
         server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
         server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
 
