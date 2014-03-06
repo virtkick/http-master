@@ -44,11 +44,14 @@ var worker = new HttpMasterWorker({
   tlsSessionStore: {
     get: function(id, cb) {
       process.once('msg:session:' + id.toString('base64'), function(data) {
-        cb(null, new Buffer(data, 'base64'), null);
+        logNotice("Got session data " + data);
+        cb(null, data.length ? new Buffer(data, 'base64') : null, null);
       });
+      logNotice("Get session data " + id.toString('base64'));
       process.sendMessage('tlsSession:get', id.toString('base64'));
     },
     set: function(id, data, cb) {
+      logNotice("Set session data " + id.toString('base64') + " " + data.toString('base64'));
       process.sendMessage('tlsSession:set', {
         id: id.toString('base64'),
         data: data.toString('base64')
