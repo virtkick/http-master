@@ -128,7 +128,20 @@ function loadKeysforConfigEntry(config, callback) {
         var todo = [];
         for (key in SNI)
           todo.push(key);
+
         async.each(todo, function(key, sniLoaded) {
+          SNI[key].ciphers = SNI[key].ciphers || config.ssl.ciphers;
+          SNI[key].honorCipherOrder = SNI[key].honorCipherOrder || config.ssl.honorCipherOrder;
+          SNI[key].ecdhCurve = SNI[key].ecdhCurve || config.ssl.ecdhCurve;
+
+          // joyent/node#7249
+          if(SNI[key].honorCipherOrder) {
+            SNI[key].secureOptions = require('constants').SSL_OP_CIPHER_SERVER_PREFERENCE;
+          }
+          if(!SNI[key].ecdhCurve) {
+            SNI[key].ecdhCurve = require('tls').DEFAULT_ECDH_CURVE;
+          }
+
           loadKeysForContext(SNI[key], function(err) {
             if (err) return sniLoaded(err);
             try {
@@ -199,10 +212,10 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
         });
       }
 
-      if(config.ssl.honorCipherOrder !== false) {
-        // prefer server ciphers over clients - prevents BEAST attack
-        config.ssl.honorCipherOrder = true;
-      }
+      // if(config.ssl.honorCipherOrder !== false) {
+      //   // prefer server ciphers over clients - prevents BEAST attack
+      //   config.ssl.honorCipherOrder = true;
+      // }
 
     } else {
       server = http.createServer(handler.request);
