@@ -203,13 +203,15 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       var baseModule = config.ssl.spdy ? require('spdy') : https;
       server = baseModule.createServer(config.ssl, handler.request);
 
-      server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
-      server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
+      if(config.ssl.skipWorkerSessionResumption) {
+        server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
+        server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
 
-      if(self.token) {
-        server._setServerData({
-          ticketKeys: self.token
-        });
+        if(self.token) {
+          server._setServerData({
+            ticketKeys: self.token
+          });
+        }
       }
 
       // if(config.ssl.honorCipherOrder !== false) {
