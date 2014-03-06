@@ -1,6 +1,6 @@
 {
   "name": "http-master",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "master.js",
   "scripts": {
