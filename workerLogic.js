@@ -8,7 +8,8 @@ var path = require('path'),
   https = require('https'),
   cluster = require('cluster'),
   async = require('async'),
-  regexpQuote = require('./DispatchTable').regexpQuote;
+  regexpQuote = require('./DispatchTable').regexpQuote,
+  url = require('url');
 
 var EventEmitter = require('events').EventEmitter;
 
@@ -244,6 +245,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
   server.once('error', errorHandler);
 
   server.on('upgrade', function(req, socket, head) {
+    req.parsedUrl = url.parse(req.url);
     for (var i = 0; i < upgradeHandlers.length; ++i) {
       if (upgradeHandlers[i](req, socket, head)) { // ws handled
         break;

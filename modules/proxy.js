@@ -105,9 +105,9 @@ module.exports = {
           proxy.web(req, res, {target: proxyTarget});
         }
       },
-      upgradeHandler: function(req, socket, head, target) {
-        target = rewriteTargetAndPathIfNeeded(req, target);
-        proxy.ws(req, socket, head, {target: target});
+      upgradeHandler: function(req, socket, head, dispatchTarget) {
+        var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget.target);
+        proxy.ws(req, socket, head, {target: proxyTarget});
       },
       entryParser: function(entryKey, entry) {
         var parsedEntry = parseEntry(entry.target || entry);
