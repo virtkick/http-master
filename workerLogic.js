@@ -209,9 +209,13 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
         server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
 
         if(self.token) {
-          server._setServerData({
-            ticketKeys: self.token
-          });
+          if(server._setServerData) {
+            server._setServerData({
+              ticketKeys: self.token
+            });
+          } else {
+            self.logNotice("SSL/TLS ticket session resumption may not work due to missing method _setServerData method, you might be using an old version of Node");
+          }
         }
       }
 
