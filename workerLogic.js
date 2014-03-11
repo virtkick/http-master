@@ -307,6 +307,8 @@ function handleConfig(config, configHandled) {
           var entryString = (configEntry.host ? configEntry.host + ":" + configEntry.port : "port " + configEntry.port);
           if (err) {
             self.logError("Error while starting entry " + entryString + " : " + err.toString());
+            if(err.stack)
+              self.logError(err.stack);
           }
           if (server) {
             self.logNotice("Listening on port: " + entryString);
