@@ -214,7 +214,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
               ticketKeys: self.token
             });
           } else {
-            self.logNotice("SSL/TLS ticket session resumption may not work due to missing method _setServerData method, you might be using an old version of Node");
+            self.logNotice("SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node");
           }
         }
       }
