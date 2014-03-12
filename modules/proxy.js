@@ -93,6 +93,11 @@ module.exports = {
         req.connection.proxy = proxy;
         req.next = next;
 
+        // workaround for node-http-proxy/#591
+        if(!req.headers.host) {
+          req.headers.host = '';
+        }
+
         var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget.target);
         if(dispatchTarget.auth) {
           dispatchTarget.auth(req, res, function(err) {
