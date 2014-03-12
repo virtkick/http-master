@@ -19,7 +19,7 @@
   "author": "Damian Kaczmarek <damian@codecharm.co.uk>",
   "license": "BSD",
   "dependencies": {
-    "http-proxy": "~1.0.1",
+    "http-proxy": "^1.0.2",
     "optimist": "~0.6.0",
     "extend": "~1.2.1",
     "jsonlint-lines": "~1.6.0",

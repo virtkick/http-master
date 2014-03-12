@@ -43,7 +43,7 @@ function HttpMaster()
   cluster.on('exit', function(worker, code, signal) {
     if(!self.autoRestartWorkers)
       return;
-    self.logError("Worker " + worker.id + " failed with code " + code, "... starting replacement");
+    self.logError("Worker " + worker.id + " failed with code " + code + "/" + signal + " ... starting replacement");
     workers[worker.id - 1] = undefined;
     var newWorker = initWorker.call(self, function() {
       self.logNotice("Worker " + newWorker.id + " started in place of worker " + worker.id);
