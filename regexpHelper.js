@@ -20,7 +20,6 @@ module.exports = function(href, hostMatch, pathMatch) {
   if(hostMatch) {
     pathMatchOffset = hostMatch.length - 1;
   }
-  console.log("Regexp helper", href);
   href = processMatch(href, hostMatch);
 
   href = processMatch(href, pathMatch, pathMatchOffset);

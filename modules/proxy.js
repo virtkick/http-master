@@ -23,7 +23,7 @@ function parseEntry(entry) {
     if((m = entry.match(/^\d+(?:|\/.*)$/))) {
       entry = '127.0.0.1:' + entry;
     }
-    if(!entry.match(/https?\/\//)) {
+    if(!entry.match(/https?:\/\//)) {
       entry = 'http://' + entry;
     }
   }
