@@ -228,6 +228,13 @@ We provide an example systemd unit file. The config file is set to /etc/http-mas
 * `systemctl enable http-master` - auto-start
 * `systemctl reload http-master` - reload config with `kill -USR1`
 
+
+<a name="sponsors"/>
+## Sponsors
+
+[eeGeo](http://sdk.eegeo.com/) - basic HTTP authentication against htpasswd file [#32](https://github.com/CodeCharmLtd/http-master/issues/32)
+
+
 <a name="license"/>
 ## License
 Copyright (c) 2013-2014 Code Charm Ltd
