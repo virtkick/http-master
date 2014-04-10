@@ -4,7 +4,7 @@
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "master.js",
   "scripts": {
-    "test": "mocha tests/"
+    "test": "./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha tests/"
   },
   "repository": {
     "type": "git",
@@ -33,6 +33,8 @@
     "http-auth": "~2.1.6"
   },
   "devDependencies": {
+    "codeclimate-test-reporter": "~0.0.2",
+    "istanbul": "~0.2.7",
     "mocha": "~1.16.1",
     "should": "~2.1.1"
   }
