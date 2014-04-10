@@ -1,5 +1,6 @@
 ![http-master](https://raw.github.com/CodeCharmLtd/http-master/master/assets/http-master.png)
 ===============
+[![Build Status](https://travis-ci.org/CodeCharmLtd/http-master.svg?branch=master)](https://travis-ci.org/CodeCharmLtd/http-master)
 
 * [About](#about)
 * [Installation and usage](#installandusage)
