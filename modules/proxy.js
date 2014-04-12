@@ -128,9 +128,13 @@ module.exports = {
           }
         }
 
+        var auth;
+        if(typeof authConfig === 'object') {
+          auth = httpAuth.connect(httpAuth.basic(authConfig));
+        }
         var entryResult = {
           target: parsedEntry,
-          auth: ((typeof authConfig === 'object')? httpAuth.connect(httpAuth.basic(authConfig)): undefined)
+          auth: auth
         };
         return [entryKey, entryResult];
       },

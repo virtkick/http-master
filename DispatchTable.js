@@ -88,6 +88,7 @@ function DispatchTable(params) {
 	this.upgradeHandler = params.upgradeHandler;
 	this.table = {};
 	this.regexpEntries = [];
+	this.failedEntries = {};
 	Object.keys(config).forEach(function(entryKey) {
 		var entry = config[entryKey];
 
@@ -98,9 +99,19 @@ function DispatchTable(params) {
 		var entryPath = entryKeyData[1];
 
 		if (parseEntry) {
-			var parsed = parseEntry(entryKey, entry);
-			entryKey = parsed[0];
-			entry = parsed[1];
+			try {
+				var parsed = parseEntry(entryKey, entry);
+				entryKey = parsed[0];
+				entry = parsed[1];
+			} catch(err) {
+				// save failed parsed entry for future
+				// error reporting
+				self.failedEntries[entryKey] = {
+					err: err,
+					entry: entry
+				};
+				return;
+			}
 		}
 		entry = {
 			target: entry,

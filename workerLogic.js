@@ -186,6 +186,11 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
   var upgradeHandlers = [];
 
   runModules(function(name, middleware) {
+    Object.keys(middleware.failedEntries).forEach(function(key) {
+      var failedEntry = middleware.failedEntries[key];
+      self.logError('Failed starting entry ' + key + ' : ' + JSON.stringify(failedEntry.entry));
+      self.logError(failedEntry.err);
+    });
 
     middlewares.push(middleware);
     if (typeof middleware == 'function')
@@ -301,7 +306,6 @@ function handleConfig(config, configHandled) {
           host: host,
           port: port,
         }, portConfig);
-
 
         handleConfigEntry.call(self, configEntry, function(err, server) {
           var entryString = (configEntry.host ? configEntry.host + ":" + configEntry.port : "port " + configEntry.port);
