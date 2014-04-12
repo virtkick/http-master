@@ -14,12 +14,14 @@ function logError(str) {
 }
 var logNotice = logError;
 
+
 var help = [
   "usage: http-master [options] ",
   "",
   "Starts a http-master server using the specified command-line options",
   "",
   "options:",
+  "  --version",
   "  --config CONFIGFILE     Configuration file (YAML or JSON)",
   "  --configloader JS-FILE  Provide js file as config loader",
   "  --configloader-test     Test config configloader by printing out its output",
@@ -33,6 +35,10 @@ var help = [
 
 if (argv.h || argv.help || Object.keys(argv).length === 2) {
   return console.log(help);
+}
+
+if(argv.version) {
+  return console.log(JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'))).version);
 }
 
 var location, config = {},
@@ -77,6 +83,7 @@ function dropPrivileges() {
         strInfo = user;
     }
   }
+
   if (!droppedPrivileges && strInfo)
     logNotice("Dropped privileges to: " + strInfo);
   droppedPrivileges = true;
