@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-#  - "0.11"
+  - "0.11"
   - "0.10"
 addons:
   code_climate:
@@ -9,3 +9,4 @@ addons:
 script:
   - ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha tests/
   - cat coverage/lcov.info | ./node_modules/codeclimate-test-reporter/bin/codeclimate.js
+

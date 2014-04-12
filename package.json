@@ -38,6 +38,6 @@
     "should": "~2.1.1"
   },
   "optionalDependencies": {
-    "codeclimate-test-reporter": "~0.0.2"
+    "codeclimate-test-reporter": "~0.0.3"
   }
 }
