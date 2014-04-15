@@ -1,6 +1,6 @@
 {
   "name": "http-master",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "master.js",
   "scripts": {
@@ -17,6 +17,9 @@
   ],
   "bin": "./http-master",
   "author": "Damian Kaczmarek <damian@codecharm.co.uk>",
+  "contributors": [
+    "Damian Nowak <damian.nowak@atlashost.eu>"
+  ],
   "license": "BSD",
   "dependencies": {
     "http-proxy": "~1.0.1",
