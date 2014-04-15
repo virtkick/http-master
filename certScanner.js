@@ -18,6 +18,9 @@ module.exports = function(sslDirectory) {
   this.scan = function(cb) {
     var config = {};
 
+    var keys = {};
+    var certs = {};
+
     function processDirectory(dirName, cb) {
       fs.readdir(dirName, function(err, files) {
         if(err) return cb(err);
@@ -31,7 +34,14 @@ module.exports = function(sslDirectory) {
             if(statData.isDirectory())
               return processDirectory(certPath, cb);
 
-            that.getDomainsFrom(certPath, function(err, altNames) {
+            that.getCertOrPem(certPath, function(err, cert, pem) {
+              if(pem) {
+                keys[pem.publicExponent] = certPath;
+                return cb();
+              }
+              var altNames = cert.altNames;
+              certs[certPath] = cert.publicExponent;
+
               if(err)  {
                 if(err.toString().match(/Unable to parse certificate/))
                   return cb(null);
@@ -60,17 +70,32 @@ module.exports = function(sslDirectory) {
       });
     }
     processDirectory(this.sslDirectory, function(err) {
+
+      Object.keys(config).forEach(function(domain) {
+        var key = keys[certs[config[domain].cert]];
+        if(key) {
+          config[domain].key = key;
+        }
+      });
+
       cb(err, config);
     });
   };
 
-  this.getDomainsFrom = function(certPath, cb) {
+  this.getCertOrPem = function(certPath, cb) {
     fs.readFile(certPath, 'utf8', function(err, rawCert) {
       if(err) return cb(err);
       try {
         var cert = x509.parseCert(rawCert);
-        cb(null, cert.altNames);
+        cb(null, cert);
       } catch(err) {
+
+        try {
+          var pem = x509.parsePem(rawCert);
+          return cb(null, null, pem);
+        } catch(err2) {
+
+        }
         cb(err);
       }
     });
@@ -80,9 +105,9 @@ module.exports = function(sslDirectory) {
     fs.readFile(certPath, 'utf8', function(err, rawCert) {
       if(err) return cb(err);
 
-      var expectedIssuer;
+      var parsedCert;
       try {
-        expectedIssuer = x509.parseCert(rawCert).issuer;
+        parsedCert = x509.parseCert(rawCert);
       } catch(err) {
         return cb(err);
       }
@@ -100,7 +125,7 @@ module.exports = function(sslDirectory) {
             fs.stat(certPath, function(err, statData) {
 
               if(statData.isDirectory()) {
-                return processDirectory(certPath, cb);
+                return processDirectory(certPath, cb)
               }
 
               that.getCaCertsFromFile(certPath, function(err, certs) {
@@ -110,7 +135,7 @@ module.exports = function(sslDirectory) {
                   return cb(false);
                 }
                 return cb(certs.some(function(cert) {
-                  return that.issuerMatches(cert, expectedIssuer);
+                  return that.caMatches(cert, parsedCert);
                 }));
               });
             });
@@ -146,12 +171,16 @@ module.exports = function(sslDirectory) {
     });
   };
 
-  this.issuerMatches = function(cert, expectedIssuer) {
-    var foundIssuer = cert.issuer;
+  this.caMatches = function(caCert, issuedCertificatedbyCA) {
+    var subject = caCert.subject;
 
-    return expectedIssuer.countryName === foundIssuer.countryName &&
-        expectedIssuer.organizationName === foundIssuer.organizationName &&
-        expectedIssuer.organizationalUnitName === foundIssuer.organizationalUnitName;
+    var expectedIssuer = issuedCertificatedbyCA.issuer;
+
+    return expectedIssuer.countryName === subject.countryName &&
+        expectedIssuer.organizationName === subject.organizationName &&
+        expectedIssuer.organizationalUnitName === subject.organizationalUnitName &&
+        expectedIssuer.commonName === subject.commonName &&
+        caCert.publicModulus === issuedCertificatedbyCA.publicModulus;
   };
 
   var beginCertToken = '-----BEGIN CERTIFICATE-----';

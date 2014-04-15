@@ -45,8 +45,8 @@ describe('SSL directory scanner', function() {
 
   it('finds all domains from certificate file', function(cb) {
     useFiles('unizeto-jira-e-instruments.com.pem');
-    scanner.getDomainsFrom(sslDir + 'unizeto-jira-e-instruments.com.pem', function(err, domains) {
-      assert.sameMembers(domains, ['www.jira-e-instruments.com', 'jira-e-instruments.com']);
+    scanner.getCertOrPem(sslDir + 'unizeto-jira-e-instruments.com.pem', function(err, cert) {
+      assert.sameMembers(cert.altNames, ['www.jira-e-instruments.com', 'jira-e-instruments.com']);
       cb(err);
     });
   });
