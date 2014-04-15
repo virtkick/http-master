@@ -220,18 +220,18 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
 
   function actualReload(config) {
     self.config = config;
-    var workers = this.workers;
+    var workers = self.workers;
 
     var startTime = new Date().getTime();
 
-    if(config.workerCount != this.workerCount) {
-      this.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
+    if(config.workerCount != self.workerCount) {
+      self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
       process.exit(1);
       return;
     }
 
-    if(this.singleWorker) {
-      this.singleWorker.loadConfig(config, function(err) {
+    if(self.singleWorker) {
+      self.singleWorker.loadConfig(config, function(err) {
         exitIfEACCES.call(self, err);
         if(!err)
           self.emit('allWorkersReloaded');
