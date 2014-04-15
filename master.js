@@ -16,7 +16,7 @@ require('crypto').randomBytes(48, function(ex, buf) {
 // TODO: Windows support?
 function exitIfEACCES(err)
 {
-  if(err && err.syscall == 'bind' && err.code == 'EACCES') {
+  if(err && err.syscall === 'bind' && err.code === 'EACCES') {
     this.logError("Unable to bind to port, exiting! Hopefully we will be restarted with privileges to bind the port.");
     process.exit(1);
   }
@@ -44,8 +44,9 @@ this.autoRestartWorkers = true;
 
   var self = this;
   cluster.on('exit', function(worker, code, signal) {
-    if(!self.autoRestartWorkers)
+    if(!self.autoRestartWorkers) {
       return;
+    }
     self.logError("Worker " + worker.id + " failed with code " + code + "/" + signal + " ... starting replacement");
     workers[worker.id - 1] = undefined;
     var newWorker = initWorker.call(self, function() {
@@ -93,8 +94,9 @@ function initWorker(cb) {
 
   worker.on('msg:tlsSession:get', function(id) {
     var data = '';
-    if(self.tlsSessionStore[id])
+    if(self.tlsSessionStore[id]) {
       data = self.tlsSessionStore[id].data;
+    }
     worker.sendMessage('session:'+id, data);
   });
 
@@ -114,10 +116,46 @@ HttpMaster.prototype.logError = function(msg) {
 
 
 function normalizeCert(cert) {
+  cert = cert.toString('utf8');
   if (!cert.match(/\n$/g)) {
     return cert + "\n";
   }
   return cert;
+}
+
+function loadForCaBundle(context, callback) {
+  var chain = normalizeCert(fs.readFileSync(context.ca, 'utf8'));
+  chain = chain.split("\n");
+  context.ca = [];
+  var cert = [];
+  chain.forEach(function(line) {
+    if (line.length == 0)
+      return;
+    cert.push(line);
+    if (line.match(/-END CERTIFICATE-/)) {
+      context.ca.push(cert.join("\n") + "\n");
+      cert = [];
+    }
+  });
+  callback();
+}
+
+function loadForCaArray(context, callback) {
+  var caArray = context.ca;
+
+  if(context.ca.length) {
+    async.parallel(context.ca.map(function(elem, i) {
+      return function(cb) {
+        fs.readFile(caArray[i], 'utf8', function(err, data) {
+          context.ca[i] = normalizeCert(data);
+          cb(err);
+        });
+      }
+    }), callback);
+  }
+  else {
+    callback();
+  }
 }
 
 function loadKeysForContext(context, callback) {
@@ -125,29 +163,11 @@ function loadKeysForContext(context, callback) {
   async.each(Object.keys(context), function(key, keyFinished) {
     // If CA certs are specified, load those too.
     if (key === "ca") {
-      if (typeof context.ca == 'object') {
-        for (var i = 0; i < context.ca.length; i++) {
-          if (context.ca === undefined) {
-            context.ca = [];
-          }
-          context.ca[i] = normalizeCert(fs.readFileSync(context[key][i], 'utf8'));
-        }
+      if (typeof context.ca === 'object') {
+        loadForCaArray(context, keyFinished);
       } else {
-        var chain = normalizeCert(fs.readFileSync(context.ca, 'utf8'));
-        chain = chain.split("\n");
-        context.ca = [];
-        var cert = [];
-        chain.forEach(function(line) {
-          if (line.length == 0)
-            return;
-          cert.push(line);
-          if (line.match(/-END CERTIFICATE-/)) {
-            context.ca.push(cert.join("\n") + "\n");
-            cert = [];
-          }
-        });
+        loadForCaBundle(context, keyFinished);
       }
-      keyFinished();
     } else if (key == "cert" || key == "key") {
 
       fs.readFile(context[key], function(err, data) {
@@ -224,7 +244,7 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
 
     var startTime = new Date().getTime();
 
-    if(config.workerCount != self.workerCount) {
+    if(config.workerCount !== self.workerCount) {
       self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
       process.exit(1);
       return;
