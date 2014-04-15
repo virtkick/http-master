@@ -2,7 +2,7 @@
 require('es6-shim');
 var x509 = require('x509');
 var fs = require('fs');
-
+var async = require('async');
 
 module.exports = function(sslDirectory) {
   var that = this;
@@ -11,59 +11,81 @@ module.exports = function(sslDirectory) {
     this.sslDirectory += '/';
   }
 
-  this.scan = function() {
+  this.scan = function(cb) {
     var config = {};
 
     var files = fs.readdirSync(this.sslDirectory);
-    files.forEach(function(certFile) {
-      var certPath = that.sslDirectory + certFile;
-      that.getDomainsFrom(certPath).forEach(function(domain) {
-        config[domain] = {};
-        config[domain].cert = certPath;
 
-        var ca = that.getCaFor(certPath);
-        if (ca) {
-          config[domain].ca = ca;
-        }
+
+    async.each(files, function(certFile, cb) {
+      var certPath = that.sslDirectory + certFile;
+
+      that.getDomainsFrom(certPath, function(err, altNames) {
+        if(err) return cb(err);
+
+        async.each(altNames, function(domain, cb) {
+          config[domain] = {};
+          config[domain].cert = certPath;
+
+          that.getCaFor(certPath, function(err, ca) {
+            if (ca) {
+              config[domain].ca = ca;
+            }
+            cb(err);
+          });
+        }, cb);
+
       });
+    }, function(err) {
+      cb(err, config);
     });
 
-    return config;
+    //cb(config);
   };
 
-  this.getDomainsFrom = function(certPath) {
-    var rawCert = fs.readFileSync(certPath).toString();
-    var cert = x509.parseCert(rawCert);
-    return cert.altNames;
+  this.getDomainsFrom = function(certPath, cb) {
+    fs.readFile(certPath, 'utf8', function(err, rawCert) {
+      if(err) return cb(err);
+      try {
+        var cert = x509.parseCert(rawCert);
+        cb(null, cert.altNames);
+      } catch(err) {
+        cb(err);
+      }
+    });
   };
 
-  this.getCaFor = function(certPath) {
+  this.getCaFor = function(certPath, cb) {
     var rawCert = fs.readFileSync(certPath).toString();
     var expectedIssuer = x509.parseCert(rawCert).issuer;
 
-    var files = fs.readdirSync(this.sslDirectory);
-    var ca = files.filter(function(certFile) {
-      var certPath = that.sslDirectory + certFile;
-      var certs = that.getCaCertsFromFile(certPath);
-      if (that.isDomainCert(certs)) {
-        return false;
-      }
-      return certs.some(function(cert) {
-        return that.issuerMatches(cert, expectedIssuer);
+    fs.readdir(this.sslDirectory, function(err, files) {
+      if(err) return cb(err);
+
+      async.filter(files, function(certFile, cb) {
+        var certPath = that.sslDirectory + certFile;
+        that.getCaCertsFromFile(certPath, function(err, certs) {
+          if (that.isDomainCert(certs)) {
+            return cb(false);
+          }
+          return cb(certs.some(function(cert) {
+            return that.issuerMatches(cert, expectedIssuer);
+          }));
+        });
+      }, function(ca) {
+        ca = ca.map(function(fileName) {
+          return that.sslDirectory + fileName;
+        });
+
+        if (ca.length === 0) {
+          cb(null, null);
+        } else if (ca.length === 1) {
+          cb(null, ca[0]);
+        } else {
+          cb(null, ca);
+        }
       });
     });
-
-    ca = ca.map(function(fileName) {
-      return that.sslDirectory + fileName;
-    });
-
-    if (ca.length === 0) {
-      return null;
-    } else if (ca.length === 1) {
-      return ca[0];
-    } else {
-      return ca;
-    }
   };
 
   this.isDomainCert = function(certs) {
@@ -82,20 +104,27 @@ module.exports = function(sslDirectory) {
 
   var beginCertToken = '-----BEGIN CERTIFICATE-----';
   var endCertToken = '-----END CERTIFICATE-----';
-  this.getCaCertsFromFile = function(certPath) {
+  this.getCaCertsFromFile = function(certPath, cb) {
     // TODO: This can possibly be replaced with some regexp.
-    var certFileContent = fs.readFileSync( certPath).toString();
-    var possibleCerts = certFileContent.split(beginCertToken);
-    var certs = [];
-    possibleCerts.forEach(function(cert) {
-      var endTokenIndex = cert.indexOf(endCertToken);
-      if (endTokenIndex === -1) {
-        return null;
-      }
-      var rawCert = cert.substring(0, endTokenIndex);
-      var parsedCert = beginCertToken + rawCert + endCertToken;
-      certs.push(x509.parseCert(parsedCert));
+    fs.readFile(certPath, 'utf8', function(err, certFileContent) {
+      if(err) return cb(err);
+
+      var possibleCerts = certFileContent.split(beginCertToken);
+      var certs = [];
+      possibleCerts.forEach(function(cert) {
+        var endTokenIndex = cert.indexOf(endCertToken);
+        if (endTokenIndex === -1) {
+          return null;
+        }
+        var rawCert = cert.substring(0, endTokenIndex);
+        var parsedCert = beginCertToken + rawCert + endCertToken;
+        try {
+          certs.push(x509.parseCert(parsedCert));
+        } catch(err) {
+          
+        }
+      });
+      cb(null, certs);
     });
-    return certs;
   };
 };
