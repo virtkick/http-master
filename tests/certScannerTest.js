@@ -1,13 +1,17 @@
 'use strict';
 require('mocha');
 var assert = require('chai').assert;
-var fs = require('fs');
+var fs = require('fs.extra');
+var path = require('path');
+
+//TODO: test to find out if bad files are properly ignored
+//TODO: test to find out how errors are handled
 
 
 describe('SSL directory scanner', function() {
   var SslScanner = require('../certScanner');
-  var realSslDir = './tests/certs/';
-  var sslDir = './tests/.work/';
+  var realSslDir = 'tests/certs/';
+  var sslDir = 'tests/.work/';
   var scanner = null;
 
   beforeEach(function() {
@@ -28,8 +32,13 @@ describe('SSL directory scanner', function() {
     }
 
     files.forEach(function(file) {
-      var fromReal = fs.realpathSync(realSslDir + file);
-      var toReal = fs.realpathSync(sslDir) + '/' + file;
+      var parts = file.split(/:/);
+      file = parts[0];
+      var subdir = (parts.length > 1) ? parts[1] : '';
+
+      var fromReal = fs.realpathSync(path.join(realSslDir, file));
+      var toReal = path.join(fs.realpathSync(sslDir), subdir, file);
+      fs.mkdirRecursiveSync(path.dirname(toReal));
       fs.symlinkSync(fromReal, toReal);
     });
   };
@@ -161,6 +170,72 @@ describe('SSL directory scanner', function() {
     });
   });
 
+  it('finds all certificates in subdirectories', function(cb) {
+    useFiles('startssl-wildcard.pacmanvps.com.pem:pacmanvps.com',
+        'unizeto-jira-e-instruments.com.pem:jira-e-instruments.com',
+        'unizeto-wildcard.softwaremill.com.pem:softwaremill.com');
+
+    scanner.scan(function(err, scannedConfig) {
+      assert.deepEqualIgnoreOrder(scannedConfig, {
+        'pacmanvps.com': {
+          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem'
+        },
+        '*.pacmanvps.com': {
+          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem'
+        },
+        'jira-e-instruments.com': {
+          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem'
+        },
+        'www.jira-e-instruments.com': {
+          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem'
+        },
+        'softwaremill.com': {
+          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem'
+        },
+        '*.softwaremill.com': {
+          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem'
+        }
+      });
+      cb(err);
+    });
+  });
+
+  it('finds all certificates and its CA in subdirectories', function(cb) {
+    useFiles('startssl-wildcard.pacmanvps.com.pem:pacmanvps.com', 'startssl.pem:ca/startssl',
+        'unizeto-jira-e-instruments.com.pem:jira-e-instruments.com', 'unizeto-wildcard.softwaremill.com.pem:softwaremill.com', 'unizeto.pem:ca/unizeto');
+
+    scanner.scan(function(err, scannedConfig) {
+      assert.deepEqualIgnoreOrder(scannedConfig, {
+        'pacmanvps.com': {
+          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem',
+          'ca': sslDir + 'ca/startssl/startssl.pem'
+        },
+        '*.pacmanvps.com': {
+          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem',
+          'ca': sslDir + 'ca/startssl/startssl.pem'
+        },
+        'jira-e-instruments.com': {
+          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem',
+          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+        },
+        'www.jira-e-instruments.com': {
+          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem',
+          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+        },
+        'softwaremill.com': {
+          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem',
+          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+        },
+        '*.softwaremill.com': {
+          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem',
+          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+        }
+      });
+      cb(err);
+    });
+  });
+
+
 });
 
 function cleanDir(dirPath) {
@@ -180,7 +255,8 @@ function cleanDir(dirPath) {
   }
 
   files.forEach(function(fileName) {
-    fs.unlinkSync(dirPath + '/' + fileName);
+    //console.log(path.join(dirPath, fileName));
+    fs.rmrfSync(path.join(dirPath, fileName));
   });
 }
 

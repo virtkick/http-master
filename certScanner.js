@@ -3,9 +3,13 @@ require('es6-shim');
 var x509 = require('x509');
 var fs = require('fs');
 var async = require('async');
+var path = require('path');
 
 module.exports = function(sslDirectory) {
   var that = this;
+  if(!sslDirectory)
+    throw new Error("sslDirectory as first argument is mandatory");
+
   this.sslDirectory = sslDirectory;
   if (!sslDirectory.endsWith('/')) {
     this.sslDirectory += '/';
@@ -14,31 +18,49 @@ module.exports = function(sslDirectory) {
   this.scan = function(cb) {
     var config = {};
 
-    fs.readdir(this.sslDirectory, function(err, files) {
-      if(err) return cb(err);
-      
-      async.each(files, function(certFile, cb) {
-        var certPath = that.sslDirectory + certFile;
+    function processDirectory(dirName, cb) {
+      fs.readdir(dirName, function(err, files) {
+        if(err) return cb(err);
 
-        that.getDomainsFrom(certPath, function(err, altNames) {
-          if(err) return cb(err);
+        async.each(files, function(certFile, cb) {
+          var certPath = path.join(dirName, certFile);
 
-          async.each(altNames, function(domain, cb) {
-            config[domain] = {};
-            config[domain].cert = certPath;
+          fs.stat(certPath, function(err, statData) {
+            if(err) return cb(err);
 
-            that.getCaFor(certPath, function(err, ca) {
-              if (ca) {
-                config[domain].ca = ca;
+            if(statData.isDirectory())
+              return processDirectory(certPath, cb);
+
+            that.getDomainsFrom(certPath, function(err, altNames) {
+              if(err)  {
+                if(err.toString().match(/Unable to parse certificate/))
+                  return cb(null);
+                return cb(err);
               }
-              cb(err);
-            });
-          }, cb);
 
+              async.each(altNames, function(domain, cb) {
+                config[domain] = {};
+                config[domain].cert = certPath;
+
+                that.getCaFor(certPath, function(err, ca) {
+                  if (ca) {
+                    config[domain].ca = ca;
+                  }
+                  cb(err);
+                });
+              }, cb);
+
+            });
+
+
+          });
+        }, function(err) {
+          cb(err);
         });
-      }, function(err) {
-        cb(err, config);
       });
+    }
+    processDirectory(this.sslDirectory, function(err) {
+      cb(err, config);
     });
   };
 
@@ -58,34 +80,62 @@ module.exports = function(sslDirectory) {
     fs.readFile(certPath, 'utf8', function(err, rawCert) {
       if(err) return cb(err);
 
-      var expectedIssuer = x509.parseCert(rawCert).issuer;
+      var expectedIssuer;
+      try {
+        expectedIssuer = x509.parseCert(rawCert).issuer;
+      } catch(err) {
+        return cb(err);
+      }
 
-      fs.readdir(that.sslDirectory, function(err, files) {
+      var caResults = [];
+
+      function processDirectory(dirName, cb) {
+        fs.readdir(dirName, function(err, files) {
+
+          if(err) return cb(err);
+
+          async.filter(files, function(certFile, cb) {
+            var certPath = path.join(dirName, certFile);
+
+            fs.stat(certPath, function(err, statData) {
+
+              if(statData.isDirectory()) {
+                return processDirectory(certPath, cb);
+              }
+
+              that.getCaCertsFromFile(certPath, function(err, certs) {
+                if(err) return cb(false);
+
+                if (that.isDomainCert(certs)) {
+                  return cb(false);
+                }
+                return cb(certs.some(function(cert) {
+                  return that.issuerMatches(cert, expectedIssuer);
+                }));
+              });
+            });
+          }, function(ca) {
+            caResults = ca.map(function(fileName) {
+              return path.join(dirName, fileName);
+            }).concat(caResults);
+
+            cb(null);
+          });
+        });
+      }
+      processDirectory(that.sslDirectory, function(err) {
         if(err) return cb(err);
 
-        async.filter(files, function(certFile, cb) {
-          var certPath = that.sslDirectory + certFile;
-          that.getCaCertsFromFile(certPath, function(err, certs) {
-            if (that.isDomainCert(certs)) {
-              return cb(false);
-            }
-            return cb(certs.some(function(cert) {
-              return that.issuerMatches(cert, expectedIssuer);
-            }));
-          });
-        }, function(ca) {
-          ca = ca.map(function(fileName) {
-            return that.sslDirectory + fileName;
-          });
-
-          if (ca.length === 0) {
-            cb(null, null);
-          } else if (ca.length === 1) {
-            cb(null, ca[0]);
+        if(caResults.length) {
+          if(caResults.length === 1) {
+            cb(null, caResults[0]);
           } else {
-            cb(null, ca);
+            cb(null, caResults);
           }
-        });
+        }
+        else {
+          cb(null);
+        }
       });
     });
   };
