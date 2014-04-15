@@ -5,8 +5,10 @@ var fs = require('fs');
 var async = require('async');
 var path = require('path');
 
-module.exports = function(sslDirectory) {
+module.exports = function(sslDirectory, options) {
   var that = this;
+  options = options || {};
+
   if(!sslDirectory)
     throw new Error("sslDirectory as first argument is mandatory");
 
@@ -16,7 +18,7 @@ module.exports = function(sslDirectory) {
   }
 
   this.scan = function(cb) {
-    var config = {};
+    var outputConfig = {};
 
     var keys = {};
     var certs = {};
@@ -34,13 +36,15 @@ module.exports = function(sslDirectory) {
             if(statData.isDirectory())
               return processDirectory(certPath, cb);
 
-            that.getCertOrPem(certPath, function(err, cert, pem) {
+            that.getCertOrPem(certPath, function(err, cert, pem, rawCert) {
               if(pem) {
-                keys[pem.publicExponent] = certPath;
+                keys[pem.publicExponent] = options.read ? rawCert : certPath;
                 return cb();
               }
               var altNames = cert.altNames;
-              certs[certPath] = cert.publicExponent;
+
+              var keyForCert = options.read ? rawCert : certPath;
+              certs[keyForCert] = cert.publicExponent;
 
               if(err)  {
                 if(err.toString().match(/Unable to parse certificate/))
@@ -49,12 +53,12 @@ module.exports = function(sslDirectory) {
               }
 
               async.each(altNames, function(domain, cb) {
-                config[domain] = {};
-                config[domain].cert = certPath;
+                outputConfig[domain] = {};
+                outputConfig[domain].cert = options.read ? rawCert : certPath;
 
-                that.getCaFor(certPath, function(err, ca) {
+                that.getCaFor(certPath, function(err, ca, caRaw) {
                   if (ca) {
-                    config[domain].ca = ca;
+                    outputConfig[domain].ca = options.read ? caRaw : ca;
                   }
                   cb(err);
                 });
@@ -71,14 +75,32 @@ module.exports = function(sslDirectory) {
     }
     processDirectory(this.sslDirectory, function(err) {
 
-      Object.keys(config).forEach(function(domain) {
-        var key = keys[certs[config[domain].cert]];
+      Object.keys(outputConfig).forEach(function(domain) {
+        var key = keys[certs[outputConfig[domain].cert]];
+
+
+        // flatten CA reuslts array by removing duplicates
+        var ca = outputConfig[domain].ca;
+        if(ca && ca instanceof Array) {
+          ca = ca.filter(function(elem, pos) {
+            return ca.indexOf(elem) == pos;
+          });
+          if(ca.length === 1)
+            outputConfig[domain].ca = ca[0];
+          else
+            outputConfig[domain].ca = ca;
+        }
+
+
         if(key) {
-          config[domain].key = key;
+          outputConfig[domain].key = key;
+        }
+        else if(options.onlyWithKey) {
+          delete outputConfig[domain];
         }
       });
 
-      cb(err, config);
+      cb(err, outputConfig);
     });
   };
 
@@ -87,12 +109,12 @@ module.exports = function(sslDirectory) {
       if(err) return cb(err);
       try {
         var cert = x509.parseCert(rawCert);
-        cb(null, cert);
+        return cb(null, cert, null, rawCert);
       } catch(err) {
 
         try {
           var pem = x509.parsePem(rawCert);
-          return cb(null, null, pem);
+          return cb(null, null, pem, rawCert);
         } catch(err2) {
 
         }
@@ -113,7 +135,7 @@ module.exports = function(sslDirectory) {
       }
 
       var caResults = [];
-
+      var caRawResults = [];
       function processDirectory(dirName, cb) {
         fs.readdir(dirName, function(err, files) {
 
@@ -128,15 +150,22 @@ module.exports = function(sslDirectory) {
                 return processDirectory(certPath, cb)
               }
 
-              that.getCaCertsFromFile(certPath, function(err, certs) {
+              that.getCaCertsFromFile(certPath, function(err, certs, rawCerts) {
                 if(err) return cb(false);
 
                 if (that.isDomainCert(certs)) {
                   return cb(false);
                 }
-                return cb(certs.some(function(cert) {
-                  return that.caMatches(cert, parsedCert);
-                }));
+
+                var matchingCa = certs.filter(function(cert, i) {
+                  var res = that.caMatches(cert, parsedCert);
+                  if(res) {
+                    caRawResults.push(rawCerts[i]);
+                  }
+                  return res;
+                });
+
+                return cb(matchingCa.length);
               });
             });
           }, function(ca) {
@@ -151,12 +180,12 @@ module.exports = function(sslDirectory) {
       processDirectory(that.sslDirectory, function(err) {
         if(err) return cb(err);
 
+        function noArrayIfOne(arr) {
+          return (arr.length === 1) ? arr[0] : arr;
+        }
+
         if(caResults.length) {
-          if(caResults.length === 1) {
-            cb(null, caResults[0]);
-          } else {
-            cb(null, caResults);
-          }
+          cb(null, noArrayIfOne(caResults), noArrayIfOne(caRawResults));
         }
         else {
           cb(null);
@@ -192,20 +221,22 @@ module.exports = function(sslDirectory) {
 
       var possibleCerts = certFileContent.split(beginCertToken);
       var certs = [];
+      var rawCerts = [];
       possibleCerts.forEach(function(cert) {
         var endTokenIndex = cert.indexOf(endCertToken);
         if (endTokenIndex === -1) {
           return null;
         }
         var rawCert = cert.substring(0, endTokenIndex);
-        var parsedCert = beginCertToken + rawCert + endCertToken;
+        var parsedCert = beginCertToken + rawCert + endCertToken + '\n';
         try {
           certs.push(x509.parseCert(parsedCert));
+          rawCerts.push(parsedCert);
         } catch(err) {
 
         }
       });
-      cb(null, certs);
+      cb(null, certs, rawCerts);
     });
   };
 };
