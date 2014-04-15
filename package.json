@@ -38,9 +38,6 @@
   },
   "devDependencies": {
     "istanbul": "~0.2.7",
-
-  },
-  "devDependencies": {
     "chai": "~1.8.1",
     "mocha": "~1.16.1",
     "should": "~2.1.1"
