@@ -103,6 +103,8 @@ function patchConfigWithArgv(config) {
     config.group = argv.group;
   if(argv.silent)
     config.silent = argv.silent;
+  if(argv.debug)
+    config.debug = argv.debug;
 
   if(typeof config.workerCount == 'undefined') {
     logNotice("Setting workerCount to number of CPUs");

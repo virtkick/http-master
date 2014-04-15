@@ -110,6 +110,7 @@ module.exports = function(sslDirectory, options) {
       try {
         var cert = x509.parseCert(rawCert);
         return cb(null, cert, null, rawCert);
+        
       } catch(err) {
 
         try {

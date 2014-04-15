@@ -4,6 +4,9 @@ var EventEmitter = require('events').EventEmitter;
 var common = require('./common');
 var runModules = common.runModules;
 var path = require('path');
+var CertScanner = require('./certScanner');
+var extend = require('extend');
+var fs = require('fs');
 
 var token;
 require('crypto').randomBytes(48, function(ex, buf) {
@@ -37,7 +40,7 @@ function HttpMaster()
   });
 
   
-  this.autoRestartWorkers = true;
+this.autoRestartWorkers = true;
 
   var self = this;
   cluster.on('exit', function(worker, code, signal) {
@@ -110,106 +113,216 @@ HttpMaster.prototype.logError = function(msg) {
 }
 
 
+function normalizeCert(cert) {
+  if (!cert.match(/\n$/g)) {
+    return cert + "\n";
+  }
+  return cert;
+}
+
+function loadKeysForContext(context, callback) {
+
+  async.each(Object.keys(context), function(key, keyFinished) {
+    // If CA certs are specified, load those too.
+    if (key === "ca") {
+      if (typeof context.ca == 'object') {
+        for (var i = 0; i < context.ca.length; i++) {
+          if (context.ca === undefined) {
+            context.ca = [];
+          }
+          context.ca[i] = normalizeCert(fs.readFileSync(context[key][i], 'utf8'));
+        }
+      } else {
+        var chain = normalizeCert(fs.readFileSync(context.ca, 'utf8'));
+        chain = chain.split("\n");
+        context.ca = [];
+        var cert = [];
+        chain.forEach(function(line) {
+          if (line.length == 0)
+            return;
+          cert.push(line);
+          if (line.match(/-END CERTIFICATE-/)) {
+            context.ca.push(cert.join("\n") + "\n");
+            cert = [];
+          }
+        });
+      }
+      keyFinished();
+    } else if (key == "cert" || key == "key") {
+
+      fs.readFile(context[key], function(err, data) {
+        if(err) return keyFinished(err);
+        context[key] = normalizeCert(data.toString('utf8'));
+        keyFinished();
+      });
+    } else
+      keyFinished();
+  }, function(err) {
+    callback(err);
+  });
+}
+
+
+function preprocessPortConfig(config, cb) {
+  var self = this;
+  if(config.ssl) {
+
+    var loadsToDo = [];
+    loadsToDo.push(config.ssl);
+    if(config.ssl.SNI) {
+      for(var key in config.ssl.SNI)
+        loadsToDo.push(config.ssl.SNI[key]);
+    }
+    async.each(loadsToDo, loadKeysForContext, function(err) {
+      if(!config.ssl.certDir)
+        return cb(config);
+
+      var certScanner = new CertScanner(config.ssl.certDir, {read: true, onlyWithKey: true});
+      certScanner.scan(function(err, SNIconfig) {
+        if(err)  {
+          self.logError("Error processing certDir: " + err.toString());
+          return cb(config);
+        }
+        //sslConfig = {SNI: sslConfig};
+        if(config.ssl.primaryDomain) {
+          config.ssl = extend(true, {}, config.ssl, SNIconfig[config.ssl.primaryDomain]);
+        }
+        config.ssl = extend(true, {}, config.ssl, {SNI: SNIconfig});
+        cb(config);
+      });
+
+    });
+
+  }
+  else {
+    cb(config);
+  }
+}
+
+function preprocessConfig(config, cb) {
+
+  async.each(Object.keys(config.ports), function(portKey, cb) {
+    preprocessPortConfig(config.ports[portKey], function(portConfig) {
+      config.ports[portKey] = portConfig;
+      cb();
+    });
+  }, function() {
+
+    if(config.debug === 'config')
+      console.log(require('util').inspect(config, false, null));
+    cb(config);
+  });
+}
+
 
 HttpMaster.prototype.reload = function(config, reloadDone) {
   var self = this;
-  this.config = config;
-  var workers = this.workers;
 
-  var startTime = new Date().getTime();
+  function actualReload(config) {
+    self.config = config;
+    var workers = this.workers;
 
-  if(config.workerCount != this.workerCount) {
-    this.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
-    process.exit(1);
-    return;
-  }
+    var startTime = new Date().getTime();
 
-  if(this.singleWorker) {
-    this.singleWorker.loadConfig(config, function(err) {
-      exitIfEACCES.call(self, err);
-      if(!err)
-        self.emit('allWorkersReloaded');
-      else
-        self.emit('error', err);
+    if(config.workerCount != this.workerCount) {
+      this.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
+      process.exit(1);
+      return;
+    }
 
-      self.emit('allWorkersReloaded');
-      if(reloadDone)
-        reloadDone(err);
-    });
-  }
-  else {
-    async.parallel(workers.filter(function(worker) {
-        return !!worker;
-      }) // dead workers leave undefined keys
-      .map(function(worker) {
-        return function(asyncCallback) {
-          worker.once('msg:unbindFinished', function() {
-
-            worker.once('msg:started', function() {
-              asyncCallback();
-            });
-            worker.sendMessage('reload', config);
-          });
-          worker.sendMessage('unbind');
-        };
-      }), function(err) {
+    if(this.singleWorker) {
+      this.singleWorker.loadConfig(config, function(err) {
+        exitIfEACCES.call(self, err);
         if(!err)
           self.emit('allWorkersReloaded');
         else
           self.emit('error', err);
+
+        self.emit('allWorkersReloaded');
         if(reloadDone)
           reloadDone(err);
-      });;
+      });
+    }
+    else {
+      async.parallel(workers.filter(function(worker) {
+          return !!worker;
+        }) // dead workers leave undefined keys
+        .map(function(worker) {
+          return function(asyncCallback) {
+            worker.once('msg:unbindFinished', function() {
+
+              worker.once('msg:started', function() {
+                asyncCallback();
+              });
+              worker.sendMessage('reload', config);
+            });
+            worker.sendMessage('unbind');
+          };
+        }), function(err) {
+          if(!err)
+            self.emit('allWorkersReloaded');
+          else
+            self.emit('error', err);
+          if(reloadDone)
+            reloadDone(err);
+        });
+    }
   }
+
+  preprocessConfig.call(this, config, actualReload);
 };
 
 
 HttpMaster.prototype.init = function(config, initDone) {
-  this.config = config;
   var worker;
   var self = this;
   var workers = this.workers;
 
-  runModules("initMaster", this, config);
-  this.workerCount = config.workerCount || 0;
+  function actualInit(config) {
+    self.config = config;
 
-  if(this.workerCount === 0) {
-    var singleWorker = this.singleWorker = new (require('./workerLogic'))();
-    singleWorker.on('logNotice', self.logNotice.bind(this));
-    singleWorker.on('logError', self.logError.bind(this));
-    this.singleWorker.loadConfig(config, function(err) {
-      if (err) {
-        return initDone(err);
-      }
-      self.emit('allWorkersStarted');
+    runModules("initMaster", self, config);
+    self.workerCount = config.workerCount || 0;
 
-      runModules("allWorkersStarted", config);
-      if(initDone)
-        initDone()
+    if(self.workerCount === 0) {
+      var singleWorker = self.singleWorker = new (require('./workerLogic'))();
+      singleWorker.on('logNotice', self.logNotice.bind(self));
+      singleWorker.on('logError', self.logError.bind(self));
+      self.singleWorker.loadConfig(config, function(err) {
+        if (err) {
+          return initDone(err);
+        }
+        self.emit('allWorkersStarted');
 
-    });
+        runModules("allWorkersStarted", config);
+        if(initDone)
+          initDone()
+
+      });
+    }
+    else {
+      
+      while(!token); // busy wait in case we have not got it yet..
+      self.token = token;
+
+      async.times((config.workerCount), function(n, next) {
+        workers.push(initWorker.call(self, function() {
+          next(null);
+        }));
+      }, function(err) {
+        if (err) {
+          return initDone(err);
+        }
+
+        self.emit('allWorkersStarted');
+
+        runModules("allWorkersStarted", config);
+        if(initDone)
+          initDone()
+      });
+    };
   }
-  else {
-    
-    while(!token); // busy wait in case we have not got it yet..
-    self.token = token;
-
-    async.times((config.workerCount), function(n, next) {
-      workers.push(initWorker.call(self, function() {
-        next(null);
-      }));
-    }, function(err) {
-      if (err) {
-        return initDone(err);
-      }
-
-      self.emit('allWorkersStarted');
-
-      runModules("allWorkersStarted", config);
-      if(initDone)
-        initDone()
-    });
-  };
+  preprocessConfig.call(this, config, actualInit);
 }
 
 module.exports = HttpMaster;

@@ -55,47 +55,6 @@ function normalizeCert(cert) {
   return cert;
 }
 
-function loadKeysForContext(context, callback) {
-
-  async.each(Object.keys(context), function(key, keyFinished) {
-    // If CA certs are specified, load those too.
-    if (key === "ca") {
-      if (typeof context.ca == 'object') {
-        for (var i = 0; i < context.ca.length; i++) {
-          if (context.ca === undefined) {
-            context.ca = [];
-          }
-          context.ca[i] = normalizeCert(fs.readFileSync(context[key][i], 'utf8'));
-        }
-      } else {
-        var chain = normalizeCert(fs.readFileSync(context.ca, 'utf8'));
-        chain = chain.split("\n");
-        context.ca = [];
-        var cert = [];
-        chain.forEach(function(line) {
-          if (line.length == 0)
-            return;
-          cert.push(line);
-          if (line.match(/-END CERTIFICATE-/)) {
-            context.ca.push(cert.join("\n") + "\n");
-            cert = [];
-          }
-        });
-      }
-      keyFinished();
-    } else if (key == "cert" || key == "key") {
-
-      fs.readFile(context[key], function(err, data) {
-        if(err) return keyFinished(err);
-        context[key] = normalizeCert(data.toString('utf8'));
-        keyFinished();
-      });
-    } else
-      keyFinished();
-  }, function(err) {
-    callback(err);
-  });
-}
 
 function loadKeysforConfigEntry(config, callback) {
 
@@ -122,8 +81,8 @@ function loadKeysforConfigEntry(config, callback) {
       config.ssl.SNICallback = sniCallback;
     }
 
-    loadKeysForContext(config.ssl, function(err) {
-      if (err) return callback(err);
+//    loadKeysForContext(config.ssl, function(err) {
+//      if (err) return callback(err);
 
       if (SNI) {
         var todo = [];
@@ -143,8 +102,8 @@ function loadKeysforConfigEntry(config, callback) {
             SNI[key].ecdhCurve = require('tls').DEFAULT_ECDH_CURVE;
           }
 
-          loadKeysForContext(SNI[key], function(err) {
-            if (err) return sniLoaded(err);
+//          loadKeysForContext(SNI[key], function(err) {
+//            if (err) return sniLoaded(err);
             try {
               var credentials = crypto.createCredentials(SNI[key]);
               SNI[key] = credentials.context;
@@ -152,12 +111,12 @@ function loadKeysforConfigEntry(config, callback) {
             } catch (err) {
               sniLoaded(err);
             }
-          });
+//          });
         }, callback);
       } else { // (!SNI)
         callback();
       }
-    });
+//    });
   } else { // (!config.ssl)
     callback();
   }
