@@ -20,6 +20,7 @@ http-master is a front end http service/reverse-proxy with easy setup of proxyin
 It can run as a module or as a standalone application. Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
 
 Some of the features:
+* Automatically read SSL and SNI certificates configuration. Simply provide directory with certificates in arbitrary layout and x509 parser will figure out the rest and optimal minimum set of certificates will be sent to clients. CA bundles are supported.
 * Easy all in one place configuration for every listening port (eg. 80 and 443 together)
   * Setup reverse proxy with optional URL rewriting and optional regexp matching of host and/or path.
   * Setup redirect with optional regexp matching to construct final URL.
@@ -84,19 +85,8 @@ ports: { # each port gets a separate configuration
       'code2flow.net': 'https://code2flow.com/[path]' # redirect .net requests to .com
     },
     ssl: {
-      SNI: { # SNI entries providing set of keys for each domain
-        '*.service.myapp.com': {
-          key: "/etc/keys/myapp_com.key",
-          cert: "/etc/keys/myapp_com.pem",
-          ca: [ # this may be an array or a path to bundle file
-            "/etc/keys/startssl/ca.pem",
-            "/etc/keys/startssl/sub.class1.server.ca.pem"
-          ]
-        }
-      },
-      key: "/etc/keys/star_code2flow_com.key",
-      cert: "/etc/keys/star_code2flow_com.pem",
-      ca: "/etc/keys/certum.crt" # bundle file
+      primaryDomain: "code2flow.com", # needs to be provided for non-SNI browsers
+      certDir: "/etc/http-master/certificates" # simply copy certificates to this dir, run with --debug=config to see what was read
     }
   }
 }
