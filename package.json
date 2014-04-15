@@ -1,6 +1,6 @@
 {
   "name": "http-master",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "master.js",
   "scripts": {
@@ -17,25 +17,32 @@
   ],
   "bin": "./http-master",
   "author": "Damian Kaczmarek <damian@codecharm.co.uk>",
+  "contributors": [
+    "Damian Nowak <damian.nowak@atlashost.eu>"
+  ],
   "license": "BSD",
   "dependencies": {
-    "http-proxy": "^1.0.2",
+    "http-proxy": "~1.0.1",
     "optimist": "~0.6.0",
-    "extend": "~1.2.1",
-    "jsonlint-lines": "~1.6.0",
-    "node-watch": "~0.3.4",
     "async": "~0.2.9",
-    "xregexp": "~2.0.0",
+    "extend": "~1.2.1",
+    "es6-shim": "~0.9.2",
+    "jsonlint-lines": "~1.6.0",
     "node-static": "~0.7.2",
+    "node-watch": "~0.3.4",
     "spdy": "~1.17.22",
     "uid-number": "0.0.3",
+    "x509": "git://github.com/CodeCharmLtd/node-x509#parse-pem",
     "js-yaml": "~3.0.1",
-    "http-auth": "~2.1.6"
+    "http-auth": "~2.1.6",
+    "xregexp": "~2.0.0"
   },
   "devDependencies": {
     "istanbul": "~0.2.7",
+    "chai": "~1.8.1",
     "mocha": "~1.16.1",
-    "should": "~2.1.1"
+    "should": "~2.1.1",
+    "fs.extra": "^1.2.1"
   },
   "optionalDependencies": {
     "codeclimate-test-reporter": "~0.0.3"
