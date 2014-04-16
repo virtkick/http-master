@@ -6,7 +6,7 @@ var argv = require('optimist').argv;
 var scanner = new CertScanner(process.argv[2], argv);
 
 scanner.on('notice', function(msg) {
-  console.log(msg);
+  console.warn(msg);
 });
 
 scanner.scan(function(err, config) {
