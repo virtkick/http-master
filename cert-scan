@@ -4,6 +4,11 @@ var CertScanner = require('./certScanner');
 var argv = require('optimist').argv;
 
 var scanner = new CertScanner(process.argv[2], argv);
+
+scanner.on('notice', function(msg) {
+  console.log(msg);
+});
+
 scanner.scan(function(err, config) {
   if(err)
     return console.log(err.stack);

@@ -4,6 +4,10 @@ var x509 = require('x509');
 var fs = require('fs');
 var async = require('async');
 var path = require('path');
+var moment = require('moment');
+var util = require('util');
+
+var EventEmitter = require('events').EventEmitter;
 
 module.exports = function(sslDirectory, options) {
   var that = this;
@@ -41,6 +45,26 @@ module.exports = function(sslDirectory, options) {
                 keys[pem.publicExponent] = options.read ? rawCert : certPath;
                 return cb();
               }
+
+              //console.log(cert);
+
+              if(moment(cert.notBefore).diff(moment()) < 0) { // valid
+                if(moment(cert.notAfter).diff(moment()) > 0) { // valid
+                  if(moment(cert.notAfter).diff(moment(), 'd') < 90)
+                    that.emit('notice', path.join(dirName, certPath) + ": valid only for " + moment(cert.notAfter).diff(moment(), 'd').toString() + " days");
+                }
+                else { //expired
+                  that.emit('notice', path.join(dirName, certPath) + ": expired " + (-moment(cert.notAfter).diff(moment(), 'd')).toString() + " days ago");
+                  return cb();
+                }
+              }
+              else { // not yet valid
+                that.emit('notice', path.join(dirName, certPath) + ": not yet valid for " + (moment(cert.notBefore).diff(moment(), 'd')).toString() + " days");
+                return cb();
+              }
+
+              
+
               var altNames = cert.altNames;
 
               var keyForCert = options.read ? rawCert : certPath;
@@ -241,3 +265,6 @@ module.exports = function(sslDirectory, options) {
     });
   };
 };
+
+
+util.inherits(module.exports, EventEmitter);

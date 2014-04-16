@@ -77,7 +77,7 @@ function initWorker(cb) {
     process.emit('msg:' + msg.type, msg.data, worker);
     worker.emit('msg:' + msg.type, msg.data);
   });
-  worker.on("listening", function(host, port) {});
+  
   worker.once('msg:started', function() {
     cb();
   });
@@ -104,7 +104,6 @@ function initWorker(cb) {
 }
 
 HttpMaster.prototype = Object.create(EventEmitter.prototype);
-
 
 HttpMaster.prototype.logNotice = function(msg) {
   this.emit('logNotice', msg);
@@ -198,6 +197,10 @@ function preprocessPortConfig(config, cb) {
         return cb(config);
 
       var certScanner = new CertScanner(config.ssl.certDir, {read: true, onlyWithKey: true});
+      certScanner.on('notice', function(msg) {
+        self.logNotice(msg);
+      });
+      self.logNotice("Scanning for certificates in directory: " + config.ssl.certDir);
       certScanner.scan(function(err, SNIconfig) {
         if(err)  {
           self.logError("Error processing certDir: " + err.toString());
@@ -208,6 +211,7 @@ function preprocessPortConfig(config, cb) {
           config.ssl = extend(true, {}, config.ssl, SNIconfig[config.ssl.primaryDomain]);
         }
         config.ssl = extend(true, {}, config.ssl, {SNI: SNIconfig});
+        certScanner.removeAllListeners();
         cb(config);
       });
 
@@ -220,9 +224,9 @@ function preprocessPortConfig(config, cb) {
 }
 
 function preprocessConfig(config, cb) {
-
+  var self = this;
   async.each(Object.keys(config.ports), function(portKey, cb) {
-    preprocessPortConfig(config.ports[portKey], function(portConfig) {
+    preprocessPortConfig.call(self, config.ports[portKey], function(portConfig) {
       config.ports[portKey] = portConfig;
       cb();
     });
@@ -242,7 +246,6 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
     self.config = config;
     var workers = self.workers;
 
-    var startTime = new Date().getTime();
 
     if(config.workerCount !== self.workerCount) {
       self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
@@ -321,8 +324,7 @@ HttpMaster.prototype.init = function(config, initDone) {
       });
     }
     else {
-      
-      while(!token); // busy wait in case we have not got it yet..
+      while(!token) {} // busy wait in case we have not got it yet..
       self.token = token;
 
       async.times((config.workerCount), function(n, next) {
