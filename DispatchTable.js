@@ -19,15 +19,6 @@ function regexpQuote(str, delimiter) {
   return (str + '').replace(new RegExp('[.\\\\+*?\\[\\^\\]$(){}=!<>|:\\' + (delimiter || '') + '-]', 'g'), '\\$&');
 }
 
-XRegExp.install({
-	// Overrides native regex methods with fixed/extended versions that support named
-	// backreferences and fix numerous cross-browser bugs
-	natives: true,
-
-	// Enables extensibility of XRegExp syntax and flags
-	extensibility: true
-});
-
 function splitFirst(str) {
 
 	var m = str.match(/^(\^?[^\/]+)\$?(?:(\/)(\^?)(.+))?$/);
