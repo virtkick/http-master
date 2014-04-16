@@ -53,7 +53,7 @@ Ongoing development on:
 ## Installation and usage
 Refer to section [Usage as a module](#module) if you are interested in that use-case.
 
-To install:
+To install, Node.JS is required to be installed and in your PATH:
 `npm install -g http-master` (may be needed to run as root depending on your setup)
 
 To run: `http-master --config http-master.conf`
