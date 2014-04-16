@@ -16,7 +16,9 @@ describe('SSL directory scanner', function() {
 
   beforeEach(function() {
     cleanDir(sslDir);
-    scanner = new SslScanner(sslDir);
+    scanner = new SslScanner(sslDir, {
+      acceptInvalidDates: true
+    });
   });
 
   afterEach(function() {
