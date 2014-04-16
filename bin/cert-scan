@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-var CertScanner = require('./certScanner');
+var CertScanner = require('../certScanner');
 
 var argv = require('optimist').argv;
 

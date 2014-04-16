@@ -42,7 +42,7 @@ function getTcpServer(port, host, cb) {
         delete tcpServers[entry];
         cb(err);
       });
-    } catch(err) {
+    } catch (err) {
       cb(err);
     }
   }
@@ -62,7 +62,7 @@ function loadKeysforConfigEntry(config, callback) {
     var SNI = config.ssl.SNI;
     var SNImatchers = {};
     if (config.ssl.SNI) {
-      for (key in config.ssl.SNI) {        
+      for (key in config.ssl.SNI) {
         SNImatchers[key] = new RegExp(regexpQuote(key).replace(/^\\\*\\\./g, '^([^.]+\\.)?'), 'i'); // domain names are case insensitive
       }
       var sniCallback = function(hostname, cb) {
@@ -81,42 +81,42 @@ function loadKeysforConfigEntry(config, callback) {
       config.ssl.SNICallback = sniCallback;
     }
 
-//    loadKeysForContext(config.ssl, function(err) {
-//      if (err) return callback(err);
+    //    loadKeysForContext(config.ssl, function(err) {
+    //      if (err) return callback(err);
 
-      if (SNI) {
-        var todo = [];
-        for (key in SNI)
-          todo.push(key);
+    if (SNI) {
+      var todo = [];
+      for (key in SNI)
+        todo.push(key);
 
-        async.each(todo, function(key, sniLoaded) {
-          SNI[key].ciphers = SNI[key].ciphers || config.ssl.ciphers;
-          SNI[key].honorCipherOrder = SNI[key].honorCipherOrder || config.ssl.honorCipherOrder;
-          SNI[key].ecdhCurve = SNI[key].ecdhCurve || config.ssl.ecdhCurve;
+      async.each(todo, function(key, sniLoaded) {
+        SNI[key].ciphers = SNI[key].ciphers || config.ssl.ciphers;
+        SNI[key].honorCipherOrder = SNI[key].honorCipherOrder || config.ssl.honorCipherOrder;
+        SNI[key].ecdhCurve = SNI[key].ecdhCurve || config.ssl.ecdhCurve;
 
-          // joyent/node#7249
-          if(SNI[key].honorCipherOrder) {
-            SNI[key].secureOptions = require('constants').SSL_OP_CIPHER_SERVER_PREFERENCE;
-          }
-          if(!SNI[key].ecdhCurve) {
-            SNI[key].ecdhCurve = require('tls').DEFAULT_ECDH_CURVE;
-          }
+        // joyent/node#7249
+        if (SNI[key].honorCipherOrder) {
+          SNI[key].secureOptions = require('constants').SSL_OP_CIPHER_SERVER_PREFERENCE;
+        }
+        if (!SNI[key].ecdhCurve) {
+          SNI[key].ecdhCurve = require('tls').DEFAULT_ECDH_CURVE;
+        }
 
-//          loadKeysForContext(SNI[key], function(err) {
-//            if (err) return sniLoaded(err);
-            try {
-              var credentials = crypto.createCredentials(SNI[key]);
-              SNI[key] = credentials.context;
-              sniLoaded();
-            } catch (err) {
-              sniLoaded(err);
-            }
-//          });
-        }, callback);
-      } else { // (!SNI)
-        callback();
-      }
-//    });
+        //          loadKeysForContext(SNI[key], function(err) {
+        //            if (err) return sniLoaded(err);
+        try {
+          var credentials = crypto.createCredentials(SNI[key]);
+          SNI[key] = credentials.context;
+          sniLoaded();
+        } catch (err) {
+          sniLoaded(err);
+        }
+        //          });
+      }, callback);
+    } else { // (!SNI)
+      callback();
+    }
+    //    });
   } else { // (!config.ssl)
     callback();
   }
@@ -125,7 +125,7 @@ function loadKeysforConfigEntry(config, callback) {
 function handleConfigEntry(config, callback) {
   var self = this;
   loadKeysforConfigEntry(config, function(err) {
-    if(err) {
+    if (err) {
       return callback(err);
     }
     handleConfigEntryAfterLoadingKeys.call(self, config, callback);
@@ -145,7 +145,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
   var upgradeHandlers = [];
 
   runModules(function(name, middleware) {
-    if(middleware.failedEntries) {
+    if (middleware.failedEntries) {
       Object.keys(middleware.failedEntries).forEach(function(key) {
         var failedEntry = middleware.failedEntries[key];
         self.logError('Failed starting entry ' + key + ' : ' + JSON.stringify(failedEntry.entry));
@@ -170,12 +170,12 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       var baseModule = config.ssl.spdy ? require('spdy') : https;
       server = baseModule.createServer(config.ssl, handler.request);
 
-      if(!config.ssl.skipWorkerSessionResumption) {
+      if (!config.ssl.skipWorkerSessionResumption) {
         server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
         server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
 
-        if(self.token) {
-          if(server._setServerData) {
+        if (self.token) {
+          if (server._setServerData) {
             server._setServerData({
               ticketKeys: self.token
             });
@@ -184,7 +184,6 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
           }
         }
       }
-
       // if(config.ssl.honorCipherOrder !== false) {
       //   // prefer server ciphers over clients - prevents BEAST attack
       //   config.ssl.honorCipherOrder = true;
@@ -209,11 +208,8 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
     server.removeListener('listening', listeningHandler);
   }
 
-
   server.once('listening', listeningHandler);
-
   server.once('error', errorHandler);
-
   server.on('upgrade', function(req, socket, head) {
     req.parsedUrl = url.parse(req.url);
     for (var i = 0; i < upgradeHandlers.length; ++i) {
@@ -272,7 +268,7 @@ function handleConfig(config, configHandled) {
           var entryString = (configEntry.host ? configEntry.host + ":" + configEntry.port : "port " + configEntry.port);
           if (err) {
             self.logError("Error while starting entry " + entryString + " : " + err.toString());
-            if(err.stack)
+            if (err.stack)
               self.logError(err.stack);
           }
           if (server) {
@@ -292,7 +288,7 @@ function handleConfig(config, configHandled) {
 
     // TODO
     //dropPrivileges();
-    
+
     self.servers = results.filter(function(server) {
       return !!server;
     });
@@ -312,8 +308,7 @@ function unbindAll(cb) {
 }
 
 
-function HttpMasterWorker(config)
-{
+function HttpMasterWorker(config) {
   config = config || {};
   var store = {};
   this.tlsSessionStore = config.tlsSessionStore || {
@@ -324,7 +319,7 @@ function HttpMasterWorker(config)
     set: function(id, data, cb) {
       id = id.toString('base64');
       store[id] = data;
-      if(cb)
+      if (cb)
         cb();
     }
   };
@@ -349,13 +344,13 @@ HttpMasterWorker.prototype.unbindAll = function(unbindFinished) {
 HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
   var self = this;
 
-  this.unbindAll(function(){});
+  this.unbindAll(function() {});
 
   handleConfig.call(this, config, function(err) {
-    if(err) return configLoaded(err);
+    if (err) return configLoaded(err);
     self.gcServers(configLoaded);
   });
-  
+
 }
 
 HttpMasterWorker.prototype.gcServers = function(gcFinished) {
@@ -365,7 +360,7 @@ HttpMasterWorker.prototype.gcServers = function(gcFinished) {
 
   Object.keys(this.tcpServers).forEach(function(key) {
     var server = self.tcpServers[key];
-    if(EventEmitter.listenerCount(server, 'connection') === 0) {
+    if (EventEmitter.listenerCount(server, 'connection') === 0) {
       toClose.push(server);
       delete self.tcpServers[key];
     }
@@ -374,7 +369,7 @@ HttpMasterWorker.prototype.gcServers = function(gcFinished) {
     server.close();
     cb();
   }, gcFinished);
-  
+
 };
 
 module.exports = HttpMasterWorker;
