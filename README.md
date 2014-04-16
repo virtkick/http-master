@@ -7,26 +7,32 @@
 * [Usage as a module](#installandusage)
 * [Watch config for changes](#watchconfig)
 * [Use custom config loader](#configloader)
-* Modules
-  * [Redirect](#redirect)
+* Features
+  * [Proxy](#proxy)
   * [URL rewrite](#urlrewrite)
+  * [Redirect](#redirect)
+  * [SSL](#ssl)
   * [Logging](#logging)
 * [Systemd](#systemd)
+* [Contributors](#contributors)
+* [Sponsors](#sponsors)
+* [License](#license)
 
 <a name="about" />
 ## About
 
 http-master is a front end http service/reverse-proxy with easy setup of proxying/redirecting/other-actions logic.
-It can run as a module or as a standalone application. Your average use case could be having several web applications running on different ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
+It can run as a module or as a standalone application. Your average use case could be having several web applications running on different internal ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS.
 
 Some of the features:
-* Automatically read SSL and SNI certificates configuration. Simply provide directory with certificates in arbitrary layout and x509 parser will figure out the rest and optimal minimum set of certificates will be sent to clients. CA bundles are supported.
+* Automatic loading of certificates from specific directory. Zero-effort HTTPS configuration.
+* Support SNI extension - multiple SSL certificates on the same IP.
 * Easy all in one place configuration for every listening port (eg. 80 and 443 together)
   * Setup reverse proxy with optional URL rewriting and optional regexp matching of host and/or path.
   * Setup redirect with optional regexp matching to construct final URL.
-  * Setup basic static server for a given route.
+  * Setup basic static files server for a given route.
+  * Setup Basic-AUTH for a given route (sponsored feature)
 * Multi-core/cpu friendly. Runs multiple instances/workers which will serve connections in a round-robin fashion. You of course choose to run in the same process without any workers if you use http-master as a module.
-* Support SNI extension - multiple SSL certificates on the same IP.
 * SSL tweaked to reasonable security level supporting TLS session resumption.
 * Automatically watches for config changes and reloads the logic without any downtime (\*). Simply start the deamon and add new rules while having the http-master online.
 * Asynchronous logging module. Logs either to stdout or to file.
@@ -35,7 +41,6 @@ Some of the features:
 
 Ongoing development on:
 * Easier and easier configuration format.
-* Automatic loading of certificates from specific directory. Zero-effort HTTPS configuration.
 * Automatic management of time expiration of certificates.
 * Request/response filters. (including ability to add headers, modify data)
 
@@ -48,7 +53,7 @@ Ongoing development on:
 ## Installation and usage
 Refer to section [Usage as a module](#module) if you are interested in that use-case.
 
-To install:
+To install, Node.JS is required to be installed and in your PATH:
 `npm install -g http-master` (may be needed to run as root depending on your setup)
 
 To run: `http-master --config http-master.conf`
@@ -63,30 +68,43 @@ logging: false # See "Logging" section on details
 ports: { # each port gets a separate configuration
   80 {
     proxy: {
-      'code2flow.com' : 8099, # Proxy all traffic at domain code2flow.com to port 8099
-      '*.services.com' : '192.168.10.6:8099', # Proxy all traffic for any subdomains of services.com to IP 192.168.10.6 and port 8099
-      '*' : 8080 # Proxy remaning traffic to port 8080, for example Apache could run there
+      # Proxy all traffic at domain code2flow.com to port 8099
+      'code2flow.com' : 8099,
+      # Proxy all traffic for any subdomains of services.com to IP 192.168.10.6 and port 8099
+      '*.services.com' : '192.168.10.6:8099', 
+      # Proxy remaning traffic to port 8080, for example Apache could run there
+      '*' : 8080
     },
     redirect: {
-      'code2flow.net': 'http://code2flow.com/[path]' # redirect .net requests to .com
+      # redirect .net requests to .com
+      'code2flow.net': 'http://code2flow.com/[path]',
+      # redirect http to https
+      'secure.code2flow.com': 'https://code2flow.com/[path]'
     },
     static: {
-      'assets.code2flow.com': '/var/www/code2flow/assets' # Serve static files from specific directory
+      # Serve static files from specific directory
+      'assets.code2flow.com': '/var/www/code2flow/assets'
     }
   }
   443: {
     proxy: {
       'code2flow.com': '127.0.0.1:9991',
-      'service.myapp.com/downloads/*': 10443, # choose application depending on path
-      'service.myapp.com/uploads/*': 15000, # choose application depending on path
-      "*": "127.0.0.1:4443" # all remaining https traffic goes to port 4443
+       # choose application depending on path
+      'service.myapp.com/downloads/*': 10443,
+       # choose application depending on path
+      'service.myapp.com/uploads/*': 15000,
+      # all remaining https traffic goes to port 4443, for example apache
+      "*": "127.0.0.1:4443"
     },
     redirect: {
-      'code2flow.net': 'https://code2flow.com/[path]' # redirect .net requests to .com
+       # redirect .net requests to .com
+      'code2flow.net': 'https://code2flow.com/[path]' 
     },
     ssl: {
-      primaryDomain: "code2flow.com", # needs to be provided for non-SNI browsers
-      certDir: "/etc/http-master/certificates" # simply copy certificates to this dir, run with --debug=config to see what was read
+      # needs to be provided for non-SNI browsers
+      primaryDomain: "code2flow.com",
+      # simply put certificates inside this dir, run with --debug=config to see what was read
+      certDir: "/etc/http-master/certificates" 
     }
   }
 }
@@ -155,12 +173,20 @@ If you run via systemd then you may use the following `systemctl reload http-mas
 
 See this repository for an example https://github.com/CodeCharmLtd/http-master-example-httploader
 
-<a name="redirect"/>
-## Redirect
+<a name="proxy"/>
+## URL rewrite
 TODO (open an issue if you need info now)
 
 <a name="urlrewrite"/>
 ## URL rewrite
+TODO (open an issue if you need info now)
+
+<a name="redirect"/>
+## Redirect
+TODO (open an issue if you need info now)
+
+<a name="ssl"/>
+## SSL
 TODO (open an issue if you need info now)
 
 <a name="logging"/>
@@ -220,14 +246,21 @@ We provide an example systemd unit file. The config file is set to /etc/http-mas
 * `systemctl reload http-master` - reload config with `kill -USR1`
 
 
+<a name="contributors"/>
+## Contributors
+
+* Damian Kaczmarek <damian@codecharm.co.uk>
+* Damian Nowak <damian.nowak@atlashost.eu>
+
 <a name="sponsors"/>
 ## Sponsors
 
 [eeGeo](http://sdk.eegeo.com/) - basic HTTP authentication against htpasswd file [#32](https://github.com/CodeCharmLtd/http-master/issues/32)
 
+Please open an issue if you would like a specific feature to be implemented and sponsored.
 
 <a name="license"/>
 ## License
-Copyright (c) 2013-2014 Code Charm Ltd
+Copyright (c) 2013-2014 [Code Charm Ltd](http://codecharm.co.uk)
 
 Licensed under the MIT license, see `LICENSE` for details.
