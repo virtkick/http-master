@@ -2,6 +2,7 @@ var path = require('path'),
   fs = require('fs'),
   util = require('util'),
   crypto = require('crypto'),
+  tls = require('tls'),
   extend = require('extend'),
   net = require('net'),
   http = require('http'),
@@ -105,7 +106,12 @@ function loadKeysforConfigEntry(config, callback) {
         //          loadKeysForContext(SNI[key], function(err) {
         //            if (err) return sniLoaded(err);
         try {
-          var credentials = crypto.createCredentials(SNI[key]);
+          var credentials;
+          if(tls.createSecureContext) {
+            credentials = tls.createSecureContext(SNI[key]);
+          } else {
+            credentials = crypto.createCredentials(SNI[key]);
+          }
           SNI[key] = credentials.context;
           sniLoaded();
         } catch (err) {

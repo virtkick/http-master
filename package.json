@@ -22,7 +22,7 @@
   ],
   "license": "BSD",
   "dependencies": {
-    "http-proxy": "~1.0.1",
+    "http-proxy": "~1.1.2",
     "optimist": "~0.6.0",
     "async": "~0.2.9",
     "extend": "~1.2.1",
@@ -32,7 +32,7 @@
     "node-watch": "~0.3.4",
     "spdy": "~1.17.22",
     "uid-number": "0.0.3",
-    "x509": "git://github.com/CodeCharmLtd/node-x509#parse-pem",
+    "x509": "git://github.com/CodeCharmLtd/node-x509#nan-0.9",
     "js-yaml": "~3.0.1",
     "http-auth": "~2.1.6",
     "xregexp": "~2.0.0",
