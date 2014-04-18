@@ -36,7 +36,8 @@
     "js-yaml": "~3.0.1",
     "http-auth": "~2.1.6",
     "xregexp": "~2.0.0",
-    "moment": "^2.6.0"
+    "moment": "^2.6.0",
+    "bugsnag": "~1.2"
   },
   "devDependencies": {
     "istanbul": "~0.2.7",
