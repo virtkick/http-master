@@ -40,11 +40,14 @@ function unpatchProxyServer() {
 
 
 patchProxyServer();
+delete require.cache[require.resolve('../modules/proxy')];
 var proxy = require('../modules/proxy');
 delete require.cache[require.resolve('../modules/proxy')];
 // clear the patched module from cache so that other tests can
 // resolve unpatched module
-unpatchProxyServer();
+//unpatchProxyServer();
+
+
 
 var middleware;
 
