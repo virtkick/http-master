@@ -1,6 +1,13 @@
 ![http-master](https://raw.github.com/CodeCharmLtd/http-master/master/assets/http-master.png)
 ===============
-[![Build Status](https://travis-ci.org/CodeCharmLtd/http-master.svg?branch=master)](https://travis-ci.org/CodeCharmLtd/http-master) [![Code Climate](https://codeclimate.com/github/CodeCharmLtd/http-master.png)](https://codeclimate.com/github/CodeCharmLtd/http-master)
+
+[![Package version](https://img.shields.io/npm/v/http-master.svg)](https://www.npmjs.org/package/http-master)
+[![Package version](https://img.shields.io/npm/dm/http-master.svg)](https://www.npmjs.org/package/http-master)
+[![GPA](https://img.shields.io/codeclimate/github/CodeCharmLtd/http-master.svg)](https://codeclimate.com/github/CodeCharmLtd/http-master)
+[![Code coverage](https://img.shields.io/codeclimate/coverage/github/CodeCharmLtd/http-master.svg)](https://codeclimate.com/github/CodeCharmLtd/http-master)
+[![Build status](https://img.shields.io/travis/CodeCharmLtd/http-master.svg)](https://travis-ci.org/CodeCharmLtd/http-master)
+[![Dependcies status](http://img.shields.io/gemnasium/CodeCharmLtd/http-master.svg)](https://gemnasium.com/CodeCharmLtd/http-master)
+
 
 * [About](#about)
 * [Installation and usage](#installandusage)
