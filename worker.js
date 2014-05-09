@@ -73,12 +73,26 @@ process.sendMessage = function(type, data) {
 };
 
 process.on('message', function(msg) {
-  var msg = JSON.parse(msg);
+  msg = JSON.parse(msg);
   process.emit('msg:' + msg.type, msg.data);
 });
 
 process.on('uncaughtException', function(err) {
   logError("[Uncaught exception] " + err.stack || err.message);
+
+// TODO: Draft implementation of Bugsnag
+//  var bugsnag = require('bugsnag');
+//  bugsnag.register("your-api-key-here", {
+//    autoNotifyUncaught: false,
+//    useSSL: true
+//  });
+//  bugsnag.notify(err, {
+//    context: 'worker',
+//    userId: request.ip,
+//    request: requestObject
+//    // metaData: requestObject
+//  });
+
   process.exit(1);
 });
 

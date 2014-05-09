@@ -37,10 +37,7 @@
     "spdy": "~1.17.22",
     "uid-number": "0.0.3",
     "x509": "git://github.com/CodeCharmLtd/node-x509#parse-pem",
-    "js-yaml": "~3.0.1",
-    "http-auth": "~2.1.6",
-    "xregexp": "~2.0.0",
-    "moment": "^2.6.0"
+    "xregexp": "~2.0.0"
   },
   "devDependencies": {
     "istanbul": "~0.2.7",
