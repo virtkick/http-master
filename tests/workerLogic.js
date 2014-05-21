@@ -170,6 +170,20 @@ describe('HttpMasterWorker', function() {
     });
   });
 
+  it('should support http entities in requests', function(finished) {
+    var tester = testPortConfig({
+      proxy: {
+        "test.pl/test%20kota/ d": 40881
+      }
+    }, 40881);
+    tester.request('http://test.pl/test%20kota/ d', function(err) {
+      finished(err);
+      tester.finish();
+    });
+
+  });
+
+
   it('should redirect multiple requests', function(finished) {
     var tester = testPortConfig({
       redirect: {

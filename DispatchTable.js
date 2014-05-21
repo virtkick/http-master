@@ -21,198 +21,205 @@ function regexpQuote(str, delimiter) {
 
 function splitFirst(str) {
 
-	var m = str.match(/^(\^?[^\/]+)\$?(?:(\/)(\^?)(.+))?$/);
-	if(m.length > 2) {
-		// make ^/path from /^path
-		return [m[1], m[3] + m[2]+m[4]]; 
-	}
-	return [m[1]];
+  var m = str.match(/^(\^?[^\/]+)\$?(?:(\/)(\^?)(.+))?$/);
+  if(m.length > 2) {
+    // make ^/path from /^path
+    return [m[1], m[3] + m[2]+m[4]]; 
+  }
+  return [m[1]];
 }
 
 
 
 function globStringToRegex(str, specialCh) {
-	if(!specialCh)
-		specialCh = '.';
-	var inside = regexpQuote(str);
-	if(specialCh == '.') {
-		inside = inside.replace(/^\\\*$/g, '(?:(?<host>.*))');
-	  inside = inside.replace(/^\\\*\\\?\\\./g, '(?:(.+)\\.)?');
-  	inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)');
+  if(!specialCh)
+    specialCh = '.';
+  var inside = regexpQuote(str);
+  if(specialCh == '.') {
+    inside = inside.replace(/^\\\*$/g, '(?:(?<host>.*))');
+    inside = inside.replace(/^\\\*\\\?\\\./g, '(?:(.+)\\.)?');
+    inside = inside.replace(/^\\\*\\\./g, '(?:(.+)\\.)');
     inside = inside.replace(/\\\.\\\*\\\?/g, '(?:\\.([^'+specialCh+']+))?');    
-	}
-	else
-		inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
-	inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)');
+  }
+  else
+    inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
+  inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)');
 
-	var regexp = new XRegExp("^" + inside + "$");
+  var regexp = new XRegExp("^" + inside + "$");
   return regexp;
 }
 
 function getRegexpIfNeeded(str, specialCh) {
-	if (typeof str == 'string') {
-		var m = str.match(/^\^(.*)\$?$/);
-		if (m) {
-			return new XRegExp("^" + m[1] + "$");
-		} else if (str.match(/[*?]/)) {
-			return globStringToRegex(str, specialCh);
-		}
-	}
-	return undefined;
+  if (typeof str == 'string') {
+    var m = str.match(/^\^(.*)\$?$/);
+    if (m) {
+      return new XRegExp("^" + m[1] + "$");
+    } else if (str.match(/[*?]/)) {
+      return globStringToRegex(str, specialCh);
+    }
+  }
+  return undefined;
 }
 
 function postParseKey(entryKey, entry) {
-	var withHost = false;
-	var regexp = getRegexpIfNeeded(entryKey);
-	if (regexp)
-		entry.regexp = regexp;
-	return entryKey;
+  var withHost = false;
+  var regexp = getRegexpIfNeeded(entryKey);
+  if (regexp)
+    entry.regexp = regexp;
+  return entryKey;
 }
 
 function DispatchTable(params) {
-	var parseEntry = params.entryParser;
-	var config = params.config;
-	var port = params.port;
+  var parseEntry = params.entryParser;
+  var config = params.config;
+  var port = params.port;
 
-	var self = this;
-	this.requestHandler = params.requestHandler;
-	this.upgradeHandler = params.upgradeHandler;
-	this.table = {};
-	this.regexpEntries = [];
-	this.failedEntries = {};
-	Object.keys(config).forEach(function(entryKey) {
-		var entry = config[entryKey];
+  var self = this;
+  this.requestHandler = params.requestHandler;
+  this.upgradeHandler = params.upgradeHandler;
+  this.table = {};
+  this.regexpEntries = [];
+  this.failedEntries = {};
+  Object.keys(config).forEach(function(entryKey) {
+    var entry = config[entryKey];
 
-		// split entry 192.168.0.0/host to
-		// ['192.168.0.0', '/']
-		var entryKeyData = splitFirst(entryKey);
-		entryKey = entryKeyData[0];
-		var entryPath = entryKeyData[1];
 
-		if (parseEntry) {
-			try {
-				var parsed = parseEntry(entryKey, entry);
-				entryKey = parsed[0];
-				entry = parsed[1];
-			} catch(err) {
-				// save failed parsed entry for future
-				// error reporting
-				self.failedEntries[entryKey] = {
-					err: err,
-					entry: entry
-				};
-				return;
-			}
-		}
-		entry = {
-			target: entry,
-		};
-		if (entryPath) {
-			entry.path = entryPath;
-			var pathRegexp = getRegexpIfNeeded(entryPath, '\/');
-			if (pathRegexp)
-				entry.pathRegexp = pathRegexp;
-		}
-		entryKey = postParseKey(entryKey, entry);
-		port = port || 80;
+    // split entry 192.168.0.0/host to
+    // ['192.168.0.0', '/']
+    var entryKeyData = splitFirst(entryKey);
+    entryKey = entryKeyData[0];
+    var entryPath = entryKeyData[1];
 
-		if (entry.regexp) {
-			self.regexpEntries.push(entry);
-		} else {
+    if(entryPath) {
+      entryPath = decodeURIComponent(entryPath);
+    }
 
-			if (self.table[entryKey]) {
-				if (self.table[entryKey] instanceof Array) {
-					self.table[entryKey].push(entry);
-					self.table[entryKey + ':' + port].push(entry);
-				} else {
-					var oldEntry = self.table[entryKey];
-					self.table[entryKey] = [oldEntry, entry];
-					self.table[entryKey + ':' + port] = [oldEntry, entry];
-				}
-			} else {
-				self.table[entryKey + ':' + port] = entry;
-				self.table[entryKey] = entry;
-			}
-		}
-	});
+    if (parseEntry) {
+      try {
+        var parsed = parseEntry(entryKey, entry);
+        entryKey = parsed[0];
+        entry = parsed[1];
+      } catch(err) {
+        // save failed parsed entry for future
+        // error reporting
+        self.failedEntries[entryKey] = {
+          err: err,
+          entry: entry
+        };
+        return;
+      }
+    }
+    entry = {
+      target: entry,
+    };
+    if (entryPath) {
+      entry.path = entryPath;
+      var pathRegexp = getRegexpIfNeeded(entryPath, '\/');
+      if (pathRegexp)
+        entry.pathRegexp = pathRegexp;
+    }
+    entryKey = postParseKey(entryKey, entry);
+    port = port || 80;
+
+    if (entry.regexp) {
+      self.regexpEntries.push(entry);
+    } else {
+
+      if (self.table[entryKey]) {
+        if (self.table[entryKey] instanceof Array) {
+          self.table[entryKey].push(entry);
+          self.table[entryKey + ':' + port].push(entry);
+        } else {
+          var oldEntry = self.table[entryKey];
+          self.table[entryKey] = [oldEntry, entry];
+          self.table[entryKey + ':' + port] = [oldEntry, entry];
+        }
+      } else {
+        self.table[entryKey + ':' + port] = entry;
+        self.table[entryKey] = entry;
+      }
+    }
+  });
 }
 
 DispatchTable.prototype.checkPathForReq = function(req, entry) {
-	if(!entry.path)
-		return true;
-	var target;
-	var m;
+  if(!entry.path)
+    return true;
+  var target;
+  var m;
 
   var parsedUrl = req.parsedUrl;
   var pathname = parsedUrl.pathname || '';
 
-	if(entry.pathRegexp) {
-		m = pathname.match(entry.pathRegexp);
-		if (m) {
-			req.pathMatch = m;
-			return true;
-		} 
-	}
-	else if(pathname == entry.path) {
-		return true;
-	}
-	return false;
+  pathname = decodeURIComponent(pathname);
+
+  if(entry.pathRegexp) {
+    m = pathname.match(entry.pathRegexp);
+    if (m) {
+      req.pathMatch = m;
+      return true;
+    } 
+  }
+  else if(pathname == entry.path) {
+    return true;
+  }
+  return false;
 }
 
 DispatchTable.prototype.getTargetForReq = function(req) {
-	var i, m;
-	var host = req.unicodeHost || req.headers.host || ''; // host can be undefined
+  var i, m;
+  var host = req.unicodeHost || req.headers.host || ''; // host can be undefined
 
-	if (this.table[host]) {
-		if (this.table[host].target) {
-			if(this.checkPathForReq(req, this.table[host])) {
-				return this.table[host].target;
-			}
-		}
-		else { // multiple entries, check pathnames
-			var targetEntries = this.table[host];
-			for (i = 0; i < targetEntries.length; ++i) {
-				if(this.checkPathForReq(req, targetEntries[i]))
-					return targetEntries[i].target;
-			}
-		}
-	}
-	if (this.regexpEntries.length) {
-		var regexpEntries = this.regexpEntries;
-		for (i = 0; i < regexpEntries.length; ++i) {
-			var entry = regexpEntries[i];
+  if (this.table[host]) {
+    if (this.table[host].target) {
+      if(this.checkPathForReq(req, this.table[host])) {
+        return this.table[host].target;
+      }
+    }
+    else { // multiple entries, check pathnames
+      var targetEntries = this.table[host];
+      for (i = 0; i < targetEntries.length; ++i) {
+        if(this.checkPathForReq(req, targetEntries[i]))
+          return targetEntries[i].target;
+      }
+    }
+  }
+  if (this.regexpEntries.length) {
+    var regexpEntries = this.regexpEntries;
+    for (i = 0; i < regexpEntries.length; ++i) {
+      var entry = regexpEntries[i];
       if(!entry.regexp) {
         // TODO: research this
         console.log("Should not happen", (new Error()).toString());
         continue;
       }
-			m = host.match(entry.regexp);
-			if (m) {
-				req.hostMatch = m;
-				if(this.checkPathForReq(req, entry))
-					return entry.target;
-			}
-		}
-	}
+      m = host.match(entry.regexp);
+      if (m) {
+        req.hostMatch = m;
+        if(this.checkPathForReq(req, entry))
+          return entry.target;
+      }
+    }
+  }
 };
 
 DispatchTable.prototype.dispatchUpgrade = function(req, socket, head) {
-	var target = this.getTargetForReq(req);
-	if(target && this.upgradeHandler) {
-		this.upgradeHandler(req, socket, head, target);
-		return true;
-	}
-	return false;
+  var target = this.getTargetForReq(req);
+  if(target && this.upgradeHandler) {
+    this.upgradeHandler(req, socket, head, target);
+    return true;
+  }
+  return false;
 }
 
 DispatchTable.prototype.handleUpgrade = DispatchTable.prototype.dispatchUpgrade;;
 
 DispatchTable.prototype.dispatchRequest = function(req, res, next) {
-	var target = this.getTargetForReq(req);
-	if(target && this.requestHandler) {
-		return this.requestHandler(req, res, next, target);
-	}
-	next();
+  var target = this.getTargetForReq(req);
+  if(target && this.requestHandler) {
+    return this.requestHandler(req, res, next, target);
+  }
+  next();
 };
 
 DispatchTable.prototype.handleRequest = DispatchTable.prototype.dispatchRequest;
