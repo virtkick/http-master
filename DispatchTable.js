@@ -151,7 +151,9 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
   var parsedUrl = req.parsedUrl;
   var pathname = parsedUrl.pathname || '';
 
-  pathname = decodeURIComponent(pathname);
+  try {
+    pathname = decodeURIComponent(pathname);
+  } catch(err) {}
 
   if(entry.pathRegexp) {
     m = pathname.match(entry.pathRegexp);
