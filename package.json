@@ -24,7 +24,6 @@
   "dependencies": {
     "async": "~0.8.0",
     "bugsnag": "~1.2",
-    "di": "0.0.1",
     "es6-shim": "~0.10.0",
     "extend": "~1.2.1",
     "http-auth": "~2.1.6",
