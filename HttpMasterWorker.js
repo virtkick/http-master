@@ -180,6 +180,19 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
     if (config.ssl) {
       var baseModule = config.ssl.spdy ? require('spdy') : https;
 
+      if(nodeVersion >= 0.11) { // use fancy cipher settings only for 0.11
+        if(config.ssl.honorCipherOrder !== false) {
+           // prefer server ciphers over clients - prevents BEAST attack
+           config.ssl.honorCipherOrder = true;
+        }
+        if(!config.ssl.ciphers) {
+          config.ssl.ciphers = 'EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+AES+SHA:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS::+RC4:RC4';
+          if(config.ssl.disableWeakCiphers) {
+            config.ssl.ciphers += ':!RC4';
+          }
+        }
+      }
+
       server = baseModule.createServer(config.ssl, handler.request);
 
       if (!config.ssl.skipWorkerSessionResumption) {
@@ -196,7 +209,6 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
           }
         }
       }
-
     } else {
       server = http.createServer(handler.request);
     }
