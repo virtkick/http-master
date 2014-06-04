@@ -1,12 +1,9 @@
-var path = require('path'),
-  fs = require('fs'),
-  util = require('util'),
-  crypto = require('crypto'),
+'use strict';
+var crypto = require('crypto'),
   extend = require('extend'),
   net = require('net'),
   http = require('http'),
   https = require('https'),
-  cluster = require('cluster'),
   async = require('async'),
   regexpQuote = require('./DispatchTable').regexpQuote,
   url = require('url'),
@@ -16,7 +13,6 @@ var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
 var EventEmitter = require('events').EventEmitter;
 
-var config = {}; // will be sent by master
 var argv = {}; // will be sent by master
 
 var common = require('./common');
@@ -31,19 +27,19 @@ if(tls.createSecureContext) {
 }
 
 
-function getTcpServer(port, host, cb) {
+function lazyGetTcpServer(port, host, cb) {
   var tcpServers = this.tcpServers;
 
-  var entry = (host ? host + ":" + port : port);
+  var entry = (host ? host + ':' + port : port);
   if (tcpServers[entry]) {
     cb(null, tcpServers[entry]);
   } else {
     var tcpServer = tcpServers[entry] = net.createServer();
 
-    function handler(err) {
+    var handler = function(err) {
       if (err) return cb(err);
       cb(null, tcpServer);
-    }
+    };
     try {
       if (host)
         tcpServer.listen(port, host, handler);
@@ -59,16 +55,8 @@ function getTcpServer(port, host, cb) {
   }
 }
 
-function normalizeCert(cert) {
-  if (!cert.match(/\n$/g)) {
-    return cert + "\n";
-  }
-  return cert;
-}
-
-
 function loadKeysforConfigEntry(config, callback) {
-
+  var key;
   if (config.ssl) {
     var SNI = config.ssl.SNI;
     var SNImatchers = {};
@@ -78,17 +66,17 @@ function loadKeysforConfigEntry(config, callback) {
       }
       var sniCallback = function(hostname, cb) {
         hostname = punycode.toUnicode(hostname);
-        for (key in SNI) {
+        for (var key in SNI) {
           if (hostname.match(SNImatchers[key])) {
             if (cb) // since node 0.11.5
-              return cb(null, SNI[key])
+              return cb(null, SNI[key]);
             else
               return SNI[key];
           }
         }
         if (cb)
           return cb(null);
-      }
+      };
       config.ssl.SNICallback = sniCallback;
     }
 
@@ -97,8 +85,9 @@ function loadKeysforConfigEntry(config, callback) {
 
     if (SNI) {
       var todo = [];
-      for (key in SNI)
+      for (key in SNI) {
         todo.push(key);
+      }
 
       async.each(todo, function(key, sniLoaded) {
         SNI[key].ciphers = SNI[key].ciphers || config.ssl.ciphers;
@@ -143,6 +132,26 @@ function handleConfigEntry(config, callback) {
   });
 }
 
+function patchSslConfig(portEntryConfig) {
+  if(nodeVersion >= 0.11) { // use fancy cipher settings only for 0.11
+    if(portEntryConfig.ssl.honorCipherOrder !== false) {
+       // prefer server ciphers over clients - prevents BEAST attack
+       portEntryConfig.ssl.honorCipherOrder = true;
+    }
+    if(!portEntryConfig.ssl.ciphers) {
+      portEntryConfig.ssl.ciphers = 'EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+AES+SHA:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS::+RC4:RC4';
+      if(portEntryConfig.ssl.disableWeakCiphers) {
+        portEntryConfig.ssl.ciphers += ':!RC4';
+      }
+    }
+    else if(portEntryConfig.ssl.disableWeakCiphers) {
+      this.logNotice('disableWeakCiphers is incompatible with pre-set cipher list');
+    }
+  } else if(portEntryConfig.ssl.disableWeakCiphers) {
+    this.logNotice('disableWeakCiphers is unsupported for node 0.10');
+  }  
+}
+
 function handleConfigEntryAfterLoadingKeys(config, callback) {
   var self = this;
   //
@@ -171,7 +180,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       requestHandlers.push(middleware.handleRequest.bind(middleware));
     if (middleware.upgradeHandler)
       upgradeHandlers.push(middleware.handleUpgrade.bind(middleware));
-  }, "middleware", config);
+  }, 'middleware', config);
 
   var handler = require('./requestHandler')(config, requestHandlers);
 
@@ -180,18 +189,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
     if (config.ssl) {
       var baseModule = config.ssl.spdy ? require('spdy') : https;
 
-      if(nodeVersion >= 0.11) { // use fancy cipher settings only for 0.11
-        if(config.ssl.honorCipherOrder !== false) {
-           // prefer server ciphers over clients - prevents BEAST attack
-           config.ssl.honorCipherOrder = true;
-        }
-        if(!config.ssl.ciphers) {
-          config.ssl.ciphers = 'EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+AES+SHA:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS::+RC4:RC4';
-          if(config.ssl.disableWeakCiphers) {
-            config.ssl.ciphers += ':!RC4';
-          }
-        }
-      }
+      patchSslConfig.call(self, config);
 
       server = baseModule.createServer(config.ssl, handler.request);
 
@@ -205,7 +203,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
               ticketKeys: self.token
             });
           } else {
-            self.logNotice("SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node");
+            self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
           }
         }
       }
@@ -239,7 +237,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
     }
   });
 
-  getTcpServer.call(this, config.port, config.host, function(err, tcpServer) {
+  lazyGetTcpServer.call(this, config.port, config.host, function(err, tcpServer) {
 
     if (err) return callback(err, server);
 
@@ -285,26 +283,26 @@ function handleConfig(config, configHandled) {
         }, portConfig);
 
         handleConfigEntry.call(self, configEntry, function(err, server) {
-          var entryString = (configEntry.host ? configEntry.host + ":" + configEntry.port : "port " + configEntry.port);
+          var entryString = (configEntry.host ? configEntry.host + ':' + configEntry.port : 'port ' + configEntry.port);
           if (err) {
-            self.logError("Error while starting entry " + entryString + " : " + err.toString());
+            self.logError('Error while starting entry ' + entryString + ' : ' + err.toString());
             if (err.stack)
               self.logError(err.stack);
           }
           if (server) {
-            self.logNotice("Listening on port: " + entryString);
+            self.logNotice('Listening on port: ' + entryString);
           } else
-            self.logNotice("Entry " + entryString + " is unusable");
+            self.logNotice('Entry ' + entryString + ' is unusable');
           // ignore error to not crash the entire proxy
           asyncCallback(null, server);
         });
-      };
+      }
     };
   }), function(err, results) {
     if (err) {
       return configHandled(err);
     }
-    self.logNotice("Start successful");
+    self.logNotice('Start successful');
 
     // TODO
     //dropPrivileges();
@@ -351,15 +349,15 @@ HttpMasterWorker.prototype = Object.create(EventEmitter.prototype);
 
 HttpMasterWorker.prototype.logNotice = function(msg) {
   this.emit('logNotice', msg);
-}
+};
 
 HttpMasterWorker.prototype.logError = function(msg) {
   this.emit('logError', msg);
-}
+};
 
 HttpMasterWorker.prototype.unbindAll = function(unbindFinished) {
   unbindAll.call(this, unbindFinished);
-}
+};
 
 HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
   var self = this;
@@ -370,8 +368,7 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
     if (err) return configLoaded(err);
     self.gcServers(configLoaded);
   });
-
-}
+};
 
 HttpMasterWorker.prototype.gcServers = function(gcFinished) {
   var self = this;

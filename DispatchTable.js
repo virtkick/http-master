@@ -1,6 +1,5 @@
+'use strict';
 var XRegExp = require('xregexp').XRegExp;
-var url = require('url');
-
 
 // globStringToRegex from: http://stackoverflow.com/a/13818704/403571
 function regexpQuote(str, delimiter) {
@@ -45,7 +44,7 @@ function globStringToRegex(str, specialCh) {
     inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
   inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)');
 
-  var regexp = new XRegExp("^" + inside + "$");
+  var regexp = new XRegExp('^' + inside + '$');
   return regexp;
 }
 
@@ -53,7 +52,7 @@ function getRegexpIfNeeded(str, specialCh) {
   if (typeof str == 'string') {
     var m = str.match(/^\^(.*)\$?$/);
     if (m) {
-      return new XRegExp("^" + m[1] + "$");
+      return new XRegExp('^' + m[1] + '$');
     } else if (str.match(/[*?]/)) {
       return globStringToRegex(str, specialCh);
     }
@@ -62,7 +61,6 @@ function getRegexpIfNeeded(str, specialCh) {
 }
 
 function postParseKey(entryKey, entry) {
-  var withHost = false;
   var regexp = getRegexpIfNeeded(entryKey);
   if (regexp)
     entry.regexp = regexp;
@@ -145,7 +143,6 @@ function DispatchTable(params) {
 DispatchTable.prototype.checkPathForReq = function(req, entry) {
   if(!entry.path)
     return true;
-  var target;
   var m;
 
   var parsedUrl = req.parsedUrl;
@@ -166,7 +163,7 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
     return true;
   }
   return false;
-}
+};
 
 DispatchTable.prototype.getTargetForReq = function(req) {
   var i, m;
@@ -192,7 +189,7 @@ DispatchTable.prototype.getTargetForReq = function(req) {
       var entry = regexpEntries[i];
       if(!entry.regexp) {
         // TODO: research this
-        console.log("Should not happen", (new Error()).toString());
+        console.log('Should not happen', (new Error()).toString());
         continue;
       }
       m = host.match(entry.regexp);
@@ -212,9 +209,9 @@ DispatchTable.prototype.dispatchUpgrade = function(req, socket, head) {
     return true;
   }
   return false;
-}
+};
 
-DispatchTable.prototype.handleUpgrade = DispatchTable.prototype.dispatchUpgrade;;
+DispatchTable.prototype.handleUpgrade = DispatchTable.prototype.dispatchUpgrade;
 
 DispatchTable.prototype.dispatchRequest = function(req, res, next) {
   var target = this.getTargetForReq(req);

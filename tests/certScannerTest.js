@@ -1,12 +1,10 @@
 'use strict';
-require('mocha');
 var assert = require('chai').assert;
 var fs = require('fs.extra');
 var path = require('path');
 
 //TODO: test to find out if bad files are properly ignored
 //TODO: test to find out how errors are handled
-
 
 describe('SSL directory scanner', function() {
   var SslScanner = require('../certScanner');

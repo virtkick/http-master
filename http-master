@@ -1,11 +1,10 @@
 #!/usr/bin/env node
+'use strict';
 
 var path = require('path'),
   fs = require('fs'),
   argv = require('optimist').argv,
-  extend = require('extend'),
-  net = require('net'),
-  jsonLint = require('jsonlint-lines');
+  extend = require('extend');
 
 function logError(str) {
   if (argv.silent || config.silent)
@@ -16,21 +15,21 @@ var logNotice = logError;
 
 
 var help = [
-  "usage: http-master [options] ",
-  "",
-  "Starts a http-master server using the specified command-line options",
-  "",
-  "options:",
-  "  --version",
-  "  --config CONFIGFILE     Configuration file (YAML or JSON)",
-  "  --configloader JS-FILE  Provide js file as config loader",
-  "  --configloader-test     Test config configloader by printing out its output",
-  "  --watch                 Watch config for changes",
-  "  --silent                Silence the log output",
-  "  --user   USER           User to drop privileges to once server socket is bound",
-  "  --group  GROUP          Group to drop privileges to once server socket is bound",
-  "  --show-rules            Show all rules upon every config load",
-  "  -h, --help              You're staring at it"
+  'usage: http-master [options] ',
+  '',
+  'Starts a http-master server using the specified command-line options',
+  '',
+  'options:',
+  '  --version',
+  '  --config CONFIGFILE     Configuration file (YAML or JSON)',
+  '  --configloader JS-FILE  Provide js file as config loader',
+  '  --configloader-test     Test config configloader by printing out its output',
+  '  --watch                 Watch config for changes',
+  '  --silent                Silence the log output',
+  '  --user   USER           User to drop privileges to once server socket is bound',
+  '  --group  GROUP          Group to drop privileges to once server socket is bound',
+  '  --show-rules            Show all rules upon every config load',
+  '  -h, --help              You\'re staring at it'
 ].join('\n');
 
 if (argv.h || argv.help || Object.keys(argv).length === 2) {
@@ -41,16 +40,15 @@ if(argv.version) {
   return console.log(JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'))).version);
 }
 
-var location, config = {},
-  target = argv.target;
+var config = {};
 
 if (argv['configloader-test']) {
   if(!argv.configloader) {
-    console.log("Please provide valid script as argument for --configloader");
+    console.log('Please provide valid script as argument for --configloader');
     process.exit(1);
   }
 
-  require(argv.configloader)(argv, fs.readFileSync(argv.config).toString("utf8"), function(err, config) {
+  require(argv.configloader)(argv, fs.readFileSync(argv.config).toString('utf8'), function(err, config) {
     if(err) throw err;
     console.log(JSON.stringify(config));
   });
@@ -58,7 +56,7 @@ if (argv['configloader-test']) {
 }
 
 if (!argv.config && !argv.configloader) {
-  logError("either --config or --configloader is mandatory");
+  logError('either --config or --configloader is mandatory');
   process.exit();
 }
 
@@ -78,14 +76,14 @@ function dropPrivileges() {
     if (typeof user === 'string') {
       process.setuid(user);
       if (strInfo)
-        strInfo = user + ":" + strInfo;
+        strInfo = user + ':' + strInfo;
       else
         strInfo = user;
     }
   }
 
   if (!droppedPrivileges && strInfo)
-    logNotice("Dropped privileges to: " + strInfo);
+    logNotice('Dropped privileges to: ' + strInfo);
   droppedPrivileges = true;
 }
 
@@ -107,12 +105,12 @@ function patchConfigWithArgv(config) {
     config.debug = argv.debug;
 
   if(typeof config.workerCount == 'undefined') {
-    logNotice("Setting workerCount to number of CPUs");
+    logNotice('Setting workerCount to number of CPUs');
     config.workerCount = numCPUs;
   }
 }
 
-yaml = require('js-yaml');
+var yaml = require('js-yaml');
 
 function fetchConfig(finish) {
 
@@ -121,10 +119,10 @@ function fetchConfig(finish) {
     configloader = require(argv.configloader);
   } else {
     configloader = function(argv, data, finish) {
-      data = data.replace("\n", "\r\n");
+      data = data.replace('\n', '\r\n');
       var oldWarn = console.warn;
       try {
-        console.warn = function() {}
+        console.warn = function() {};
         finish(null, yaml.safeLoad(data));
         console.warn = oldWarn;
       } catch(err) {
@@ -172,44 +170,44 @@ fetchConfig(function(err, parsedConfig) {
 
   master.init(config, function(err) {
     if(err) { 
-      logError("Workers failed to start");
+      logError('Workers failed to start');
       throw err;
     }
-    logNotice("All workers started in " + (new Date().getTime() - startTime) + "ms");
+    logNotice('All workers started in ' + (new Date().getTime() - startTime) + 'ms');
     dropPrivileges();
 
 
     var watch = require('node-watch');
     if (config.watchConfig || argv.watch) {
       watch(argv.config, function() {
-        logNotice("Reloading workers due to config change");
+        logNotice('Reloading workers due to config change');
         fetchConfig(function(err, parsedConfig) {
-          if(err) return logNotice("Skipping reload due to config error: " + err.stack.toString());
+          if(err) return logNotice('Skipping reload due to config error: ' + err.stack.toString());
           config = parsedConfig;
           var startTime = new Date().getTime();
           master.reload(config, function(err) {
-            logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
+            logNotice('All workers reloaded, downtime was ' + (new Date().getTime() - startTime) + 'ms');
           });
         });
       });
     }
 
     process.on('SIGUSR1', function() {
-      logNotice("USR1: Reloading config");
+      logNotice('USR1: Reloading config');
 
       // TODO: assure it is not called in the middle of reload
       fetchConfig(function(err, parsedConfig) {
-        if(err) return logNotice("Skipping reload due to config error");
+        if(err) return logNotice('Skipping reload due to config error');
         config = parsedConfig;
         var startTime = new Date().getTime();
         master.reload(config, function(err) {
-          logNotice("All workers reloaded, downtime was " + (new Date().getTime() - startTime) + "ms");
+          logNotice('All workers reloaded, downtime was ' + (new Date().getTime() - startTime) + 'ms');
         });
       });
     });
 
     process.on('uncaughtException', function(err) {
-      logError("[Uncaught exception in master] " + err.stack || err.message);
+      logError('[Uncaught exception in master] ' + err.stack || err.message);
     });
 
 

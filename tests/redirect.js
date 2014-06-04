@@ -1,7 +1,5 @@
-var should = require('should');
-var mocha = require('mocha');
-var DispatchTable = require('../DispatchTable');
-var assert = require('assert');
+'use strict';
+require('should');
 
 function makeReq(host, path) {
 	return {
@@ -22,10 +20,9 @@ var redirect = require('../modules/redirect');
 describe('redirect module', function() {
 	it('should handle [path] without leading /', function() {
 
-
 		var middleware = redirect.middleware({
 			redirect: {
-				"jira.atlashost.eu/*": "https://jira.atlashost.eu/[path]"
+				'jira.atlashost.eu/*': 'https://jira.atlashost.eu/[path]'
 			}
 		});
 
@@ -34,7 +31,7 @@ describe('redirect module', function() {
 			onTarget = cb;
 			middleware.handleRequest(makeReq(host, path), {
 				setHeader: function(str, target) {
-					if(str == "Location")
+					if(str == 'Location')
 						cb(target);
 				},
 				end: function(){}
@@ -47,12 +44,10 @@ describe('redirect module', function() {
 			makeTest(host, path, function(target) {
 				target.should.equal(mustEqual);
 			});
-		}
-
+		};
 
 		assertPath('jira.atlashost.eu', '/test', 'https://jira.atlashost.eu/test');
 		assertPath('jira.atlashost.eu', '/', 'https://jira.atlashost.eu/');
 		assertPath('jira.atlashost.eu', '', 'https://jira.atlashost.eu/');
-
 	});
 });

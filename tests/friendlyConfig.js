@@ -1,7 +1,6 @@
-var should = require('should');
-var mocha = require('mocha');
+'use strict';
+require('should');
 var assert = require('assert');
-
 var processConfig = require('../friendlyConfig');
 
 describe('domains config processor', function() {
@@ -18,19 +17,19 @@ describe('domains config processor', function() {
     assert.deepEqual(processConfig(input), expected);
   });
 
-  it('should generate \"ports\"" keys from list of ports', function() {
+  it('should generate \"ports\" keys from list of ports', function() {
     var input = {
       http: [80, 8080],
       https: [443, 80443]
     };
     var expected = {
       ports: {
-        "80": {},
-        "8080": {},
-        "443": {
+        '80': {},
+        '8080': {},
+        '443': {
           ssl: {}
         },
-        "80443": {
+        '80443': {
           ssl: {}
         }
       }
@@ -47,7 +46,7 @@ describe('domains config processor', function() {
     };
     var expected = {
       ports: {
-        "443": {
+        '443': {
           ssl: {
             cipherList: ['CIPHER1', 'CIPHER2'],
             spdy: true
@@ -65,12 +64,12 @@ describe('domains config processor', function() {
     };
     var expected = {
       ports: {
-        "80": {},
-        "443": {
+        '80': {},
+        '443': {
           ssl: {}
         },
       }
-    }
+    };
 
     assert.deepEqual(processConfig(input), expected);
   });
@@ -79,14 +78,14 @@ describe('domains config processor', function() {
     var input = {
       http: true,
       routes: {
-        "code2flow.com:80": 4030
+        'code2flow.com:80': 4030
       }
     };
     var expected = {
       ports: {
-        "80": {
+        '80': {
           proxy: {
-            "code2flow.com": 4030
+            'code2flow.com': 4030
           }
         }
       }
@@ -104,22 +103,22 @@ describe('domains config processor', function() {
       }],
       routes: {
         'somehost:80': 50,
-        "code2flow.com:443/test": "redirect: https://sometarget"
+        'code2flow.com:443/test': 'redirect: https://sometarget'
       }
     };
     var expected = {
       ports: {
-        "443": {
+        '443': {
           ssl: {
             spdy: true,
             key: 'key.pem',
             cert: 'cert.pem'
           },
           redirect: {
-            "code2flow.com/test": "https://sometarget"
+            'code2flow.com/test': 'https://sometarget'
           }
         },
-        "80": {
+        '80': {
           proxy: {
             'somehost': 50
           }
@@ -134,42 +133,42 @@ describe('domains config processor', function() {
       https: [443, 444],
       routes: {
         'somehost': 50,
-        "code2flow.com/test": "redirect: https://sometarget"
+        'code2flow.com/test': 'redirect: https://sometarget'
       }
     };
     var expected = {
       ports: {
-        "80": {
+        '80': {
           proxy: {
             'somehost': 50
           },
           redirect: {
-            "code2flow.com/test": "https://sometarget"
+            'code2flow.com/test': 'https://sometarget'
           }
         },
-        "81": {
+        '81': {
           proxy: {
             'somehost': 50
           },
           redirect: {
-            "code2flow.com/test": "https://sometarget"
+            'code2flow.com/test': 'https://sometarget'
           }
         },
-        "443": {
+        '443': {
           proxy: {
             'somehost': 50
           },
           redirect: {
-            "code2flow.com/test": "https://sometarget"
+            'code2flow.com/test': 'https://sometarget'
           },
           ssl: {}
         },
-        "444": {
+        '444': {
           proxy: {
             'somehost': 50
           },
           redirect: {
-            "code2flow.com/test": "https://sometarget"
+            'code2flow.com/test': 'https://sometarget'
           },
           ssl: {}
         }
@@ -181,24 +180,24 @@ describe('domains config processor', function() {
     var input = {
       groups: {
         localOnlyHttp: {
-          interfaces: ["127.0.0.1", "::1"],
+          interfaces: ['127.0.0.1', '::1'],
           ports: [80]
         }
       },
       routes: {
-        "localOnlyHttp | code2flow.com/test": 3040
+        'localOnlyHttp | code2flow.com/test': 3040
       }
     };
     var expected = {
       ports: {
-        "127.0.0.1:80": {
+        '127.0.0.1:80': {
           proxy: {
-            "code2flow.com/test": 3040
+            'code2flow.com/test': 3040
           }
         },
-        "[::1]:80": {
+        '[::1]:80': {
           proxy: {
-            "code2flow.com/test": 3040
+            'code2flow.com/test': 3040
           }
         }
       }
@@ -207,21 +206,21 @@ describe('domains config processor', function() {
   });
   it('should handle global multiple interfaces', function() {
     var input = {
-      interfaces: ["127.0.0.1", "::1"],
+      interfaces: ['127.0.0.1', '::1'],
       routes: {
-        "code2flow.com:80/test": 3040
+        'code2flow.com:80/test': 3040
       }
     };
     var expected = {
       ports: {
-        "127.0.0.1:80": {
+        '127.0.0.1:80': {
           proxy: {
-            "code2flow.com/test": 3040
+            'code2flow.com/test': 3040
           }
         },
-        "[::1]:80": {
+        '[::1]:80': {
           proxy: {
-            "code2flow.com/test": 3040
+            'code2flow.com/test': 3040
           }
         }
       }
@@ -229,18 +228,18 @@ describe('domains config processor', function() {
     assert.deepEqual(processConfig(input), expected);
   });
 
-  it('should discard other interfaces if "*" is defined', function() {
+  it('should discard other interfaces if '*' is defined', function() {
     var input = {
-      interfaces: ["127.0.0.1", "::1", "*"],
+      interfaces: ['127.0.0.1', '::1', '*'],
       routes: {
-        "code2flow.com:80/test": 3040
+        'code2flow.com:80/test': 3040
       }
     };
     var expected = {
       ports: {
-        "80": {
+        '80': {
           proxy: {
-            "code2flow.com/test": 3040
+            'code2flow.com/test': 3040
           }
         }
       }
@@ -251,23 +250,23 @@ describe('domains config processor', function() {
   it('should allow by group subdomain definitions', function() {
     var input = {
       groups: {
-        "www": {
+        'www': {
           subdomains: {
-            "": "[target]",
-            "www.": "[target]"
+            '': '[target]',
+            'www.': '[target]'
           }
         }
       },
       routes: {
-        "www | code2flow.com:80": 567
+        'www | code2flow.com:80': 567
       }
     };
     var expected = {
-      "ports": {
-        "80": {
-          "proxy": {
-            "code2flow.com": 567,
-            "www.code2flow.com": 567
+      'ports': {
+        '80': {
+          'proxy': {
+            'code2flow.com': 567,
+            'www.code2flow.com': 567
           }
         }
       }
@@ -278,24 +277,22 @@ describe('domains config processor', function() {
   it('should allow subdomain definitions in object', function() {
     var input = {
       routes: {
-        "code2flow.com:80": {
+        'code2flow.com:80': {
           subdomains: {
-            "www.": 3040
+            'www.': 3040
           }
         }
       }
     };
     var expected = {
-      "ports": {
-        "80": {
-          "proxy": {
-            "www.code2flow.com": 3040
+      'ports': {
+        '80': {
+          'proxy': {
+            'www.code2flow.com': 3040
           }
         }
       }
     };
-    var util = require('util');
-
     assert.deepEqual(processConfig(input), expected);
   });
 

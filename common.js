@@ -1,5 +1,6 @@
+'use strict';
 var path = require('path');
-var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(function(file) {
+var modules = require('fs').readdirSync(path.join(__dirname, 'modules')).map(function(file) {
   return require('./modules/' + file);
 }).sort(function(a, b) { // sort modules according to priority
   return (b.priority || 0) - (a.priority || 0);
@@ -8,8 +9,6 @@ var modules = require("fs").readdirSync(path.join(__dirname, "modules")).map(fun
 
 function runModules(cb) {
   var args = Array.prototype.slice.call(arguments, 1);
-  var results = [];
-
   var name;
   if (typeof cb === 'string') {
     name = cb;

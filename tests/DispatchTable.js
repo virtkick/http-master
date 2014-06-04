@@ -1,7 +1,4 @@
-// todo - add tests for url rewriting
-
-var should = require('should');
-var mocha = require('mocha');
+'use strict';
 var DispatchTable = require('../DispatchTable');
 var assert = require('assert');
 
@@ -74,54 +71,53 @@ describe('DispatchTable internal structure', function() {
       var entry = dispatchTable.regexpEntries[0];
       assert.deepEqual(entry.target, {
         key1: '1'
-      })
-      assert(entry.regexp, "has regexp");
+      });
+      assert(entry.regexp, 'has regexp');
 
       entry = dispatchTable.regexpEntries[1];
       assert.deepEqual(entry.target, 'stringTarget');
-      assert(entry.regexp, "has regexp");
+      assert(entry.regexp, 'has regexp');
 
       entry = dispatchTable.regexpEntries[2];
       assert.deepEqual(entry.target, 400);
-      assert(entry.regexp, "has regexp");
+      assert(entry.regexp, 'has regexp');
     });
 
     it('should have wildcards compiled to proper working regexps', function() {
 
       var entry;
       entry = dispatchTable.regexpEntries[0];
-      assert('host2.com'.match(entry.regexp))
-      assert('host2.net'.match(entry.regexp))
-      assert('host2.org'.match(entry.regexp))
-      assert(!'host2.co.uk'.match(entry.regexp))
-      // assert(!'host2.pl'.match(entry.regexp))
-      assert(!'.host2.com'.match(entry.regexp))
-      assert(!'www.host2.com'.match(entry.regexp))
+      assert('host2.com'.match(entry.regexp));
+      assert('host2.net'.match(entry.regexp));
+      assert('host2.org'.match(entry.regexp));
+      assert(!'host2.co.uk'.match(entry.regexp));
+      assert(!'.host2.com'.match(entry.regexp));
+      assert(!'www.host2.com'.match(entry.regexp));
       entry = dispatchTable.regexpEntries[1];
 
-      assert(!'host2.com'.match(entry.regexp))
-      assert(!'hhost2.com'.match(entry.regexp))
-      assert(!'.host2.com'.match(entry.regexp))
-      assert('www.host2.com'.match(entry.regexp))
-      assert('www.test.host2.com'.match(entry.regexp))
+      assert(!'host2.com'.match(entry.regexp));
+      assert(!'hhost2.com'.match(entry.regexp));
+      assert(!'.host2.com'.match(entry.regexp));
+      assert('www.host2.com'.match(entry.regexp));
+      assert('www.test.host2.com'.match(entry.regexp));
 
       entry = dispatchTable.regexpEntries[2];
-      assert('host3.ddd.net'.match(entry.regexp))
-      assert(!'host3..net'.match(entry.regexp))
-      assert('host3.test.net'.match(entry.regexp))
-      assert(!'host3.test.test2.net'.match(entry.regexp))
-      assert(!'host3.net'.match(entry.regexp))
+      assert('host3.ddd.net'.match(entry.regexp));
+      assert(!'host3..net'.match(entry.regexp));
+      assert('host3.test.net'.match(entry.regexp));
+      assert(!'host3.test.test2.net'.match(entry.regexp));
+      assert(!'host3.net'.match(entry.regexp));
 
       entry = dispatchTable.regexpEntries[3];
-      assert('host4.com'.match(entry.regexp))
-      assert(!'hhost4.com'.match(entry.regexp))
-      assert(!'.host4.com'.match(entry.regexp))
-      assert('www.host4.com'.match(entry.regexp))
-      assert('www.test.host4.com'.match(entry.regexp))
+      assert('host4.com'.match(entry.regexp));
+      assert(!'hhost4.com'.match(entry.regexp));
+      assert(!'.host4.com'.match(entry.regexp));
+      assert('www.host4.com'.match(entry.regexp));
+      assert('www.test.host4.com'.match(entry.regexp));
 
       entry = dispatchTable.regexpEntries[4];
-      assert('host5.com'.match(entry.regexp))
-      assert('host5.co.uk'.match(entry.regexp))
+      assert('host5.com'.match(entry.regexp));
+      assert('host5.co.uk'.match(entry.regexp));
 
     });
 
@@ -147,17 +143,16 @@ describe('DispatchTable internal structure', function() {
       var entry = dispatchTable.regexpEntries[0];
       assert.deepEqual(entry.target, {
         key1: '1'
-      })
-      assert(entry.regexp, "has regexp");
+      });
+      assert(entry.regexp, 'has regexp');
 
       entry = dispatchTable.regexpEntries[1];
       assert.deepEqual(entry.target, 'stringTarget');
-      assert(entry.regexp, "has regexp");
-      assert(entry.regexp, "has regexp");
+      assert(entry.regexp, 'has regexp');
 
       entry = dispatchTable.regexpEntries[2];
       assert.deepEqual(entry.target, 400);
-      assert(entry.regexp, "has regexp");
+      assert(entry.regexp, 'has regexp');
 
     });
 
@@ -165,19 +160,19 @@ describe('DispatchTable internal structure', function() {
 
       var entry;
       entry = dispatchTable.regexpEntries[0];
-      assert(!''.match(entry.regexp))
-      assert('test'.match(entry.regexp))
-      assert('...'.match(entry.regexp))
+      assert(!''.match(entry.regexp));
+      assert('test'.match(entry.regexp));
+      assert('...'.match(entry.regexp));
       entry = dispatchTable.regexpEntries[1];
-      assert('ala.ma.kota.pl'.match(entry.regexp))
-      assert('ola.ma.kota.pl'.match(entry.regexp))
-      assert(!'mola.ma.kota.pl'.match(entry.regexp))
-      assert(!'aga.ma.kota.pl'.match(entry.regexp))
-      assert(!'ola.ma.kota_pl'.match(entry.regexp))
-      assert(!'ola.ma.kota.pl_'.match(entry.regexp))
+      assert('ala.ma.kota.pl'.match(entry.regexp));
+      assert('ola.ma.kota.pl'.match(entry.regexp));
+      assert(!'mola.ma.kota.pl'.match(entry.regexp));
+      assert(!'aga.ma.kota.pl'.match(entry.regexp));
+      assert(!'ola.ma.kota_pl'.match(entry.regexp));
+      assert(!'ola.ma.kota.pl_'.match(entry.regexp));
       entry = dispatchTable.regexpEntries[2];
-      assert('host3.net'.match(entry.regexp))
-      assert('host3.code2flow.net'.match(entry.regexp))
+      assert('host3.net'.match(entry.regexp));
+      assert('host3.code2flow.net'.match(entry.regexp));
     });
   });
 
@@ -231,8 +226,8 @@ describe('DispatchTable internal structure', function() {
       config: config
     });
     it('should not find any route', function() {
-      assert(!dispatchTable.getTargetForReq(makeReq('code2flow.com', '/adminwhatever')), "is null");
-      assert(!dispatchTable.getTargetForReq(makeReq('code2flow.com', '/adminw2hatever')), "is null");
+      assert(!dispatchTable.getTargetForReq(makeReq('code2flow.com', '/adminwhatever')), 'is null');
+      assert(!dispatchTable.getTargetForReq(makeReq('code2flow.com', '/adminw2hatever')), 'is null');
     });
     it('should find proper routes', function() {
 
@@ -254,7 +249,7 @@ describe('DispatchTable internal structure', function() {
 describe('DispatchTable various routes', function() {
     var config = {
       'local.code2flow.com/^get/(?<code>[a-f]{6})': 5070,
-      '*.code2flow.com/^(\\d+)/(?<code>[a-f]{6})': "[2]"
+      '*.code2flow.com/^(\\d+)/(?<code>[a-f]{6})': '[2]'
     };
     var dispatchTable = new DispatchTable({
       config: config
@@ -412,7 +407,6 @@ describe('DispatchTable dispatcher', function() {
       headers: {
       }
     }, {}, function(err) {
-      console.log("Error", err);
       finish(false);
     });
   });

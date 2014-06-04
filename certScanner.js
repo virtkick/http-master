@@ -13,8 +13,9 @@ module.exports = function(sslDirectory, options) {
   var that = this;
   options = options || {};
 
-  if(!sslDirectory)
-    throw new Error("sslDirectory as first argument is mandatory");
+  if(!sslDirectory) {
+    throw new Error('sslDirectory as first argument is mandatory');
+  }
 
   this.sslDirectory = sslDirectory;
   if (!sslDirectory.endsWith('/')) {
@@ -50,15 +51,15 @@ module.exports = function(sslDirectory, options) {
                 if(moment(cert.notBefore).diff(moment()) < 0) { // valid
                   if(moment(cert.notAfter).diff(moment()) > 0) { // valid
                     if(moment(cert.notAfter).diff(moment(), 'd') < 90)
-                      that.emit('notice', path.join(dirName, certPath) + ": valid only for " + moment(cert.notAfter).diff(moment(), 'd').toString() + " days");
+                      that.emit('notice', path.join(dirName, certPath) + ': valid only for ' + moment(cert.notAfter).diff(moment(), 'd').toString() + ' days');
                   }
                   else { //expired
-                    that.emit('notice', path.join(dirName, certPath) + ": expired " + (-moment(cert.notAfter).diff(moment(), 'd')).toString() + " days ago");
+                    that.emit('notice', path.join(dirName, certPath) + ': expired ' + (-moment(cert.notAfter).diff(moment(), 'd')).toString() + ' days ago');
                     return cb();
                   }
                 }
                 else { // not yet valid
-                  that.emit('notice', path.join(dirName, certPath) + ": not yet valid for " + (moment(cert.notBefore).diff(moment(), 'd')).toString() + " days");
+                  that.emit('notice', path.join(dirName, certPath) + ': not yet valid for ' + (moment(cert.notBefore).diff(moment(), 'd')).toString() + ' days');
                   return cb();
                 }
               }
@@ -172,7 +173,7 @@ module.exports = function(sslDirectory, options) {
             fs.stat(certPath, function(err, statData) {
 
               if(statData.isDirectory()) {
-                return processDirectory(certPath, cb)
+                return processDirectory(certPath, cb);
               }
 
               that.getCaCertsFromFile(certPath, function(err, certs, rawCerts) {
