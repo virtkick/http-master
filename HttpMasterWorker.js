@@ -152,18 +152,11 @@ function patchSslConfig(portEntryConfig) {
   }  
 }
 
-function handleConfigEntryAfterLoadingKeys(config, callback) {
+function fetchRequestAndUpgradeHandlers(config, cb) {
   var self = this;
-  //
-  // Check to see if we should silence the logs
-  //
-  config.silent = typeof argv.silent !== 'undefined' ? argv.silent : config.silent;
-
-  var middlewares = [];
-
   var requestHandlers = [];
   var upgradeHandlers = [];
-
+  var middlewares = [];
   runModules(function(name, middleware) {
     if (middleware.failedEntries) {
       Object.keys(middleware.failedEntries).forEach(function(key) {
@@ -181,80 +174,91 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
     if (middleware.upgradeHandler)
       upgradeHandlers.push(middleware.handleUpgrade.bind(middleware));
   }, 'middleware', config);
+  cb(requestHandlers, upgradeHandlers);
+}
 
-  var handler = require('./requestHandler')(config, requestHandlers);
+function handleConfigEntryAfterLoadingKeys(config, callback) {
+  var self = this;
+  //
+  // Check to see if we should silence the logs
+  //
+  config.silent = typeof argv.silent !== 'undefined' ? argv.silent : config.silent;
 
-  var server;
-  try {
-    if (config.ssl) {
-      var baseModule = config.ssl.spdy ? require('spdy') : https;
+  fetchRequestAndUpgradeHandlers.call(this, config, function(requestHandlers, upgradeHandlers) {
 
-      patchSslConfig.call(self, config);
+    var handler = require('./requestHandler')(config, requestHandlers);
+    var server;
+    try {
+      if (config.ssl) {
+        var baseModule = config.ssl.spdy ? require('spdy') : https;
 
-      server = baseModule.createServer(config.ssl, handler.request);
+        patchSslConfig.call(self, config);
 
-      if (!config.ssl.skipWorkerSessionResumption) {
-        server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
-        server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
+        server = baseModule.createServer(config.ssl, handler.request);
 
-        if (self.token) {
-          if (server._setServerData) {
-            server._setServerData({
-              ticketKeys: self.token
-            });
-          } else {
-            self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
+        if (!config.ssl.skipWorkerSessionResumption) {
+          server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
+          server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
+
+          if (self.token) {
+            if (server._setServerData) {
+              server._setServerData({
+                ticketKeys: self.token
+              });
+            } else {
+              self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
+            }
           }
         }
+      } else {
+        server = http.createServer(handler.request);
       }
-    } else {
-      server = http.createServer(handler.request);
+    } catch (err) {
+      return callback(err, null);
     }
-  } catch (err) {
-    return callback(err, null);
-  }
 
-  function listeningHandler() {
-    server.removeAllListeners('error'); // remove the below handler
-    callback(null, server);
-    server.removeListener('error', errorHandler);
-  }
+    function listeningHandler() {
+      server.removeAllListeners('error'); // remove the below handler
+      callback(null, server);
+      server.removeListener('error', errorHandler);
+    }
 
-  function errorHandler(err) {
-    server.removeAllListeners('listening'); // remove the above handler
-    callback(err, server);
-    server.removeListener('listening', listeningHandler);
-  }
+    function errorHandler(err) {
+      server.removeAllListeners('listening'); // remove the above handler
+      callback(err, server);
+      server.removeListener('listening', listeningHandler);
+    }
 
-  server.once('listening', listeningHandler);
-  server.once('error', errorHandler);
-  server.on('upgrade', function(req, socket, head) {
-    req.parsedUrl = url.parse(req.url);
-    for (var i = 0; i < upgradeHandlers.length; ++i) {
-      if (upgradeHandlers[i](req, socket, head)) { // ws handled
-        break;
+    server.once('listening', listeningHandler);
+    server.once('error', errorHandler);
+    server.on('upgrade', function(req, socket, head) {
+      req.parsedUrl = url.parse(req.url);
+      for (var i = 0; i < upgradeHandlers.length; ++i) {
+        if (upgradeHandlers[i](req, socket, head)) { // ws handled
+          break;
+        }
       }
-    }
-  });
-
-  lazyGetTcpServer.call(this, config.port, config.host, function(err, tcpServer) {
-
-    if (err) return callback(err, server);
-
-    tcpServer.removeAllListeners();
-    tcpServer.on('connection', function(socket) {
-      server.emit('connection', socket);
     });
-    tcpServer.on('error', function(err) {
-      server.emit('error', err);
-    });
-    tcpServer.on('close', function(err) {
-      server.emit('close');
-    });
-    server.emit('listening');
-    // FIXME: this should run at every config reload
 
-    runModules('onServerListening', config, server);
+    lazyGetTcpServer.call(self, config.port, config.host, function(err, tcpServer) {
+
+      if (err) return callback(err, server);
+
+      tcpServer.removeAllListeners();
+      tcpServer.on('connection', function(socket) {
+        server.emit('connection', socket);
+      });
+      tcpServer.on('error', function(err) {
+        server.emit('error', err);
+      });
+      tcpServer.on('close', function(err) {
+        server.emit('close');
+      });
+      server.emit('listening');
+      // FIXME: this should run at every config reload
+
+      runModules('onServerListening', config, server);
+    });
   });
 }
 
