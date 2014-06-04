@@ -9,7 +9,10 @@ var path = require('path'),
   cluster = require('cluster'),
   async = require('async'),
   regexpQuote = require('./DispatchTable').regexpQuote,
-  url = require('url');
+  url = require('url'),
+  tls = require('tls');
+
+var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
 var EventEmitter = require('events').EventEmitter;
 
@@ -19,6 +22,14 @@ var argv = {}; // will be sent by master
 var common = require('./common');
 var runModules = common.runModules;
 var punycode = require('punycode');
+
+var createCredentials;
+if(tls.createSecureContext) {
+  createCredentials = tls.createSecureContext;
+} else {
+  createCredentials = crypto.createCredentials;
+}
+
 
 function getTcpServer(port, host, cb) {
   var tcpServers = this.tcpServers;
@@ -105,7 +116,7 @@ function loadKeysforConfigEntry(config, callback) {
         //          loadKeysForContext(SNI[key], function(err) {
         //            if (err) return sniLoaded(err);
         try {
-          var credentials = crypto.createCredentials(SNI[key]);
+          var credentials = createCredentials(SNI[key]);
           SNI[key] = credentials.context;
           sniLoaded();
         } catch (err) {
@@ -168,6 +179,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
   try {
     if (config.ssl) {
       var baseModule = config.ssl.spdy ? require('spdy') : https;
+
       server = baseModule.createServer(config.ssl, handler.request);
 
       if (!config.ssl.skipWorkerSessionResumption) {
@@ -184,10 +196,6 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
           }
         }
       }
-      // if(config.ssl.honorCipherOrder !== false) {
-      //   // prefer server ciphers over clients - prevents BEAST attack
-      //   config.ssl.honorCipherOrder = true;
-      // }
 
     } else {
       server = http.createServer(handler.request);

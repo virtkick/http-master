@@ -39,7 +39,7 @@ function dropPrivileges() {
 }
 
 
-var HttpMasterWorker = require('./workerLogic');
+var HttpMasterWorker = require('./HttpMasterWorker');
 var worker = new HttpMasterWorker({
   tlsSessionStore: {
     get: function(id, cb) {

@@ -240,7 +240,7 @@ HttpMaster.prototype.init = function(config, initDone) {
     self.workerCount = config.workerCount || 0;
 
     if(self.workerCount === 0) {
-      var singleWorker = self.singleWorker = new (require('./workerLogic'))();
+      var singleWorker = self.singleWorker = new (require('./HttpMasterWorker'))();
       singleWorker.on('logNotice', self.logNotice.bind(self));
       singleWorker.on('logError', self.logError.bind(self));
       self.singleWorker.loadConfig(config, function(err) {

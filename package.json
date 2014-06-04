@@ -1,10 +1,10 @@
 {
   "name": "http-master",
-  "version": "0.7.10",
+  "version": "0.7.11",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "master.js",
   "scripts": {
-    "test": "./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha tests/"
+    "test": "./node_modules/istanbul/lib/cli.js cover mocha -- -R spec tests/"
   },
   "repository": {
     "type": "git",
@@ -36,7 +36,7 @@
     "optimist": "~0.6.0",
     "spdy": "~1.25.1",
     "uid-number": "0.0.5",
-    "x509": "git://github.com/CodeCharmLtd/node-x509#nan-0.9",
+    "parse-x509": "0.1.0",
     "xregexp": "~2.0.0"
   },
   "devDependencies": {
