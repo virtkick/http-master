@@ -157,7 +157,7 @@ function preprocessPortConfig(config, cb) {
 
 function preprocessConfig(config, cb) {
   var self = this;
-  async.each(Object.keys(config.ports), function(portKey, cb) {
+  async.each(Object.keys(config.ports || {}), function(portKey, cb) {
     preprocessPortConfig.call(self, config.ports[portKey], function(portConfig) {
       config.ports[portKey] = portConfig;
       cb();
@@ -179,9 +179,13 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
     var workers = self.workers;
 
 
-    if(config.workerCount !== self.workerCount) {
-      self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
-      process.exit(1);
+    if((config.workerCount || 0) !== self.workerCount) {
+      //self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
+      var err = new Error('Got different workerCount than initialized with');
+      self.emit('error', err);
+      self.emit('restartIfPossible'); // http-master may exit
+      if(reloadDone)
+        reloadDone(err);
       return;
     }
 

@@ -4,7 +4,9 @@
 var path = require('path'),
   fs = require('fs'),
   argv = require('optimist').argv,
-  extend = require('extend');
+  extend = require('extend'),
+  HttpMaster = require('./HttpMaster'),
+  friendlyConfig = require('./friendlyConfig');
 
 function logError(str) {
   if (argv.silent || config.silent)
@@ -12,7 +14,6 @@ function logError(str) {
   console.log(str);
 }
 var logNotice = logError;
-
 
 var help = [
   'usage: http-master [options] ',
@@ -87,9 +88,6 @@ function dropPrivileges() {
   droppedPrivileges = true;
 }
 
-
-var friendlyConfig = require('./friendlyConfig');
-
 function patchConfigWithArgv(config) {
   if(typeof argv.workers !== 'undefined') {
     config.workerCount = argv.workers;
@@ -148,12 +146,8 @@ function fetchConfig(finish) {
     } catch(err) {
       finish(err);
     }
-
   });
-
 }
-
-var HttpMaster = require('./master');
 
 var startTime = new Date().getTime();
 var master = new HttpMaster();
@@ -209,10 +203,5 @@ fetchConfig(function(err, parsedConfig) {
     process.on('uncaughtException', function(err) {
       logError('[Uncaught exception in master] ' + err.stack || err.message);
     });
-
-
   });
-
-
-
 });

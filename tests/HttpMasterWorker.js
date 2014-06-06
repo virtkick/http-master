@@ -4,36 +4,14 @@ var http = require('http');
 var async = require('async');
 var HttpMasterWorker = require('../HttpMasterWorker');
 
-function assurePortNotListening(port, cb) {
-  var client = net.connect({
-      port: port
-    },
-    function() {
-      throw new Error('Port ' + port + ' should have been not listening');
-    });
-  client.once('error', function(err) {
-    cb();
-  });
-}
+var testUtils = require('../testUtils');
 
-function assurePortIsListening(port, cb) {
-  var client = net.connect({
-      port: port
-    },
-    function() {
-      cb();
-    });
-  client.once('error', function(err) {
-    throw new Error('Port ' + port + ' should have been listening');
-  });
-}
-
-
+var assurePortNotListening = testUtils.assurePortNotListening;
+var assurePortIsListening = testUtils.assurePortIsListening;
 
 function randomString() {
   return Math.random().toString(36).substring(7);
 }
-
 
 var url = require('url');
 var parseUrl = url.parse.bind(url);
