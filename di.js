@@ -51,7 +51,7 @@ function bindTypeGeneric(doCache, name, type) {
     type = name;
     var constructorName = functionName(type);
     if(!constructorName) {
-      return new Error('Unable to resolve name from function');
+      throw new Error('Unable to resolve name from function');
     }
     // implicitly bind function MyType {} to
     // MyType - type instance
