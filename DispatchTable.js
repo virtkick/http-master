@@ -1,5 +1,6 @@
 'use strict';
 var XRegExp = require('xregexp').XRegExp;
+var assert = require('assert');
 
 // globStringToRegex from: http://stackoverflow.com/a/13818704/403571
 function regexpQuote(str, delimiter) {
@@ -67,10 +68,9 @@ function postParseKey(entryKey, entry) {
   return entryKey;
 }
 
-function DispatchTable(params) {
+function DispatchTable(port, params) {
   var parseEntry = params.entryParser;
   var config = params.config;
-  var port = params.port;
 
   var self = this;
   this.requestHandler = params.requestHandler;
@@ -93,19 +93,9 @@ function DispatchTable(params) {
     }
 
     if (parseEntry) {
-      try {
-        var parsed = parseEntry(entryKey, entry);
-        entryKey = parsed[0];
-        entry = parsed[1];
-      } catch(err) {
-        // save failed parsed entry for future
-        // error reporting
-        self.failedEntries[entryKey] = {
-          err: err,
-          entry: entry
-        };
-        return;
-      }
+      var parsedEntry = parseEntry(entry);
+      assert(typeof parsedEntry !== 'undefined', 'entryParser should have returned something');
+      entry = parsedEntry;
     }
     entry = {
       target: entry,

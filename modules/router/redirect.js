@@ -1,32 +1,16 @@
-var DispatchTable = require('../DispatchTable');
 
-var regexpHelper = require('../regexpHelper');
+var regexpHelper = require('../../regexpHelper');
 
-function splitFirst(str) {
-  var index = str.indexOf('/');
-  if (index == -1)
-    return [str];
-  return [str.substr(0, index), str.substr(index)];
+module.exports = function Redirect() {
+  return {
+    requestHandler: function(req, res, next, target) {
+      if (req.pathMatch || req.hostMatch)
+        target = regexpHelper(target, req.hostMatch, req.pathMatch);
 
-}
-
-module.exports = {
-  priority: 9,
-  middleware: function(config) {
-    if (!config.redirect) return;
-
-    return new DispatchTable({
-      config: config.redirect,
-      requestHandler: function(req, res, next, target) {
-        if (req.pathMatch || req.hostMatch)
-          target = regexpHelper(target, req.hostMatch, req.pathMatch);
-
-        target = target.replace("[path]", req.url.substring(1));
-        res.statusCode = 302;
-        res.setHeader("Location", target);
-        return res.end();
-      },
-      port: config.port
-    });
-  }
+      target = target.replace("[path]", req.url.substring(1));
+      res.statusCode = 302;
+      res.setHeader("Location", target);
+      return res.end();
+    }
+  };
 }

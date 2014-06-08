@@ -45,7 +45,7 @@ describe('Dependency Injection', function() {
     di.bindType('foo', MyType);
     
     var resolved = di.resolve('foo');
-    assert(resolved instanceof MyType, 'resolved should be an instance of MyType');
+    resolved.should.be.instanceof(MyType),
     assert(di.resolve('foo') === resolved);
 
     checkAlreadyBound('bindType');
@@ -178,5 +178,28 @@ describe('Dependency Injection', function() {
       return instance;
     }
     di.resolve('test').should.equal(instance);
+  });
+
+  it('should handle error when resolving with bad argument', function() {
+    try {
+      di.resolve({});
+      assert(false, 'should have thrown exception');
+    } catch(err) {
+      err.message.should.equal('Unknown type to resolve');
+    }
+  });
+  it('should handle error when binding constructor without a name', function() {
+    try {
+      var f = function() {};
+      di.bindType(f);
+      assert(false, 'should have thrown exception');
+    } catch(err) {
+      err.message.should.equal('Unable to resolve name from function'); 
+    }
+  });
+  it('should handle constructor with a camelCase', function() {
+    function camelType() {}
+    di.bindType(camelType);
+    di.resolve('camelType').should.be.instanceof(camelType);
   });
 });

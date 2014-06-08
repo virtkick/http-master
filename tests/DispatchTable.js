@@ -1,6 +1,7 @@
 'use strict';
 var DispatchTable = require('../DispatchTable');
 var assert = require('assert');
+require('should');
 
 function makeReq(host, path) {
   return {

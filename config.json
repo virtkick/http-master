@@ -34,7 +34,7 @@
 			"static": {}
 		}
 	},
-  "logging": {
+  "logging2": {
     "logFile": "/home/rush/Programowanie/rush-http-proxy/access.json.log",
     "appLog": "/home/rush/Programowanie/rush-http-proxy/app.log"
   }

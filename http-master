@@ -8,6 +8,8 @@ var path = require('path'),
   HttpMaster = require('./HttpMaster'),
   friendlyConfig = require('./friendlyConfig');
 
+process.title = 'http-master';
+
 function logError(str) {
   if (argv.silent || config.silent)
     return;
@@ -202,6 +204,7 @@ fetchConfig(function(err, parsedConfig) {
 
     process.on('uncaughtException', function(err) {
       logError('[Uncaught exception in master] ' + err.stack || err.message);
+      console.warn('[Uncaught exception in master] ' + err.stack || err.message);
     });
   });
 });

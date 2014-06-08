@@ -1,8 +1,8 @@
 var httpProxy = require('http-proxy');
-var DispatchTable = require('../DispatchTable');
 var url = require('url');
 var fs = require('fs');
 var path = require('path');
+var regexpHelper = require('../../regexpHelper');
 
 function splitFirst(str, delim) {
   var index = str.indexOf(delim);
@@ -33,112 +33,75 @@ function parseEntry(entry) {
   return entry;
 }
 
-var proxy = httpProxy.createProxyServer({xfwd: true});
-var regexpHelper = require('../regexpHelper');
 
-var proxyFailErrorHandler;
-
-proxy.on('error', function(err, req, res) {
-  if(proxyFailErrorHandler) {
-    return proxyFailErrorHandler(err, req, res);
-  }
-  // forward to next route and save error for potential handler
-  req.err = err;
-  req.next();
-});
-
-var httpAuth = require('http-auth');
-
-module.exports = {
-  priority: 8,
-  middleware: function(config) {
-    if(!config.proxy) return;
-
-    if(config.errorHtmlFile) {
-      var content = fs.readFileSync(config.errorHtmlFile).toString('utf8');
-      content = content.replace(/src="(.+?)"/g, function(m, fileName) {
-        var imagePath = path.join(path.dirname(config.errorHtmlFile), fileName);
-        return 'src="data:image/'+path.extname(fileName).substr(1)+';base64,' + fs.readFileSync(imagePath).toString('base64') + '"';
-      });
-
-      proxyFailErrorHandler = function(err, req, res) {
-        res.writeHead(500, {
-          'Content-Type': 'text/html'
-        });
-        res.write(content);
-        res.end();
-      };
+module.exports = function Proxy(portConfig) {
+  
+  var proxy = httpProxy.createProxyServer({xfwd: true, agent: false});
+  var proxyFailErrorHandler;
+  proxy.on('error', function(err, req, res) {
+    if(proxyFailErrorHandler) {
+      return proxyFailErrorHandler(err, req, res);
     }
+    // forward to next route and save error for potential handler
+    req.err = err;
+    req.next();
+  });
 
-    var rewriteTargetAndPathIfNeeded = function(req, target) {
-      if(!(req.pathMatch || req.hostMatch)) {
-        return target;
-      }
-
-      var processed = regexpHelper(target.href, req.hostMatch, req.pathMatch);
-            
-      if(req.parsedUrl.search)
-        processed += req.parsedUrl.search;
-
-      var newTarget = url.parse(processed);
-      if(target.withPath) {
-        req.url = newTarget.path;
-      }
-      return newTarget;
+  if(portConfig.errorHtmlFile) {
+    proxyFailErrorHandler = function(err, req, res) {
+      res.writeHead(500, {
+        'Content-Type': 'text/html'
+      });
+      res.write(content);
+      res.end();
     };
 
-    return new DispatchTable({
-      config: config.proxy,
-      requestHandler: function(req, res, next, dispatchTarget) {
-        req.connection.proxy = proxy;
-        req.next = next;
-
-        // workaround for node-http-proxy/#591
-        if(!req.headers.host) {
-          req.headers.host = '';
-        }
-
-        var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget.target);
-        if(dispatchTarget.auth) {
-          dispatchTarget.auth(req, res, function(err) {
-            // delete the authorization header
-            delete req.headers.authorization;
-            proxy.web(req, res, {target: proxyTarget});
-          });
-        }
-        else {
-          proxy.web(req, res, {target: proxyTarget});
-        }
-      },
-      upgradeHandler: function(req, socket, head, dispatchTarget) {
-        var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget.target);
-        proxy.ws(req, socket, head, {target: proxyTarget});
-      },
-      entryParser: function(entryKey, entry) {
-        var parsedEntry = parseEntry(entry.target || entry);
-
-        var authConfig = entry.auth;
-        if(typeof authConfig === 'object') {
-          authConfig.realm = authConfig.realm || 'Enter password';
-        }
-        else if(typeof authConfig === 'string') {
-          authConfig = {
-            file: authConfig,
-            realm: 'Enter password'
-          }
-        }
-
-        var auth;
-        if(typeof authConfig === 'object') {
-          auth = httpAuth.connect(httpAuth.basic(authConfig));
-        }
-        var entryResult = {
-          target: parsedEntry,
-          auth: auth
-        };
-        return [entryKey, entryResult];
-      },
-      port: config.port
+    var content = fs.readFileSync(portConfig.errorHtmlFile).toString('utf8');
+    content = content.replace(/src="(.+?)"/g, function(m, fileName) {
+      var imagePath = path.join(path.dirname(portConfig.errorHtmlFile), fileName);
+      return 'src="data:image/'+path.extname(fileName).substr(1)+';base64,' + fs.readFileSync(imagePath).toString('base64') + '"';
     });
   }
-};
+
+  var rewriteTargetAndPathIfNeeded = function(req, target) {
+    if(!(req.pathMatch || req.hostMatch)) {
+      return target;
+    }
+
+    var processed = regexpHelper(target.href, req.hostMatch, req.pathMatch);
+          
+    if(req.parsedUrl.search)
+      processed += req.parsedUrl.search;
+
+    var newTarget = url.parse(processed);
+    if(target.withPath) {
+      req.url = newTarget.path;
+    }
+    return newTarget;
+  };
+
+  return {
+    requestHandler: function(req, res, next, dispatchTarget) {
+      req.connection.proxy = proxy;
+      req.next = next;
+      // workaround for node-http-proxy/#591
+      if(!req.headers.host) {
+        req.headers.host = '';
+      }
+      var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget);
+
+      proxy.web(req, res, {target: proxyTarget});
+      // console.log(new Date().getTime());
+      // proxy.once('proxyRes', function(res) {
+      //   console.log(new Date().getTime());
+      // });
+    },
+    upgradeHandler: function(req, socket, head, dispatchTarget) {
+      var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget.target);
+      proxy.ws(req, socket, head, {target: proxyTarget});
+    },
+    entryParser: function(entry) {
+      return parseEntry(entry.target || entry);
+    }
+  };
+}

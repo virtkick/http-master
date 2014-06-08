@@ -7,7 +7,10 @@ var crypto = require('crypto'),
   async = require('async'),
   regexpQuote = require('./DispatchTable').regexpQuote,
   url = require('url'),
-  tls = require('tls');
+  tls = require('tls'),
+  DI = require('./di'),
+  DispatchTable = require('./DispatchTable'),
+  path = require('path');
 
 var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
@@ -16,7 +19,6 @@ var EventEmitter = require('events').EventEmitter;
 var argv = {}; // will be sent by master
 
 var common = require('./common');
-var runModules = common.runModules;
 var punycode = require('punycode');
 
 var createCredentials;
@@ -25,7 +27,6 @@ if(tls.createSecureContext) {
 } else {
   createCredentials = crypto.createCredentials;
 }
-
 
 function lazyGetTcpServer(port, host, cb) {
   var tcpServers = this.tcpServers;
@@ -80,9 +81,6 @@ function loadKeysforConfigEntry(config, callback) {
       config.ssl.SNICallback = sniCallback;
     }
 
-    //    loadKeysForContext(config.ssl, function(err) {
-    //      if (err) return callback(err);
-
     if (SNI) {
       var todo = [];
       for (key in SNI) {
@@ -101,9 +99,6 @@ function loadKeysforConfigEntry(config, callback) {
         if (!SNI[key].ecdhCurve) {
           SNI[key].ecdhCurve = require('tls').DEFAULT_ECDH_CURVE;
         }
-
-        //          loadKeysForContext(SNI[key], function(err) {
-        //            if (err) return sniLoaded(err);
         try {
           var credentials = createCredentials(SNI[key]);
           SNI[key] = credentials.context;
@@ -111,7 +106,6 @@ function loadKeysforConfigEntry(config, callback) {
         } catch (err) {
           sniLoaded(err);
         }
-        //          });
       }, callback);
     } else { // (!SNI)
       callback();
@@ -122,69 +116,131 @@ function loadKeysforConfigEntry(config, callback) {
   }
 }
 
-function handleConfigEntry(config, callback) {
+function handlePortEntryConfig(host, portNumber, portEntryConfig, callback) {
   var self = this;
-  loadKeysforConfigEntry(config, function(err) {
+  loadKeysforConfigEntry(portEntryConfig, function(err) {
     if (err) {
       return callback(err);
     }
-    handleConfigEntryAfterLoadingKeys.call(self, config, callback);
+    handleConfigEntryAfterLoadingKeys.call(self, host, portNumber, portEntryConfig, callback);
   });
 }
 
-function patchSslConfig(portEntryConfig) {
+function patchSslConfig(portEntrySslConfig) {
   if(nodeVersion >= 0.11) { // use fancy cipher settings only for 0.11
-    if(portEntryConfig.ssl.honorCipherOrder !== false) {
+    if(portEntrySslConfig.honorCipherOrder !== false) {
        // prefer server ciphers over clients - prevents BEAST attack
-       portEntryConfig.ssl.honorCipherOrder = true;
+       portEntrySslConfig.honorCipherOrder = true;
     }
-    if(!portEntryConfig.ssl.ciphers) {
-      portEntryConfig.ssl.ciphers = 'EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+AES+SHA:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS::+RC4:RC4';
-      if(portEntryConfig.ssl.disableWeakCiphers) {
-        portEntryConfig.ssl.ciphers += ':!RC4';
+    if(!portEntrySslConfig.ciphers) {
+      portEntrySslConfig.ciphers = 'EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+AES+SHA:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS::+RC4:RC4';
+      if(portEntrySslConfig.disableWeakCiphers) {
+        portEntrySslConfig.ciphers += ':!RC4';
       }
     }
-    else if(portEntryConfig.ssl.disableWeakCiphers) {
+    else if(portEntrySslConfig.disableWeakCiphers) {
       this.logNotice('disableWeakCiphers is incompatible with pre-set cipher list');
     }
-  } else if(portEntryConfig.ssl.disableWeakCiphers) {
+  } else if(portEntrySslConfig.disableWeakCiphers) {
     this.logNotice('disableWeakCiphers is unsupported for node 0.10');
   }  
 }
 
-function fetchRequestAndUpgradeHandlers(config, cb) {
+function handlerForMiddlewareList(middleware) {
+  var i = 0;
+  var length = middleware.length;
+
+  return {
+    middleware: function runMiddleware(req, res, next, target) {
+      if (i < length) {
+        middleware[i].middleware(req, res, function(err) {
+          if (err) {
+            return next(err);
+          }
+          i += 1;
+          runMiddleware(req, res, next, middleware[i].dispatchTarget);
+        }, middleware[i].dispatchTarget);
+      } else {
+        next();
+      }
+    }
+  };
+}
+
+function fetchRequestAndUpgradeHandlers(portNumber, portConfigEntry, cb) {
   var self = this;
   var requestHandlers = [];
   var upgradeHandlers = [];
-  var middlewares = [];
-  runModules(function(name, middleware) {
-    if (middleware.failedEntries) {
-      Object.keys(middleware.failedEntries).forEach(function(key) {
-        var failedEntry = middleware.failedEntries[key];
-        self.logError('Failed starting entry ' + key + ' : ' + JSON.stringify(failedEntry.entry));
-        self.logError(failedEntry.err);
-      });
-    }
 
-    middlewares.push(middleware);
-    if (typeof middleware == 'function')
-      requestHandlers.push(middleware);
-    else if (middleware.requestHandler)
-      requestHandlers.push(middleware.handleRequest.bind(middleware));
-    if (middleware.upgradeHandler)
-      upgradeHandlers.push(middleware.handleUpgrade.bind(middleware));
-  }, 'middleware', config);
+  var di = this.di.makeChild();
+  di.bindInstance('di', di);
+  di.bindInstance('portConfig', portConfigEntry);
+
+  var moduleInstanceCache = {};
+  di.onMissing = function(name) {
+    try {
+      di.bindType(name, require('./' + path.join('modules/router/', name)));
+    } catch(err) {
+      console.log(err && err.message);
+      return;
+    }
+    return di.resolve(name);
+  };
+
+  // make an array to unify handling
+  var routerEntries = portConfigEntry.router;
+  if(!(routerEntries instanceof Array)) {
+    routerEntries = [routerEntries];
+  }
+
+  var defaultModule = 'proxy';
+  var entryRegexp = /^\s*(?:(\w+)\s*->\s*)?(.*)/;
+  function parseSingleEntry(entry) {
+    var m = entry.match(entryRegexp);
+    var moduleName = m[1] || defaultModule;
+    var entryKey = m[2];
+
+    var t = (new Date()).getTime();
+    var instance = di.resolve(moduleName);
+    if(instance.entryParser) {
+      // allow modules to cache arbitrary data per entry
+      entry = instance.entryParser(entryKey);
+    }
+    return {
+      middleware: instance.requestHandler,
+      uprade: instance.upgradeHandler,
+      dispatchTarget: entry
+    };
+  }
+
+  var dispatchTables = routerEntries.map(function(entry) {
+    return new DispatchTable(portNumber, {
+      config: entry,
+      entryParser: function(entry) {
+        if(typeof entry === 'object' && entry instanceof Array) {
+          return handlerForMiddlewareList(entry.map(parseSingleEntry));
+        }
+        return parseSingleEntry(entry);
+      },
+      requestHandler: function(req, res, next, target) {
+//        console.log(target.middleware.toString(), target.dispatchTarget);
+        console.log(target);
+
+        target.middleware(req, res, next, target.dispatchTarget);
+      }
+    });
+  });
+  requestHandlers = dispatchTables.map(function(dispatchTable) {
+    return DispatchTable.prototype.dispatchRequest.bind(dispatchTable);
+  });
+
   cb(requestHandlers, upgradeHandlers);
 }
 
-function handleConfigEntryAfterLoadingKeys(config, callback) {
+function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
   var self = this;
-  //
-  // Check to see if we should silence the logs
-  //
-  config.silent = typeof argv.silent !== 'undefined' ? argv.silent : config.silent;
 
-  fetchRequestAndUpgradeHandlers.call(this, config, function(requestHandlers, upgradeHandlers) {
+  fetchRequestAndUpgradeHandlers.call(this, portNumber, config, function(requestHandlers, upgradeHandlers) {
 
     var handler = require('./requestHandler')(config, requestHandlers);
     var server;
@@ -192,7 +248,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       if (config.ssl) {
         var baseModule = config.ssl.spdy ? require('spdy') : https;
 
-        patchSslConfig.call(self, config);
+        patchSslConfig.call(self, config.ssl);
 
         server = baseModule.createServer(config.ssl, handler.request);
 
@@ -240,7 +296,7 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       }
     });
 
-    lazyGetTcpServer.call(self, config.port, config.host, function(err, tcpServer) {
+    lazyGetTcpServer.call(self, portNumber, host, function(err, tcpServer) {
 
       if (err) return callback(err, server);
 
@@ -257,37 +313,27 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
       server.emit('listening');
       // FIXME: this should run at every config reload
 
-      runModules('onServerListening', config, server);
+//      runModules('onServerListening', config, server);
     });
   });
 }
 
 function handleConfig(config, configHandled) {
   var self = this;
-  runModules('preprocessConfig', config);
+//  runModules('preprocessConfig', config);
 
   async.parallel(Object.keys(config.ports || {}).map(function(portEntry) {
-
     return function(asyncCallback) {
-
       var m;
       // TODO: IPV6?
-      if ((m = portEntry.match(/((\S+):)?(\d+)(?:(?:\s*=>\s*)?(\S+):(\d+)?)?/))) {
-        var host = m[2];
-        var port = parseInt(m[3]);
-        var targetHost = m[4];
-        var targetPort = m[5];
+      if ((m = portEntry.match(/((\S+):)?(\d+)/))) {
+        var listenHost = m[2];
+        var listenPortNumber = parseInt(m[3]);
 
         var portConfig = config.ports[portEntry];
-        var configEntry = extend({
-          targetHost: targetHost,
-          targetPort: targetPort,
-          host: host,
-          port: port,
-        }, portConfig);
 
-        handleConfigEntry.call(self, configEntry, function(err, server) {
-          var entryString = (configEntry.host ? configEntry.host + ':' + configEntry.port : 'port ' + configEntry.port);
+        handlePortEntryConfig.call(self, listenHost, listenPortNumber, portConfig, function(err, server) {
+          var entryString = (listenHost ? listenHost + ':' + listenPortNumber : 'port ' + listenPortNumber);
           if (err) {
             self.logError('Error while starting entry ' + entryString + ' : ' + err.toString());
             if (err.stack)
@@ -329,7 +375,6 @@ function unbindAll(cb) {
   cb();
 }
 
-
 function HttpMasterWorker(config) {
   config = config || {};
   var store = {};
@@ -347,6 +392,8 @@ function HttpMasterWorker(config) {
   };
   this.tcpServers = {};
   this.servers = [];
+  this.di = new DI();
+  this.di.bindInstance('worker', this);
 }
 
 HttpMasterWorker.prototype = Object.create(EventEmitter.prototype);
@@ -377,7 +424,6 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
 HttpMasterWorker.prototype.gcServers = function(gcFinished) {
   var self = this;
   var toClose = [];
-
 
   Object.keys(this.tcpServers).forEach(function(key) {
     var server = self.tcpServers[key];
