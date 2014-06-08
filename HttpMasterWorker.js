@@ -9,7 +9,6 @@ var crypto = require('crypto'),
   url = require('url'),
   tls = require('tls'),
   DI = require('./di'),
-  DispatchTable = require('./DispatchTable'),
   path = require('path');
 
 var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
@@ -146,40 +145,20 @@ function patchSslConfig(portEntrySslConfig) {
   }  
 }
 
-function handlerForMiddlewareList(middleware) {
-  var i = 0;
-  var length = middleware.length;
 
-  return {
-    middleware: function runMiddleware(req, res, next, target) {
-      if (i < length) {
-        middleware[i].middleware(req, res, function(err) {
-          if (err) {
-            return next(err);
-          }
-          i += 1;
-          runMiddleware(req, res, next, middleware[i].dispatchTarget);
-        }, middleware[i].dispatchTarget);
-      } else {
-        next();
-      }
-    }
-  };
-}
 
-function fetchRequestAndUpgradeHandlers(portNumber, portConfigEntry, cb) {
+function fetchRequestHandler(portNumber, portConfig) {
   var self = this;
-  var requestHandlers = [];
-  var upgradeHandlers = [];
 
   var di = this.di.makeChild();
   di.bindInstance('di', di);
-  di.bindInstance('portConfig', portConfigEntry);
+  di.bindInstance('portConfig', portConfig);
+  di.bindInstance('portNumber', portNumber);
 
   var moduleInstanceCache = {};
   di.onMissing = function(name) {
     try {
-      di.bindType(name, require('./' + path.join('modules/router/', name)));
+      di.bindType(name, require('./' + path.join('modules/middleware/', name)));
     } catch(err) {
       console.log(err && err.message);
       return;
@@ -187,134 +166,93 @@ function fetchRequestAndUpgradeHandlers(portNumber, portConfigEntry, cb) {
     return di.resolve(name);
   };
 
-  // make an array to unify handling
-  var routerEntries = portConfigEntry.router;
-  if(!(routerEntries instanceof Array)) {
-    routerEntries = [routerEntries];
-  }
+  var router = di.resolve('router');
+  console.log(portConfig);
+  var target = router.entryParser(portConfig.router);
 
-  var defaultModule = 'proxy';
-  var entryRegexp = /^\s*(?:(\w+)\s*->\s*)?(.*)/;
-  function parseSingleEntry(entry) {
-    var m = entry.match(entryRegexp);
-    var moduleName = m[1] || defaultModule;
-    var entryKey = m[2];
-
-    var t = (new Date()).getTime();
-    var instance = di.resolve(moduleName);
-    if(instance.entryParser) {
-      // allow modules to cache arbitrary data per entry
-      entry = instance.entryParser(entryKey);
-    }
-    return {
-      middleware: instance.requestHandler,
-      uprade: instance.upgradeHandler,
-      dispatchTarget: entry
-    };
-  }
-
-  var dispatchTables = routerEntries.map(function(entry) {
-    return new DispatchTable(portNumber, {
-      config: entry,
-      entryParser: function(entry) {
-        if(typeof entry === 'object' && entry instanceof Array) {
-          return handlerForMiddlewareList(entry.map(parseSingleEntry));
-        }
-        return parseSingleEntry(entry);
-      },
-      requestHandler: function(req, res, next, target) {
-//        console.log(target.middleware.toString(), target.dispatchTarget);
-        console.log(target);
-
-        target.middleware(req, res, next, target.dispatchTarget);
-      }
-    });
-  });
-  requestHandlers = dispatchTables.map(function(dispatchTable) {
-    return DispatchTable.prototype.dispatchRequest.bind(dispatchTable);
-  });
-
-  cb(requestHandlers, upgradeHandlers);
+  return function(req, res, next) {
+    console.log('Got req', portNumber, req.headers);
+    router.requestHandler(req, res, next, target);
+  };;
 }
 
 function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
   var self = this;
 
-  fetchRequestAndUpgradeHandlers.call(this, portNumber, config, function(requestHandlers, upgradeHandlers) {
+  var requestHandler = fetchRequestHandler.call(this, portNumber, config);
 
-    var handler = require('./requestHandler')(config, requestHandlers);
-    var server;
-    try {
-      if (config.ssl) {
-        var baseModule = config.ssl.spdy ? require('spdy') : https;
+  var handler = require('./requestHandler')(requestHandler);
 
-        patchSslConfig.call(self, config.ssl);
+  var server;
+  try {
+    if (config.ssl) {
+      var baseModule = config.ssl.spdy ? require('spdy') : https;
 
-        server = baseModule.createServer(config.ssl, handler.request);
+      patchSslConfig.call(self, config.ssl);
 
-        if (!config.ssl.skipWorkerSessionResumption) {
-          server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
-          server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
+      server = baseModule.createServer(config.ssl, handler);
 
-          if (self.token) {
-            if (server._setServerData) {
-              server._setServerData({
-                ticketKeys: self.token
-              });
-            } else {
-              self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
-            }
+      if (!config.ssl.skipWorkerSessionResumption) {
+        server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
+        server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
+
+        if (self.token) {
+          if (server._setServerData) {
+            server._setServerData({
+              ticketKeys: self.token
+            });
+          } else {
+            self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
           }
         }
-      } else {
-        server = http.createServer(handler.request);
       }
-    } catch (err) {
-      return callback(err, null);
+    } else {
+      server = http.createServer(handler);
     }
+  } catch (err) {
+    return callback(err, null);
+  }
 
-    function listeningHandler() {
-      server.removeAllListeners('error'); // remove the below handler
-      callback(null, server);
-      server.removeListener('error', errorHandler);
-    }
+  function listeningHandler() {
+    server.removeAllListeners('error'); // remove the below handler
+    callback(null, server);
+    server.removeListener('error', errorHandler);
+  }
 
-    function errorHandler(err) {
-      server.removeAllListeners('listening'); // remove the above handler
-      callback(err, server);
-      server.removeListener('listening', listeningHandler);
-    }
+  function errorHandler(err) {
+    server.removeAllListeners('listening'); // remove the above handler
+    callback(err, server);
+    server.removeListener('listening', listeningHandler);
+  }
 
-    server.once('listening', listeningHandler);
-    server.once('error', errorHandler);
-    server.on('upgrade', function(req, socket, head) {
-      req.parsedUrl = url.parse(req.url);
-      for (var i = 0; i < upgradeHandlers.length; ++i) {
-        if (upgradeHandlers[i](req, socket, head)) { // ws handled
-          break;
-        }
-      }
+  server.once('listening', listeningHandler);
+  server.once('error', errorHandler);
+  server.on('upgrade', function(req, socket, head) {
+    req.upgrade = {
+      socket: socket,
+      head: head
+    };
+    requestHandler(req, {});
+  });
+
+  lazyGetTcpServer.call(self, portNumber, host, function(err, tcpServer) {
+
+    if (err) return callback(err, server);
+
+    tcpServer.removeAllListeners();
+    tcpServer.on('connection', function(socket) {
+      server.emit('connection', socket);
     });
-
-    lazyGetTcpServer.call(self, portNumber, host, function(err, tcpServer) {
-
-      if (err) return callback(err, server);
-
-      tcpServer.removeAllListeners();
-      tcpServer.on('connection', function(socket) {
-        server.emit('connection', socket);
-      });
-      tcpServer.on('error', function(err) {
-        server.emit('error', err);
-      });
-      tcpServer.on('close', function(err) {
-        server.emit('close');
-      });
-      server.emit('listening');
-      // FIXME: this should run at every config reload
+    tcpServer.on('error', function(err) {
+      server.emit('error', err);
+    });
+    tcpServer.on('close', function(err) {
+      server.emit('close');
+    });
+    server.emit('listening');
+    // FIXME: this should run at every config reload
 
 //      runModules('onServerListening', config, server);
-    });
   });
 }
 

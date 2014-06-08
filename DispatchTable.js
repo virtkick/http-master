@@ -20,16 +20,13 @@ function regexpQuote(str, delimiter) {
 }
 
 function splitFirst(str) {
-
-  var m = str.match(/^(\^?[^\/]+)\$?(?:(\/)(\^?)(.+))?$/);
+  var m = str.match(/^(\^?[^\/]*)\$?(?:(\/)(\^?)(.+))?$/);
   if(m.length > 2) {
     // make ^/path from /^path
     return [m[1], m[3] + m[2]+m[4]]; 
   }
   return [m[1]];
 }
-
-
 
 function globStringToRegex(str, specialCh) {
   if(!specialCh)
@@ -112,7 +109,6 @@ function DispatchTable(port, params) {
     if (entry.regexp) {
       self.regexpEntries.push(entry);
     } else {
-
       if (self.table[entryKey]) {
         if (self.table[entryKey] instanceof Array) {
           self.table[entryKey].push(entry);
@@ -159,49 +155,53 @@ DispatchTable.prototype.getTargetForReq = function(req) {
   var i, m;
   var host = req.unicodeHost || req.headers.host || ''; // host can be undefined
 
-  if (this.table[host]) {
-    if (this.table[host].target) {
-      if(this.checkPathForReq(req, this.table[host])) {
-        return this.table[host].target;
+  var self = this;
+  var target;
+
+  // look for specific host match first
+  // and generic path-only match then
+  [host, ''].some(function(host) {
+    var entry = self.table[host];
+    if (entry) {
+      if (entry.target) {
+        if(self.checkPathForReq(req, entry)) {
+          target = entry.target
+          return true;
+        }
+      }
+      else { // multiple entries, check pathnames
+        var targetEntries = entry;
+        for (i = 0; i < targetEntries.length; ++i) {
+          if(self.checkPathForReq(req, targetEntries[i])) {
+            target = targetEntries[i].target;
+            return true;
+          }
+        }
       }
     }
-    else { // multiple entries, check pathnames
-      var targetEntries = this.table[host];
-      for (i = 0; i < targetEntries.length; ++i) {
-        if(this.checkPathForReq(req, targetEntries[i]))
-          return targetEntries[i].target;
-      }
-    }
+  });
+  if(target) {
+    return target;
   }
+  // if host-only matches failed, look for path matches
   if (this.regexpEntries.length) {
     var regexpEntries = this.regexpEntries;
     for (i = 0; i < regexpEntries.length; ++i) {
       var entry = regexpEntries[i];
       if(!entry.regexp) {
         // TODO: research this
-        console.log('Should not happen', (new Error()).toString());
         continue;
       }
       m = host.match(entry.regexp);
       if (m) {
         req.hostMatch = m;
-        if(this.checkPathForReq(req, entry))
+        if(this.checkPathForReq(req, entry)) {
           return entry.target;
+        }
       }
     }
   }
 };
-
-DispatchTable.prototype.dispatchUpgrade = function(req, socket, head) {
-  var target = this.getTargetForReq(req);
-  if(target && this.upgradeHandler) {
-    this.upgradeHandler(req, socket, head, target);
-    return true;
-  }
-  return false;
-};
-
-DispatchTable.prototype.handleUpgrade = DispatchTable.prototype.dispatchUpgrade;
 
 DispatchTable.prototype.dispatchRequest = function(req, res, next) {
   var target = this.getTargetForReq(req);
