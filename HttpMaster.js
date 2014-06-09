@@ -2,7 +2,7 @@ var async = require('async');
 
 var EventEmitter = require('events').EventEmitter;
 var common = require('./common');
-var runModules = common.runModules;
+//var runModules = common.runModules;
 var path = require('path');
 var CertScanner = require('./certScanner');
 var extend = require('extend');
@@ -240,7 +240,7 @@ HttpMaster.prototype.init = function(config, initDone) {
   function actualInit(config) {
     self.config = config;
 
-    runModules("initMaster", self, config);
+    //runModules("initMaster", self, config);
     self.workerCount = config.workerCount || 0;
 
     if(self.workerCount === 0) {
@@ -253,7 +253,7 @@ HttpMaster.prototype.init = function(config, initDone) {
         }
         self.emit('allWorkersStarted');
 
-        runModules("allWorkersStarted", config);
+        //runModules("allWorkersStarted", config);
         if(initDone)
           initDone()
 
@@ -274,7 +274,7 @@ HttpMaster.prototype.init = function(config, initDone) {
 
         self.emit('allWorkersStarted');
 
-        runModules("allWorkersStarted", config);
+        //runModules("allWorkersStarted", config);
         if(initDone)
           initDone()
       });

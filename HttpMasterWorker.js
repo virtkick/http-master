@@ -3,7 +3,6 @@ var crypto = require('crypto'),
   extend = require('extend'),
   net = require('net'),
   http = require('http'),
-  https = require('https'),
   async = require('async'),
   regexpQuote = require('./DispatchTable').regexpQuote,
   url = require('url'),
@@ -167,11 +166,16 @@ function fetchRequestHandler(portNumber, portConfig) {
   };
 
   var router = di.resolve('router');
-  console.log(portConfig);
-  var target = router.entryParser(portConfig.router);
 
+  // allow also for specifying 80: 'http://code2flow.com:8080'
+  if(typeof portConfig != 'object') {
+    portConig = {
+      router: portConfig
+    };
+  }
+
+  var target = router.entryParser(portConfig.router);
   return function(req, res, next) {
-    console.log('Got req', portNumber, req.headers);
     router.requestHandler(req, res, next, target);
   };;
 }
@@ -186,7 +190,7 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
   var server;
   try {
     if (config.ssl) {
-      var baseModule = config.ssl.spdy ? require('spdy') : https;
+      var baseModule = config.ssl.spdy ? require('spdy') : require('https');
 
       patchSslConfig.call(self, config.ssl);
 

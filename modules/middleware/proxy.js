@@ -19,8 +19,6 @@ function parseEntry(entry) {
   var withPath = false;
   if(typeof entry == 'string') {
     withPath = !!entry.match(/(?:https?:\/\/)?.*\//);
-    console.log("Entry", entry, withPath);
-
 
     if((m = entry.match(/^\d+(?:|\/.*)$/))) {
       entry = '127.0.0.1:' + entry;
@@ -29,10 +27,8 @@ function parseEntry(entry) {
       entry = 'http://' + entry;
     }
   }
-  console.log("Fixed entry", entry);
   entry = url.parse(entry, true, true)
   entry.withPath = withPath;
-  entry.ws = true;
   return entry;
 }
 
@@ -92,8 +88,6 @@ module.exports = function Proxy(portConfig) {
         req.headers.host = '';
       }
       var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget);
-
-      console.log("Proxying to proxyTarget", proxyTarget);
 
       req.headers.host = proxyTarget.host;
       proxy.web(req, res, {target: proxyTarget});
