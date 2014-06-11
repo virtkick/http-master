@@ -4,7 +4,7 @@ module.exports = function Reject() {
   return {
     requestHandler: function(req, res, next, target) {
       res.statusCode = target;
-      res.end((target || 403) + ' ' + (http.STATUS_CODES[target] || 'Forbidden') );
+      res.end(target + ' ' + (http.STATUS_CODES[target] || 'Forbidden') );
     },
     entryParser: function(entry) {
       var code;      

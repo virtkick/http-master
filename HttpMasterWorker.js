@@ -86,6 +86,11 @@ function loadKeysforConfigEntry(config, callback) {
       }
 
       async.each(todo, function(key, sniLoaded) {
+        if(config.ssl.spdy && SNI[key].spdy === false) {
+          SNI[key].NPNProtocols = ['http/1.1', 'http/1.0'];
+          SNI[key].ALPNProtocols = ['http/1.1', 'http/1.0'];
+        }
+
         SNI[key].ciphers = SNI[key].ciphers || config.ssl.ciphers;
         SNI[key].honorCipherOrder = SNI[key].honorCipherOrder || config.ssl.honorCipherOrder;
         SNI[key].ecdhCurve = SNI[key].ecdhCurve || config.ssl.ecdhCurve;

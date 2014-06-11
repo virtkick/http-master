@@ -1,31 +1,27 @@
+'use strict';
+
 var httpProxy = require('http-proxy');
 var url = require('url');
 var fs = require('fs');
 var path = require('path');
 var regexpHelper = require('../../regexpHelper');
-
-function splitFirst(str, delim) {
-  var index = str.indexOf(delim);
-  if(index == -1)
-    return [str];
-  return [str.substr(0,index), str.substr(index)];
-}
+var assert = require('assert');
 
 function parseEntry(entry) {
   var m;
   if(typeof entry == 'number')
     entry = entry.toString();
 
-  var withPath = false;
-  if(typeof entry == 'string') {
-    withPath = !!entry.match(/(?:https?:\/\/)?.*\//);
+  assert(typeof entry === 'string');
 
-    if((m = entry.match(/^\d+(?:|\/.*)$/))) {
-      entry = '127.0.0.1:' + entry;
-    }
-    if(!entry.match(/https?:\/\//)) {
-      entry = 'http://' + entry;
-    }
+  var withPath = false;
+  withPath = !!entry.replace(/https?:\/\//, '').match(/.*\//);
+
+  if((m = entry.match(/^\d+(?:|\/.*)$/))) {
+    entry = '127.0.0.1:' + entry;
+  }
+  if(!entry.match(/https?:\/\//)) {
+    entry = 'http://' + entry;
   }
   entry = url.parse(entry, true, true)
   entry.withPath = withPath;
@@ -33,7 +29,7 @@ function parseEntry(entry) {
 }
 
 
-module.exports = function Proxy(portConfig) {
+module.exports = function Proxy(portConfig, di) {
   
   var proxy = httpProxy.createProxyServer({xfwd: true, agent: false});
   var proxyFailErrorHandler;
@@ -41,9 +37,8 @@ module.exports = function Proxy(portConfig) {
     if(proxyFailErrorHandler) {
       return proxyFailErrorHandler(err, req, res);
     }
-    // forward to next route and save error for potential handler
     req.err = err;
-    req.next();
+    req.next(err);
   });
 
   if(portConfig.errorHtmlFile) {
@@ -51,6 +46,7 @@ module.exports = function Proxy(portConfig) {
       res.writeHead(500, {
         'Content-Type': 'text/html'
       });
+
       res.write(content);
       res.end();
     };
@@ -90,7 +86,11 @@ module.exports = function Proxy(portConfig) {
       var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget);
 
       req.headers.host = proxyTarget.host;
-      proxy.web(req, res, {target: proxyTarget});
+      proxy.web(req, res, {
+        target: proxyTarget,
+        targetTimeout: portConfig.proxyTargetTimeout,
+        timeout: portConfig.proxyTimeout
+      });
     },
     entryParser: function(entry) {
       return parseEntry(entry.target || entry);
