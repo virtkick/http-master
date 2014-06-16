@@ -73,7 +73,7 @@ Simple example config (more advanced features are convered elsewhere):
 watchConfig: true # watch config file for changes
 logging: false # See "Logging" section on details
 ports: { # each port gets a separate configuration
-  80 {
+  80: {
     proxy: {
       # Proxy all traffic at domain code2flow.com to port 8099
       'code2flow.com' : 8099,
