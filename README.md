@@ -130,7 +130,7 @@ httpMaster.init({
  // your config in here
 }, function(err) {
  // listening
-});;
+});
 ```
 ####Class: HttpMaster
 
