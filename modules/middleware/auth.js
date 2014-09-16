@@ -9,7 +9,6 @@ module.exports = function Auth() {
       });
     },
     entryParser: function(authConfig) {
-      console.log(authConfig);
 
       if(typeof authConfig === 'object') {
         authConfig.realm = authConfig.realm || 'Enter password';
@@ -20,7 +19,6 @@ module.exports = function Auth() {
           realm: 'Enter password'
         }
       }
-      console.log(authConfig);
       return httpAuth.connect(httpAuth.basic(authConfig));
     }
   };
