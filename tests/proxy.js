@@ -262,6 +262,7 @@ describe('proxy middleware', function() {
         }, parsedTarget);
       });
       server2.once('request', function(req, res) {
+        console.log(req.url);
         req.url.should.equal('/foo/bar');
         endTest();
       });

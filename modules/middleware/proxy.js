@@ -84,11 +84,20 @@ module.exports = function Proxy(portConfig, di) {
         req.headers.host = '';
       }
       var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget);
-
       req.headers.host = proxyTarget.host;
+
+      // work around weirdness of new http-proxy url handling
+      // for the purpose of passing the tests
+      if(proxyTarget.pathname != '/') {
+        req.url = '';
+      }
+      else {
+        proxyTarget.path = '';
+      }
+
       proxy.web(req, res, {
         target: proxyTarget,
-        targetTimeout: portConfig.proxyTargetTimeout,
+        proxyTimeout: portConfig.proxyTargetTimeout,
         timeout: portConfig.proxyTimeout
       });
     },

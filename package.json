@@ -27,17 +27,17 @@
     "es6-shim": "~0.10.0",
     "extend": "~1.2.1",
     "http-auth": "~2.1.6",
-    "http-proxy": "^1.1.4",
+    "http-proxy": "^1.4.3",
     "js-yaml": "~3.0.1",
     "jsonlint-lines": "~1.6.0",
     "moment": "^2.6.0",
     "node-static": "~0.7.2",
     "node-watch": "~0.3.4",
     "optimist": "~0.6.0",
+    "parse-x509": "0.1.0",
     "spdy": "~1.25.1",
     "uid-number": "0.0.5",
-    "xregexp": "~2.0.0",
-    "parse-x509": "0.1.0"
+    "xregexp": "~2.0.0"
   },
   "devDependencies": {
     "chai": "~1.8.1",
