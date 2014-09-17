@@ -9,7 +9,6 @@ module.exports = function(config, middleware) {
   return {
     request: function(req, res) {
       var i = 0;
-
       req.parsedUrl = url.parse(req.url);
 
       if(req.headers.host) { // this legally can be undefined
