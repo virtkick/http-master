@@ -1,6 +1,6 @@
 {
   "name": "http-master",
-  "version": "0.7.8",
+  "version": "0.7.8-compression",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "master.js",
   "scripts": {
@@ -24,6 +24,7 @@
   "dependencies": {
     "async": "~0.2.9",
     "bugsnag": "~1.2",
+    "compression": "^1.1.0",
     "es6-shim": "~0.9.2",
     "extend": "~1.2.1",
     "http-auth": "~2.1.6",

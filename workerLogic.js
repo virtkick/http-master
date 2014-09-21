@@ -164,6 +164,16 @@ function handleConfigEntryAfterLoadingKeys(config, callback) {
 
   var handler = require('./requestHandler')(config, requestHandlers);
 
+  var originalHandler = handler.request;
+  if(config.gzip) {
+    var compressMiddleware = require('compression')();
+    handler.request = function(req, res, next) {
+      compressMiddleware(req, res, function() {
+        originalHandler(req, res, next);
+      });
+    };
+  }
+
   var server;
   try {
     if (config.ssl) {
