@@ -28,7 +28,7 @@
     "es6-shim": "~0.10.0",
     "extend": "~1.2.1",
     "http-auth": "~2.1.6",
-    "http-proxy": "^1.1.4",
+    "http-proxy": "1.2.1",
     "js-yaml": "~3.0.1",
     "jsonlint-lines": "~1.6.0",
     "moment": "^2.6.0",
