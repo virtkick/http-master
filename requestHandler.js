@@ -15,6 +15,8 @@ module.exports = function(handler) {
         req.unicodeHost = req.headers.host;
       }
     }
-    handler(req, res);
+    handler(req, res, function() {
+			console.log("UNHANDLED!");
+    });
   };
 };

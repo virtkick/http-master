@@ -5,7 +5,7 @@
 				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
 			},
 			"errorHtmlPage": "/home/rush/Programowanie/rush-http-proxy/test.html",
-			"proxy": {
+      "router": {
         "local.code2flow.com": 80,
 				"local.code2flow.com/test/*": "localhost:80/[rest]",
 				"local.code2flow.com/test2/*": "localhost:81/[rest]",
@@ -28,8 +28,8 @@
         "api.znajdzdoktora.pl": "127.0.0.1:12001",
         "agn.rushbase.net": "127.0.0.1:8095",
         "rss.rushbase.net": "127.0.0.1:8096",
-				"*" : "4000/test/[path]"
-			},
+				"*" : "4000/test/[path]",
+      },
 			"static": {},
       gzip: true
 		}

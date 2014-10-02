@@ -62,7 +62,7 @@ module.exports = function Router(di, portConfig, portNumber) {
         routerEntries = [routerEntries];
       }
       var middlewareList = routerEntries.map(function(routerEntry) {
-        if(typeof routerEntry !== 'object') {
+        if(typeof routerEntry !== 'object' && typeof routerEntry !== 'undefined') {
           return parseSingleEntry(routerEntry);
         }
         var dispatchTable = new DispatchTable(portNumber, {

@@ -32,6 +32,7 @@ function testPortConfig(portConfig, targetPort, handler) {
   return {
     server: httpServer,
     request: function(url, requestFinish, resValidator, reqValidator) {
+      console.log(url);
       var parsedUrl = parseUrl(url);
 
       var options = {
@@ -118,7 +119,7 @@ describe('HttpMasterWorker', function() {
 
     it('should proxy multiple requests', function(finished) {
       var tester = testPortConfig({
-        proxy: {
+        router: {
           '*': 40881
         }
       }, 40881);

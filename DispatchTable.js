@@ -75,7 +75,7 @@ function DispatchTable(port, params) {
   this.table = {};
   this.regexpEntries = [];
   this.failedEntries = {};
-  Object.keys(config).forEach(function(entryKey) {
+  Object.keys(config || {}).forEach(function(entryKey) {
     var entry = config[entryKey];
 
 
