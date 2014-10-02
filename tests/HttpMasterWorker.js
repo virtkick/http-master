@@ -96,17 +96,17 @@ describe('HttpMasterWorker', function() {
     var worker = new HttpMasterWorker();
 
     function testOpenAndCloseConfig(finished) {
-      assurePortNotListening(40880, function() {
+      assurePortNotListening(50880, function() {
         worker.loadConfig({
           ports: {
-            40880: {}
+            50880: {}
           }
         }, function(err) {
           if (err) finished(err);
-          assurePortIsListening(40880, function() {
+          assurePortIsListening(50880, function() {
             worker.loadConfig({}, function(err) {
               if (err) finished(err);
-              assurePortNotListening(40880, function() {
+              assurePortNotListening(50880, function() {
                 finished();
               });
             });
@@ -127,9 +127,9 @@ describe('HttpMasterWorker', function() {
     it('should proxy multiple requests', function(finished) {
       var tester = testPortConfig({
         router: {
-          '*': 40881
+          '*': 50881
         }
-      }, 40881);
+      }, 50881);
 
       var urls = [];
       for (var i = 0; i < 20; ++i) {
@@ -148,11 +148,11 @@ describe('HttpMasterWorker', function() {
     it('should handle router/proxy errors', function(finished) {
       var tester = testPortConfig({
         router: {
-          '*': 40882
+          '*': 50882
         }
-      }, 40883);
+      }, 50883);
       var rejectingServer = net.createServer();
-      rejectingServer.listen(40882);
+      rejectingServer.listen(50882);
       rejectingServer.on('connection', function(conn) {
         console.log("CONNECTION");
         conn.end();
@@ -171,9 +171,9 @@ describe('HttpMasterWorker', function() {
     it('should support unicode domains', function(finished) {
       var tester = testPortConfig({
         router: {
-          'źdźbło.pl': 40884
+          'źdźbło.pl': 50884
         }
-      }, 40884);
+      }, 50884);
       tester.request('http://źdźbło.pl', function(err) {
         finished(err);
         tester.finish();
@@ -183,9 +183,9 @@ describe('HttpMasterWorker', function() {
     it('should support http entities in requests', function(finished) {
       var tester = testPortConfig({
         router: {
-          'test.pl/test%20kota/ d': 40885
+          'test.pl/test%20kota/ d': 50885
         }
-      }, 40885);
+      }, 50885);
       tester.request('http://test.pl/test%20kota/ d', function(err) {
         finished(err);
         tester.finish();
@@ -197,9 +197,9 @@ describe('HttpMasterWorker', function() {
     it('should redirect multiple requests', function(finished) {
       var tester = testPortConfig({
         router: {
-          '*': 'redirect -> http://[1]:40886/[path]'
+          '*': 'redirect -> http://[1]:50886/[path]'
         }
-      }, 40886);
+      }, 50886);
 
       var urls = [];
       for (var i = 0; i < 20; ++i) {
