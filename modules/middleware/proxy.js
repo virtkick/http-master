@@ -41,23 +41,6 @@ module.exports = function Proxy(portConfig, di) {
     req.next(err);
   });
 
-  if(portConfig.errorHtmlFile) {
-    proxyFailErrorHandler = function(err, req, res) {
-      res.writeHead(500, {
-        'Content-Type': 'text/html'
-      });
-
-      res.write(content);
-      res.end();
-    };
-
-    var content = fs.readFileSync(portConfig.errorHtmlFile).toString('utf8');
-    content = content.replace(/src="(.+?)"/g, function(m, fileName) {
-      var imagePath = path.join(path.dirname(portConfig.errorHtmlFile), fileName);
-      return 'src="data:image/'+path.extname(fileName).substr(1)+';base64,' + fs.readFileSync(imagePath).toString('base64') + '"';
-    });
-  }
-
   var rewriteTargetAndPathIfNeeded = function(req, target) {
     if(!(req.pathMatch || req.hostMatch)) {
       return target;
@@ -84,11 +67,14 @@ module.exports = function Proxy(portConfig, di) {
         req.headers.host = '';
       }
       var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget);
-      req.headers.host = proxyTarget.host;
+      var m = req.headers.host.match(/^(.+):\d+$/);
+      if(m) {
+        req.headers.host = m[1] + ':' + proxyTarget.port;
+      }
 
       // work around weirdness of new http-proxy url handling
       // for the purpose of passing the tests
-      if(proxyTarget.pathname != '/') {
+      if(proxyTarget.pathname !== '/') {
         req.url = '';
       }
       else {

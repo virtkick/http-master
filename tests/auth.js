@@ -1,14 +1,23 @@
 'use strict';
 require('should');
+var assert = require('chai').assert;
 
 var path = require('path');
 
-function makeReq(host, path, hostMatch, pathMatch) {
+function makeReq(user, pass, hostMatch, pathMatch) {
+  var host = '';
+  var path = '';
+
+  var headers = {
+    host: host
+  };
+  if(user && pass) {
+    headers.authorization = 'Basic ' + (new Buffer(user + ':' + pass).toString('base64'));
+  }
+
   return {
     url: path,
-    headers: {
-      host: host
-    },
+    headers: headers,
     parsedUrl: require('url').parse(path),
     connection: {},
     hostMatch: hostMatch,
@@ -23,37 +32,52 @@ describe('auth middleware', function() {
   beforeEach(function() {
     authMiddleware = require('../modules/middleware/auth')({});
   });
-  function makeTest(target, host, path, cb, hostMatch, pathMatch) {
+  function makeTest(target, user, pass, cb, hostMatch, pathMatch) {
     onTarget = cb;
-    authMiddleware.requestHandler(makeReq(host, path, hostMatch, pathMatch), {
+    authMiddleware.requestHandler(makeReq(user, pass, hostMatch, pathMatch), {
       end: function(str) {
         cb(str, this);
       },
       setHeader: function(name, value) {
-        console.log("Set header", name, value);
+        assert((name === 'WWW-Authenticate' && value === 'Basic realm="Enter password"') || name === 'Content-Type');
       },
       writeHead: function(code) {
         code.should.equal(401);
       },
     }, function(err) {
-      onTarget('');
+      onTarget('OK');
     }, authMiddleware.entryParser(target));
   }
 
-  describe('with MD5 passwd', function() {
-
-    it('with MD5 passwd', function() {
-
-      makeTest(path.join(__dirname, 'passwd', 'md5.htpasswd'), '', '', function(str, res) {
-//        str.should.equal(mustEqual);
-//        res.statusCode.should.equal(codeEqual);
+  ['md5', 'crypt', 'sha', 'bcrypt'].forEach(function(extension) {
+    describe('with ' + extension+ ' passwd', function() {
+      it('should not authorize without user and password', function() {
+        makeTest(path.join(__dirname, 'passwd', extension + '.htpasswd'), null, null, function(str, res) {
+          str.should.equal("401 Unauthorized");
+        });
       });
 
+      it('should not authorize with bad user and password', function() {
+        makeTest(path.join(__dirname, 'passwd', extension +'.htpasswd'), 'dsfsd', 'wreiowreuoiwer', function(str, res) {
+          str.should.equal("401 Unauthorized");
+        });
+      });
+
+      it('should not authorize with correct user and bad password', function() {
+        makeTest(path.join(__dirname, 'passwd', extension +'.htpasswd'), 'testuser', 'wreiowreuoiwer', function(str, res) {
+          str.should.equal("401 Unauthorized");
+        });
+      });
+
+      it('should authorize with correct credentials', function() {
+        makeTest(path.join(__dirname, 'passwd', extension +'.htpasswd'), 'testuser', 'test', function(str, res) {
+          str.should.equal("OK");
+        });
+      });
     });
 
+
   });
-
-
 });
 
 

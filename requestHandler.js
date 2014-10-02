@@ -3,7 +3,7 @@ var url = require('url');
 
 var punycode = require('punycode');
 
-module.exports = function(handler) {
+module.exports = function(handler, finalHandler) {
   return function(req, res) {
     req.parsedUrl = url.parse(req.url);
     if(req.headers.host) { // this legally can be undefined
@@ -15,8 +15,10 @@ module.exports = function(handler) {
         req.unicodeHost = req.headers.host;
       }
     }
-    handler(req, res, function() {
-			console.log("UNHANDLED!");
+    handler(req, res, function(err) {
+      if(finalHandler) {
+        finalHandler(err, req, res);
+      }
     });
   };
 };

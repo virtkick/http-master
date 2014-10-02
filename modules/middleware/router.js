@@ -46,7 +46,6 @@ module.exports = function Router(di, portConfig, portNumber) {
   }
 
   function parseSingleEntry(entry) {
-    console.log(entry);
     var m = entry.toString().match(entryRegexp);
     var moduleName = m[1] || defaultModule;
     var entryKey = m[2];

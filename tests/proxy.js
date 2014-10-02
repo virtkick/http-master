@@ -171,30 +171,6 @@ describe('proxy middleware', function() {
       runTestRequest(http10Request, endTest);
     });
 
-    it('should show errorHtmlPage when site is offline', function(endTest) {
-      var errorHtmlFile = path.join(__dirname, '.work', 'error.html');
-      fs.writeFileSync(errorHtmlFile, '<b>Hello, world!</b><img src="test.png" />');
-
-      var fakeImageFile = path.join(__dirname, '.work', 'test.png');
-      fs.writeFileSync(fakeImageFile, 'test');
-
-      proxyMiddleware = require('../modules/middleware/proxy')({
-        errorHtmlFile: errorHtmlFile
-      });
-
-      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61395');
-
-      server1.once('request', function(req, res) {
-        proxyMiddleware.requestHandler(req, res, function(err) {
-          assert(false, "next should not be called, error has occured");
-        }, parsedTarget);
-      });
-      http11Request('hello', function(err, data) {
-        data.should.equal('<b>Hello, world!</b><img src="data:image/png;base64,dGVzdA==" />');
-        endTest();
-      });
-    });
-
     it('should allow to set timeout which closes request socket', function(endTest) {
       proxyMiddleware = require('../modules/middleware/proxy')({
         proxyTimeout: 10
@@ -262,7 +238,6 @@ describe('proxy middleware', function() {
         }, parsedTarget);
       });
       server2.once('request', function(req, res) {
-        console.log(req.url);
         req.url.should.equal('/foo/bar');
         endTest();
       });

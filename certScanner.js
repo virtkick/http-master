@@ -1,5 +1,5 @@
 'use strict';
-//require('es6-shim');
+
 var x509 = require('parse-x509');
 var fs = require('fs');
 var async = require('async');

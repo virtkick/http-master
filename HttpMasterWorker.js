@@ -151,11 +151,12 @@ function patchSslConfig(portEntrySslConfig) {
 
 
 
-function fetchRequestHandler(portNumber, portConfig) {
+function createHandlers(portNumber, portConfig) {
   var self = this;
 
   var di = this.di.makeChild();
   di.bindInstance('di', di);
+  di.bindInstance('config', this.config);
   di.bindInstance('portConfig', portConfig);
   di.bindInstance('portNumber', portNumber);
 
@@ -173,24 +174,34 @@ function fetchRequestHandler(portNumber, portConfig) {
   var router = di.resolve('router');
 
   // allow also for specifying 80: 'http://code2flow.com:8080'
-  if(typeof portConfig != 'object') {
+  if(typeof portConfig !== 'object') {
     portConig = {
       router: portConfig
     };
   }
 
+  var reject = di.resolve('reject');
+
   var target = router.entryParser(portConfig.router);
-  return function(req, res, next) {
-    router.requestHandler(req, res, next, target);
-  };;
+  return {
+    request: function(req, res, next) {
+      router.requestHandler(req, res, next, target);
+    },
+    error: function(err, req, res) {
+      var code = 500;
+      if(!err)
+        code = 503;
+      reject.requestHandler(req, res, null, reject.entryParser(500));
+    }
+  };
 }
 
 function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
   var self = this;
 
-  var requestHandler = fetchRequestHandler.call(this, portNumber, config);
+  var handlers = createHandlers.call(this, portNumber, config);
 
-  var handler = require('./requestHandler')(requestHandler);
+  var handler = require('./requestHandler')(handlers.request, handlers.error);
 
   var server;
   try {
@@ -324,6 +335,7 @@ function unbindAll(cb) {
 
 function HttpMasterWorker(config) {
   config = config || {};
+  this.config = config;
   var store = {};
   this.tlsSessionStore = config.tlsSessionStore || {
     get: function(id, cb) {

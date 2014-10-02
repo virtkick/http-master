@@ -2,7 +2,7 @@
 var extend = require('extend');
 var assert = require('assert');
 
-var functionRegex = /function\s*(\S*)\s*\(([^)]*)/;
+var functionRegex = /function\s*([^()]*)\s*\(([^)]*)/;
 // get function arguments as array
 function functionParameters(f) {
   assert(typeof f === 'function');

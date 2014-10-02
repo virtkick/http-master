@@ -19,7 +19,7 @@ var onTarget;1
 describe('reject middleware', function() {
   var rejectMiddleware;
   beforeEach(function() {
-    rejectMiddleware = require('../modules/middleware/reject')({});
+    rejectMiddleware = require('../modules/middleware/reject')({}, {});
   });
   function makeTest(target, host, path, cb, hostMatch, pathMatch) {
     onTarget = cb;
