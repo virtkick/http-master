@@ -1,4 +1,6 @@
 var http = require('http');
+var fs = require('fs');
+var path = require('path');
 
 function loadHtmlFile(errorHtmlFile) {
   var content = fs.readFileSync(errorHtmlFile).toString('utf8');
@@ -26,8 +28,7 @@ module.exports = function Reject(config, portConfig) {
 
       if(content) {
         head['Content-Type'] = 'text/html';
-        if(res.writeHead)
-          res.writeHead(target.code, head);
+        res.writeHead(target.code, head);
         res.write(content);
         res.end();
       } else {

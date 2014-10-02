@@ -32,14 +32,16 @@ describe('auth middleware', function() {
   beforeEach(function() {
     authMiddleware = require('../modules/middleware/auth')({});
   });
+  var realm;
   function makeTest(target, user, pass, cb, hostMatch, pathMatch) {
     onTarget = cb;
+
     authMiddleware.requestHandler(makeReq(user, pass, hostMatch, pathMatch), {
       end: function(str) {
         cb(str, this);
       },
       setHeader: function(name, value) {
-        assert((name === 'WWW-Authenticate' && value === 'Basic realm="Enter password"') || name === 'Content-Type');
+        assert((name === 'WWW-Authenticate' && value === 'Basic realm="'+(realm || "Enter password") +'"') || name === 'Content-Type');
       },
       writeHead: function(code) {
         code.should.equal(401);
@@ -75,9 +77,28 @@ describe('auth middleware', function() {
         });
       });
     });
-
-
   });
+
+  it('should support custom realm', function() {
+    realm = "Secret password required";
+    makeTest({
+      file: path.join(__dirname, 'passwd', 'md5.htpasswd'),
+      realm: realm
+    }, null, null, function(str, res) {
+      str.should.equal("401 Unauthorized");
+      realm = undefined;
+    });
+  });
+
+  it('should default to Enter password realm', function() {
+    makeTest({
+      file: path.join(__dirname, 'passwd', 'md5.htpasswd')
+    }, null, null, function(str, res) {
+      str.should.equal("401 Unauthorized");
+      realm = undefined;
+    });
+  });
+
 });
 
 

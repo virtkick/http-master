@@ -32,11 +32,7 @@ function parseEntry(entry) {
 module.exports = function Proxy(portConfig, di) {
   
   var proxy = httpProxy.createProxyServer({xfwd: true, agent: false});
-  var proxyFailErrorHandler;
   proxy.on('error', function(err, req, res) {
-    if(proxyFailErrorHandler) {
-      return proxyFailErrorHandler(err, req, res);
-    }
     req.err = err;
     req.next(err);
   });
