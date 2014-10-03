@@ -4,38 +4,18 @@
 		"4080" : {
 			"redirect": {
 				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]",
-				"*/*" : "https://[1]/[2]",
+				"*.net/*" : "https://[1]/[2]",
 			},
 			"errorHtmlPage": "/home/rush/Programowanie/rush-http-proxy/test.html",
-			"router": {
-				"local.code2flow.com/test/*": "localhost:80/[rest]",
-				"local.code2flow.com/test2/*": "localhost:81/[rest]",
-        "imagoartdesign.pl": "127.0.0.1:3000",
-        "www.imagoartdesign.pl": "127.0.0.1:3000",
-        "traceroute6.rushbase.net": "127.0.0.1:3001",
-        "rtsolutions.pl": "127.0.0.1:3002",
-        "www.rtsolutions.pl": "127.0.0.1:3002",
-        "webflow.rushbase.net": "127.0.0.1:3010",
-        "resizer.rushbase.net": "127.0.0.1:3009",
-        "test.rtsolutions.pl": "127.0.0.1:6060",
-        "termi.rushbase.net": "127.0.0.1:7080",
-        "test2.code2flow.*": "127.0.0.1:8099",
-        "confluence.code2flow.*": "127.0.0.1:10000",
-        "test.code2flow.*": "127.0.0.1:8091",
-        "www.code2flow.*": "127.0.0.1:8091",
-        "code2flow.*": "127.0.0.1:8091",
-        "test.qrfaktura.*": "127.0.0.1:8092",
-        "test.znajdzdoktora.pl": "127.0.0.1:12000",
-        "api.znajdzdoktora.pl": "127.0.0.1:12001",
-        "agn.rushbase.net": "127.0.0.1:8095",
-        "rss.rushbase.net": "127.0.0.1:8096",
-				"*" : "4000/test/[path]"
+			"proxy": {
+				"local.code2flow.com": 80,
+				"*" : "4000"
 			},
 			"static": {}
 		}
 	},
   "logging": {
-    "logFile": "/home/rush/Programowanie/rush-http-proxy/access.json.log",
-    "appLog": "/home/rush/Programowanie/rush-http-proxy/app.log"
+    "logFile": "/tmp/access.log",
+    "appLog": "/tmp/app.log"
   }
 }
