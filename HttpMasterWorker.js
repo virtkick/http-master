@@ -274,15 +274,11 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
       server.emit('close');
     });
     server.emit('listening');
-    // FIXME: this should run at every config reload
-
-//      runModules('onServerListening', config, server);
   });
 }
 
 function handleConfig(config, configHandled) {
   var self = this;
-//  runModules('preprocessConfig', config);
 
   process.emit('unload');
 
@@ -339,8 +335,9 @@ function handleConfig(config, configHandled) {
 
 function unbindAll(cb) {
   this.servers.forEach(function(server) {
-    server.removeAllListeners();
+    server.unref();
   });
+  this.servers = [];
   var self = this;
   Object.keys(this.tcpServers).forEach(function(key) {
     self.tcpServers[key].removeAllListeners();
