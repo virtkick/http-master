@@ -20,7 +20,7 @@
   "contributors": [
     "Damian Nowak <damian.nowak@atlashost.eu>"
   ],
-  "license": "BSD",
+  "license": "MIT",
   "dependencies": {
     "async": "0.9.0",
     "bugsnag": "1.2",
