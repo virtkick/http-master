@@ -3,3 +3,5 @@ coverage
 .idea
 tests/.work
 dev
+*.sublime-*
+run_tests.sh
