@@ -33,7 +33,17 @@
 			"static": {},
       gzip: true,
 
-		}
+		},
+    "40443": {
+      "router": {
+        "local.code2flow.com/ddd": "websockify -> time.nist.gov:13",
+        "local.code2flow.com/": 80
+      },
+      ssl: {
+        key: '/home/rush/Programowanie/node/test/fixtures/keys/agent2-key.pem',
+        cert: '/home/rush/Programowanie/node/test/fixtures/keys/agent2-cert.pem'
+      }
+    }
 	},
    modules: ["logging"],
   "logging": true

@@ -256,7 +256,7 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
       socket: socket,
       head: head
     };
-    requestHandler(req, {});
+    handler(req, null);
   });
 
   lazyGetTcpServer.call(self, portNumber, host, function(err, tcpServer) {

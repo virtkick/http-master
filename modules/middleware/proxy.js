@@ -77,11 +77,16 @@ module.exports = function Proxy(portConfig, di) {
         proxyTarget.path = '';
       }
 
-      proxy.web(req, res, {
+      var options = {
         target: proxyTarget,
         proxyTimeout: portConfig.proxyTargetTimeout,
         timeout: portConfig.proxyTimeout
-      });
+      };
+
+      if(req.upgrade) {
+        return proxy.ws(req, req.upgrade.socket, req.upgrade.head, options);
+      }
+      proxy.web(req, res, options);
     },
     entryParser: function(entry) {
       return parseEntry(entry.target || entry);

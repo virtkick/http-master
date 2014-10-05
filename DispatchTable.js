@@ -20,7 +20,7 @@ function regexpQuote(str, delimiter) {
 }
 
 function splitFirst(str) {
-  var m = str.match(/^(\^?[^\/]*)\$?(?:(\/)(\^?)(.+))?$/);
+  var m = str.match(/^(\^?[^\/]*)\$?(?:(\/)(\^?)(.*))?$/);
   if(m.length > 2) {
     // make ^/path from /^path
     return [m[1], m[3] + m[2]+m[4]]; 
