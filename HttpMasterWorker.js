@@ -16,7 +16,6 @@ var EventEmitter = require('events').EventEmitter;
 
 var argv = {}; // will be sent by master
 
-var common = require('./common');
 var punycode = require('punycode');
 
 var createCredentials;
@@ -156,22 +155,27 @@ function createHandlers(portNumber, portConfig) {
 
   var di = this.di.makeChild();
   di.bindInstance('di', di);
-  di.bindInstance('config', this.config);
+  di.bindInstance('events', process);
   di.bindInstance('portConfig', portConfig);
   di.bindInstance('portNumber', portNumber);
 
   var moduleInstanceCache = {};
   di.onMissing = function(name) {
-    try {
-      di.bindType(name, require('./' + path.join('modules/middleware/', name)));
-    } catch(err) {
-      console.log(err && err.message);
-      return;
+
+    var m;
+    if( (m = name.match(/(.+)Middleware$/))) {
+      name = m[1];
+      try {
+        di.bindType(name + 'Middleware', require('./' + path.join('modules/middleware/', name)));
+      } catch(err) {
+        console.log(err && err.message);
+        return;
+      }
+      return di.resolve(name + 'Middleware');
     }
-    return di.resolve(name);
   };
 
-  var router = di.resolve('router');
+  var router = di.resolve('routerMiddleware');
 
   // allow also for specifying 80: 'http://code2flow.com:8080'
   if(typeof portConfig !== 'object') {
@@ -180,7 +184,7 @@ function createHandlers(portNumber, portConfig) {
     };
   }
 
-  var reject = di.resolve('reject');
+  var reject = di.resolve('rejectMiddleware');
 
   var target = router.entryParser(portConfig.router);
   return {
@@ -280,6 +284,17 @@ function handleConfig(config, configHandled) {
   var self = this;
 //  runModules('preprocessConfig', config);
 
+  process.emit('unload');
+
+  (config.modules || []).forEach(function(moduleName) {
+    try {
+      self.di.resolve(require(path.join(__dirname, 'modules', moduleName)));
+      console.log("Loaded module", moduleName);
+    } catch(err) {
+      console.log("Error loading module:", moduleName, err);
+    }
+  });
+
   async.parallel(Object.keys(config.ports || {}).map(function(portEntry) {
     return function(asyncCallback) {
       var m;
@@ -352,7 +367,11 @@ function HttpMasterWorker(config) {
   this.tcpServers = {};
   this.servers = [];
   this.di = new DI();
+  this.di.bindInstance('di', this.di);
   this.di.bindInstance('worker', this);
+  this.di.bindInstance('events', process);
+  this.di.bindInstance('config', this.config);
+  this.di.bindInstance('master', null);
 }
 
 HttpMasterWorker.prototype = Object.create(EventEmitter.prototype);

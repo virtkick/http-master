@@ -1,8 +1,6 @@
 var async = require('async');
 
 var EventEmitter = require('events').EventEmitter;
-var common = require('./common');
-//var runModules = common.runModules;
 var path = require('path');
 var CertScanner = require('./certScanner');
 var extend = require('extend');

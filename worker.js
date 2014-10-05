@@ -1,9 +1,6 @@
 var config = {};
 var cluster = require('cluster');
 
-var common = require('./common');
-var runModules = common.runModules;
-
 var droppedPrivileges = false;
 
 function logError(str) {
@@ -84,7 +81,8 @@ process.on('uncaughtException', function(err) {
 
 process.on('msg:start', function(data) {
   config = data.config;
-  runModules("initWorker", data.config);
+  process.emit('initWorker');
+
   dropPrivileges();
   worker.token = data.token;
   worker.loadConfig(data.config, function(err) {

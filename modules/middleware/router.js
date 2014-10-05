@@ -34,7 +34,7 @@ function handlerForMiddlewareList(middleware) {
 module.exports = function Router(di, portConfig, portNumber) {
 
   function passEntryToModule(moduleName, entry) {
-    var instance = di.resolve(moduleName);
+    var instance = di.resolve(moduleName + 'Middleware');
     if(instance.entryParser) {
       // allow modules to cache arbitrary data per entry
       entry = instance.entryParser(entry);

@@ -31,8 +31,10 @@
 				"*" : "4000/test/[path]",
       },
 			"static": {},
-      gzip: true
+      gzip: true,
+
 		}
 	},
+   modules: ["logging"],
   "logging": true
 }
