@@ -3,7 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 
 var net = require('net');
 
-module.exports = function Websockify() {
+module.exports = function WebsockifyMiddleware() {
   return {
     requestHandler: function(req, res, next, parsedEntry) {
       if(req.upgrade) {

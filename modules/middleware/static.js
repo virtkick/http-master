@@ -1,7 +1,7 @@
 var nodeStatic = require('node-static');
 var regexpHelper = require('../regexpHelper');
 
-module.exports = function Static() {
+module.exports = function StaticMiddleware() {
   return {
     requestHandler: function(req, res, next, target) {
       var fileServer = target.server;

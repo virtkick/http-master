@@ -13,9 +13,13 @@ process.title = 'http-master';
 function logError(str) {
   if (argv.silent || config.silent)
     return;
-  console.log(str);
+  console.error(str);
 }
-var logNotice = logError;
+function logNotice(str) {
+  if (argv.silent || config.silent)
+    return;
+  console.log(str); 
+}
 
 var help = [
   'usage: http-master [options] ',
@@ -105,7 +109,6 @@ function patchConfigWithArgv(config) {
     config.debug = argv.debug;
 
   if(typeof config.workerCount == 'undefined') {
-    logNotice('Setting workerCount to number of CPUs');
     config.workerCount = numCPUs;
   }
 }
@@ -157,32 +160,52 @@ var master = new HttpMaster();
 master.on('logNotice', logNotice);
 master.on('logError', logError);
 
+var originalLog = console.log;
+var originalError = console.error;
+
+function setConsole(config) {
+  if(config.silent) {
+    console.log = function(msg) {
+      master.emit('feedNotice', msg);
+    }
+    console.error = function(msg) {
+      master.emit('feedError', msg);
+    }
+  } else {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+}
+
 var numCPUs = require('os').cpus().length;
 fetchConfig(function(err, parsedConfig) {
   if(err) {
     throw err;
   }
   config = parsedConfig;
+  setConsole(config);
 
   master.init(config, function(err) {
     if(err) { 
       logError('Workers failed to start');
       throw err;
     }
-    logNotice('All workers started in ' + (new Date().getTime() - startTime) + 'ms');
+    master.logNotice('All workers started in ' + (new Date().getTime() - startTime) + 'ms');
     dropPrivileges();
 
 
     var watch = require('node-watch');
     if (config.watchConfig || argv.watch) {
       watch(argv.config, function() {
-        logNotice('Reloading workers due to config change');
+        master.logNotice('Reloading workers due to config change');
         fetchConfig(function(err, parsedConfig) {
           if(err) return logNotice('Skipping reload due to config error: ' + err.stack.toString());
           config = parsedConfig;
+          setConsole(config);
+
           var startTime = new Date().getTime();
           master.reload(config, function(err) {
-            logNotice('All workers reloaded, downtime was ' + (new Date().getTime() - startTime) + 'ms');
+            master.logNotice('All workers reloaded, downtime was ' + (new Date().getTime() - startTime) + 'ms');
           });
         });
       });
@@ -195,9 +218,10 @@ fetchConfig(function(err, parsedConfig) {
       fetchConfig(function(err, parsedConfig) {
         if(err) return logNotice('Skipping reload due to config error');
         config = parsedConfig;
+        setConsole(config);
         var startTime = new Date().getTime();
         master.reload(config, function(err) {
-          logNotice('All workers reloaded, downtime was ' + (new Date().getTime() - startTime) + 'ms');
+          master.logNotice('All workers reloaded, downtime was ' + (new Date().getTime() - startTime) + 'ms');
         });
       });
     });

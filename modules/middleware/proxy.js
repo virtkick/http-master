@@ -29,7 +29,7 @@ function parseEntry(entry) {
 }
 
 
-module.exports = function Proxy(portConfig, di) {
+module.exports = function ProxyMiddleware(portConfig, di) {
   
   var proxy = httpProxy.createProxyServer({xfwd: true, agent: false});
   proxy.on('error', function(err, req, res) {

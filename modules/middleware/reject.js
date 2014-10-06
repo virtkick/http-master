@@ -11,7 +11,7 @@ function loadHtmlFile(errorHtmlFile) {
   return content;
 }
 
-module.exports = function Reject(config, portConfig) {
+module.exports = function RejectMiddleware(config, portConfig) {
 
   var content;
   var errorHtmlFile = portConfig.errorHtmlFile || config.errorHtmlFile;

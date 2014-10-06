@@ -3,12 +3,22 @@ var cluster = require('cluster');
 
 var droppedPrivileges = false;
 
+
 function logError(str) {
-  if (config.silent)
-    return;
   console.log('[' + cluster.worker.id + '] ' + str);
 }
 var logNotice = logError;
+
+console.log = function() {
+  process.sendMessage("logNotice",  Array.prototype.slice.call(arguments).map(function(arg) {
+    return arg?(arg.toString()):arg;
+  }).join(' '));
+};
+console.error = function() {
+  process.sendMessage("logError",  Array.prototype.slice.call(arguments).map(function(arg) {
+    return arg?(arg.toString()):arg;
+  }).join(' '));
+}
 
 // TODO: move to common
 function dropPrivileges() {
@@ -69,6 +79,10 @@ process.sendMessage = function(type, data) {
   }));
 };
 
+worker.on('loadService', function(service) {
+  process.sendMessage('masterLoadService', service);
+});
+
 process.on('message', function(msg) {
   var msg = JSON.parse(msg);
   process.emit('msg:' + msg.type, msg.data);
@@ -101,8 +115,21 @@ process.on('msg:unbind', function() {
     process.sendMessage("unbindFinished");
   });
 });
+
+var originalLog = console.log;
+var originalError = console.error;
+
 process.on('msg:reload', function(config) {
+  if (config.silent) {
+    console.log = function(msg) {}
+    console.error = function(msg) {}
+  } else {
+    console.log = originalLog;
+    console.error = originalError;
+  }    
+
   worker.loadConfig(config, function(err) {
+
     if (err) {
       process.sendMessage('exception', err);
       logError("Exitting worker due to error: " + err.toString())

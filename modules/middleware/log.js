@@ -1,12 +1,12 @@
-var compression = require('compression');
+var morgan = require('morgan');
 
-module.exports = function GzipMiddleware() {
+module.exports = function LogMiddleware(logFileService) {
   return {
     requestHandler: function(req, res, next, middlewareInstance) {
       middlewareInstance(req, res, next);
     },
     entryParser: function(entry) {
-      return require('compression')();;
+      return morgan(entry.type || 'combined');
     }
   };
 };

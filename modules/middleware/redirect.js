@@ -1,7 +1,7 @@
 
 var regexpHelper = require('../../regexpHelper');
 
-module.exports = function Redirect() {
+module.exports = function RedirectMiddleware() {
   return {
     requestHandler: function(req, res, next, target) {
       if (req.pathMatch || req.hostMatch)

@@ -159,7 +159,6 @@ function createHandlers(portNumber, portConfig) {
   di.bindInstance('portConfig', portConfig);
   di.bindInstance('portNumber', portNumber);
 
-  var moduleInstanceCache = {};
   di.onMissing = function(name) {
 
     var m;
@@ -179,7 +178,7 @@ function createHandlers(portNumber, portConfig) {
 
   // allow also for specifying 80: 'http://code2flow.com:8080'
   if(typeof portConfig !== 'object') {
-    portConig = {
+    portConfig = {
       router: portConfig
     };
   }
@@ -280,17 +279,6 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
 function handleConfig(config, configHandled) {
   var self = this;
 
-  process.emit('unload');
-
-  (config.modules || []).forEach(function(moduleName) {
-    try {
-      self.di.resolve(require(path.join(__dirname, 'modules', moduleName)));
-      console.log("Loaded module", moduleName);
-    } catch(err) {
-      console.log("Error loading module:", moduleName, err);
-    }
-  });
-
   async.parallel(Object.keys(config.ports || {}).map(function(portEntry) {
     return function(asyncCallback) {
       var m;
@@ -363,12 +351,6 @@ function HttpMasterWorker(config) {
   };
   this.tcpServers = {};
   this.servers = [];
-  this.di = new DI();
-  this.di.bindInstance('di', this.di);
-  this.di.bindInstance('worker', this);
-  this.di.bindInstance('events', process);
-  this.di.bindInstance('config', this.config);
-  this.di.bindInstance('master', null);
 }
 
 HttpMasterWorker.prototype = Object.create(EventEmitter.prototype);
@@ -389,6 +371,46 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
   var self = this;
 
   this.unbindAll(function() {});
+  if(this.di) {
+    this.emit('reload');
+  }
+  var di = this.di = new DI();
+
+  di.onMissing = function(name) {
+    var m;
+    if( (m = name.match(/(.+)Service$/))) {
+      name = m[1];
+      try {
+        this.bindType(name + 'Service', require('./' + path.join('modules/services/', name)));
+      } catch(err) {
+        console.log(err && err.message);
+        return;
+      }
+      self.emit('loadService', name);
+      return this.resolve(name + 'Service');
+    }
+  };
+
+  di.bindInstance('di', di);
+  di.bindInstance('worker', this);
+  di.bindInstance('events', process);
+  di.bindResolver('config', function() {
+    return self.config;
+  });
+  di.bindInstance('master', null);
+  Object.keys(config.modules || {}).forEach(function(moduleName) {
+    if(!config.modules[moduleName])
+      return;
+    var di = self.di.makeChild();
+    di.bindInstance('di', di);
+    di.bindInstance('moduleConfig', config.modules[moduleName]);
+    try {
+      di.resolve(require(path.join(__dirname, 'modules', moduleName)));
+    } catch(err) {
+      console.error("Error loading module:", moduleName, err);
+    }
+  });
+
 
   handleConfig.call(this, config, function(err) {
     if (err) return configLoaded(err);

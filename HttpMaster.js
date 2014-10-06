@@ -38,8 +38,10 @@ function HttpMaster()
     args: []
   });
 
+
+
   
-this.autoRestartWorkers = true;
+  this.autoRestartWorkers = true;
 
   var self = this;
   cluster.on('exit', function(worker, code, signal) {
@@ -169,13 +171,44 @@ function preprocessConfig(config, cb) {
 }
 
 
+function setupDi() {
+  var self = this;
+  this.di  = new DI();
+  this.di.bindInstance('di', this.di);
+  this.di.bindInstance('master', this);
+  this.di.bindInstance('worker', null);
+  this.di.bindInstance('events', process);
+
+  this.di.bindResolver('config', function() {
+    return self.config;
+  });
+  var config = self.config;
+
+  config.modules = config.modules || {};
+
+  Object.keys(config.modules).forEach(function(moduleName) {
+    if(!config.modules[moduleName])
+      return;
+    var di = self.di.makeChild();
+    di.bindInstance('di', di);
+    di.bindInstance('moduleConfig', config.modules[moduleName]);
+    try {
+      di.resolve(require(path.join(__dirname, 'modules', moduleName)));
+    } catch(err) {
+      console.error("Error loading module:", moduleName, err);
+    }
+  });
+}
+
 HttpMaster.prototype.reload = function(config, reloadDone) {
   var self = this;
+  this.emit('reload');
 
   function actualReload(config) {
     self.config = config;
     var workers = self.workers;
 
+    setupDi.call(self);
 
     if((config.workerCount || 0) !== self.workerCount) {
       //self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
@@ -229,6 +262,7 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
   preprocessConfig.call(this, config, actualReload);
 };
 
+var DI = require('./di');
 
 HttpMaster.prototype.init = function(config, initDone) {
   var worker;
@@ -238,7 +272,8 @@ HttpMaster.prototype.init = function(config, initDone) {
   function actualInit(config) {
     self.config = config;
 
-    //runModules("initMaster", self, config);
+    setupDi.call(self);
+
     self.workerCount = config.workerCount || 0;
 
     if(self.workerCount === 0) {
@@ -262,9 +297,22 @@ HttpMaster.prototype.init = function(config, initDone) {
       self.token = token;
 
       async.times((config.workerCount), function(n, next) {
-        workers.push(initWorker.call(self, function() {
+        var worker = initWorker.call(self, function() {
           next(null);
-        }));
+        })
+        worker.on('msg:logNotice', self.logNotice.bind(self));
+        worker.on('msg:logError', self.logError.bind(self));
+        worker.on('msg:masterLoadService', function(name) {
+          try {
+            if(!self.di.mapping[name + 'Service'])
+              self.di.bindType(name + 'Service', require('./' + path.join('modules/services/', name)));
+          } catch(err) {
+            console.log(err.stack);
+            return;
+          }
+          self.di.resolve(name + 'Service');
+        });
+        workers.push(worker);
       }, function(err) {
         if (err) {
           return initDone(err);

@@ -1,6 +1,6 @@
 var httpAuth = require('http-auth');
 
-module.exports = function Auth() {
+module.exports = function AuthMiddleware() {
   return {
     requestHandler: function(req, res, next, auth) {
       auth(req, res, function(err) {

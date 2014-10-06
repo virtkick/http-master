@@ -31,7 +31,7 @@ function handlerForMiddlewareList(middleware) {
   };
 }
 
-module.exports = function Router(di, portConfig, portNumber) {
+module.exports = function RouterMiddleware(di, portConfig, portNumber) {
 
   function passEntryToModule(moduleName, entry) {
     var instance = di.resolve(moduleName + 'Middleware');
@@ -56,7 +56,6 @@ module.exports = function Router(di, portConfig, portNumber) {
 
   return {
     entryParser: function(routerEntries) {
-
       if (!(routerEntries instanceof Array)) {
         routerEntries = [routerEntries];
       }

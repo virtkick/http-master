@@ -1,15 +1,10 @@
 var util = require('util');
 var fs = require('fs');
-var logging = false;
 var util = require('util');
-
-
-var appStream;
-
 
 var watcher = {};
 
-function openLogFile(logFile) {
+function openLogFile(logFile, cb) {
   var stream = fs.createWriteStream(logFile, {
     'flags': 'a'
   });
@@ -17,7 +12,7 @@ function openLogFile(logFile) {
     watcher[logFile] = fs.watch(logFile, function(action, filename) {
       if (action == 'rename') {
         watcher[logFile].close();
-        openLogFile(logFile);
+        cb(openLogFile(logFile));
       }
     });
   });
@@ -26,43 +21,61 @@ function openLogFile(logFile) {
 
 var uidNumber = require('uid-number');
 
-var origConsoleLog = console.log;
-function loadAppLog(file, user, group) {
-  if(appStream)
-    appStream.end();
-  appStream = openLogFile(file);
+module.exports = function Logging(master, moduleConfig, config) {
+  var appStream;
+  var logFile;
+  if(!master)
+    return;
+
+  var user = config.user;
+  var group = config.group;
+
+  function logNotice(msg) {
+    appStream.write('[' + new Date().toISOString() + '] ' + msg + "\n");
+
+  }
+  function logError(msg) {
+    appStream.write('[' + new Date().toISOString() + '] ' + msg + "\n");
+  }
+
+  master.on('logNotice', logNotice);
+  master.on('logError', logError);
+
+  var logFile = moduleConfig;
+
+  // unload file watches and close files since after reload we may not be running
+  master.once('reload', function() {
+    if(appStream) appStream.end();
+    if(logFile) {
+      watcher[logFile].close();
+      delete watcher[logFile];
+    }
+    master.removeListener('logNotice', logNotice);
+    master.removeListener('logError', logError);
+  });
+
+
+  appStream = openLogFile(logFile, function(newAppStream) {
+    appStream = newAppStream;
+  });
   if(user || group) {
     uidNumber(user, group, function(err, userId, groupId) {
       fs.chown(file, userId, groupId);
     });
   }
 
-  console.log = function() {
+  function logFunction() {
     var args = Array.prototype.slice.call(arguments);
     args.unshift('[' + new Date().toISOString() + ']');
     str = util.format.apply(this, args) + "\n";
     appStream.write(str);
   }
-  process.removeAllListeners('msg:appLog');
-  process.on('msg:appLog', function(data) {
-    appStream.write(data);
-  });
-}
 
-
-module.exports = function Logging(events, config, master, worker, di) {
-  if(master) {
-
+  return {
+    notice: logNotice,
+    error: logError
   }
-  if(worker) {
-
-  }
-  events.once('unload', function() {
-    console.log = origConsoleLog;
-    process.removeAllListeners('msg:appLog');
-  });
 };
-
 
 // module.exports = {
 //   name: 'logging',
