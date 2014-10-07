@@ -85,6 +85,7 @@ worker.on('loadService', function(service) {
 
 process.on('message', function(msg) {
   var msg = JSON.parse(msg);
+  process.emit('msg', {type: msg.type, data: msg.data});
   process.emit('msg:' + msg.type, msg.data);
 });
 
@@ -114,6 +115,11 @@ process.on('msg:unbind', function() {
   worker.unbindAll(function() {
     process.sendMessage("unbindFinished");
   });
+});
+
+process.on('msg', function(data) {
+  if(worker.handleMessage)
+    worker.handleMessage(data);;
 });
 
 var originalLog = console.log;

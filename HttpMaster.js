@@ -1,6 +1,6 @@
 var async = require('async');
 
-var EventEmitter = require('events').EventEmitter;
+var EventEmitter = require('eventemitter3').EventEmitter;
 var path = require('path');
 var CertScanner = require('./certScanner');
 var extend = require('extend');
@@ -77,6 +77,7 @@ function initWorker(cb) {
     var msg = JSON.parse(msg);
     process.emit('msg:' + msg.type, msg.data, worker);
     worker.emit('msg:' + msg.type, msg.data);
+    worker.emit('msg', {type: msg.type, data: msg.data});
   });
   
   worker.once('msg:started', function() {
@@ -173,13 +174,28 @@ function preprocessConfig(config, cb) {
 
 function setupDi() {
   var self = this;
-  this.di  = new DI();
-  this.di.bindInstance('di', this.di);
-  this.di.bindInstance('master', this);
-  this.di.bindInstance('worker', null);
-  this.di.bindInstance('events', process);
+  var di = this.di  = new DI();
+  di.onMissing = function(name) {
+    var m;
+    if( (m = name.match(/(.+)Service$/))) {
+      name = m[1];
+      try {
+        this.bindType(name + 'Service', require('./' + path.join('modules/services/', name)));
+      } catch(err) {
+        console.log(err && err.message);
+        return;
+      }
+      self.emit('loadService', name);
+      return this.resolve(name + 'Service');
+    }
+  };
 
-  this.di.bindResolver('config', function() {
+  di.bindInstance('di', di);
+  di.bindInstance('master', this);
+  di.bindInstance('worker', null);
+  di.bindInstance('events', process);
+
+  di.bindResolver('config', function() {
     return self.config;
   });
   var config = self.config;
@@ -303,13 +319,6 @@ HttpMaster.prototype.init = function(config, initDone) {
         worker.on('msg:logNotice', self.logNotice.bind(self));
         worker.on('msg:logError', self.logError.bind(self));
         worker.on('msg:masterLoadService', function(name) {
-          try {
-            if(!self.di.mapping[name + 'Service'])
-              self.di.bindType(name + 'Service', require('./' + path.join('modules/services/', name)));
-          } catch(err) {
-            console.log(err.stack);
-            return;
-          }
           self.di.resolve(name + 'Service');
         });
         workers.push(worker);

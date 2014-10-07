@@ -5,8 +5,7 @@ var path = require('path'),
   fs = require('fs'),
   argv = require('optimist').argv,
   extend = require('extend'),
-  HttpMaster = require('./HttpMaster'),
-  friendlyConfig = require('./friendlyConfig');
+  HttpMaster = require('./HttpMaster');
 
 process.title = 'http-master';
 
@@ -141,7 +140,6 @@ function fetchConfig(finish) {
     try {
       configloader(argv, data, function(err, config) {
         if(err) return finish(err);
-        config = extend(true, {}, config, friendlyConfig(config));
         if(argv['show-rules'])
           logNotice(config.ports);
         patchConfigWithArgv(config);

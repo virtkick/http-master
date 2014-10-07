@@ -1,11 +1,71 @@
-module.exports = function LogFileService(events, master, worker) {
+var fs = require('fs');
+var uidNumber = require('uid-number');
+
+module.exports = function LogFileService(config, commService, master, worker) {
+
+  var comm = commService('logFile');
+
+  var logFileHandlers = {};
+
+  var user = config.user;
+  var group = config.group;
 
   if(master) {
-//    console.log("ON MASTER");
-    master.once('reload', function() {
-      console.log("Reload");
-    });
+    var serviceFunction = function(logFile) {
+      if(logFileHandlers[logFile])
+        return logFileHandlers[logFile];
+
+      var watch;
+      var stream;
+
+      function openLogFile(logFile) {
+
+        stream = fs.createWriteStream(logFile, {
+          'flags': 'a'
+        });
+        if(user || group) {
+          uidNumber(user, group, function(err, userId, groupId) {
+            fs.chown(logFile, userId, groupId);
+          });
+        }
+        stream.once('open', function() {
+          watch = fs.watch(logFile, function(action, filename) {
+            if (action == 'rename') {
+              watcher[logFile].close();
+              openLogFile(logFile);
+            }
+          });
+        });
+        return stream;
+      }
+      openLogFile(logFile);
+
+      comm.on('write:' + logFile, function(data) {
+        stream.write(data);
+      });
+
+      logFileHandlers[logFile] = {
+        write: function(data) {
+          stream.write(data);
+        }
+      };
+
+      return logFileHandlers[logFile];
+    };
+
+    comm.on('open', serviceFunction);
+
+    return serviceFunction;
+
   } else {
-//    console.log("ON WORKER");
+
+    return function(logFile) {
+      comm.send('open', logFile);
+      return {
+        write: function(data) {
+          comm.send('write:' + logFile, data);
+        }
+      }
+    };
   }
 };

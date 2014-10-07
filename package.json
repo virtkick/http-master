@@ -25,6 +25,7 @@
     "async": "0.9.0",
     "bugsnag": "1.5.0",
     "compression": "1.1.0",
+    "eventemitter3": "^0.1.5",
     "extend": "2.0.0",
     "http-auth": "2.1.6",
     "http-proxy": "1.5.3",

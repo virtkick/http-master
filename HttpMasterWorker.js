@@ -12,7 +12,7 @@ var crypto = require('crypto'),
 
 var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
-var EventEmitter = require('events').EventEmitter;
+var EventEmitter = require('eventemitter3');
 
 var argv = {}; // will be sent by master
 
@@ -155,7 +155,7 @@ function createHandlers(portNumber, portConfig) {
 
   var di = this.di.makeChild();
   di.bindInstance('di', di);
-  di.bindInstance('events', process);
+
   di.bindInstance('portConfig', portConfig);
   di.bindInstance('portNumber', portNumber);
 
@@ -370,6 +370,12 @@ HttpMasterWorker.prototype.unbindAll = function(unbindFinished) {
 HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
   var self = this;
 
+  var events = new EventEmitter();
+  function messageHandler(msg) {
+    events.emit('msg:'+msg.type, msg.data);
+  }
+  this.handleMessage = messageHandler;
+
   this.unbindAll(function() {});
   if(this.di) {
     this.emit('reload');
@@ -393,7 +399,14 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
 
   di.bindInstance('di', di);
   di.bindInstance('worker', this);
-  di.bindInstance('events', process);
+
+  this.once('reload', function() {
+    process.removeListener('msg', messageHandler);
+    events.emit('reload');
+    events.removeAllListeners();
+  });
+
+  di.bindInstance('events', events);
   di.bindResolver('config', function() {
     return self.config;
   });
@@ -424,7 +437,7 @@ HttpMasterWorker.prototype.gcServers = function(gcFinished) {
 
   Object.keys(this.tcpServers).forEach(function(key) {
     var server = self.tcpServers[key];
-    if (EventEmitter.listenerCount(server, 'connection') === 0) {
+    if (require('events').EventEmitter.listenerCount(server, 'connection') === 0) {
       toClose.push(server);
       delete self.tcpServers[key];
     }

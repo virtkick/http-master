@@ -6,7 +6,9 @@ module.exports = function LogMiddleware(logFileService) {
       middlewareInstance(req, res, next);
     },
     entryParser: function(entry) {
-      return morgan(entry.type || 'combined');
+      return morgan(entry.type || 'combined', {
+        stream: logFileService(entry.file || entry)
+      });
     }
   };
 };
