@@ -1,4 +1,4 @@
-var DispatchTable = require('../../DispatchTable');
+var DispatchTable = require('../../src/DispatchTable');
 
 var defaultModule = 'proxy';
 var entryRegexp = /^\s*(?:(\w+)\s*(?:->|: )\s*)?(.*)/;

@@ -4,7 +4,7 @@ var httpProxy = require('http-proxy');
 var url = require('url');
 var fs = require('fs');
 var path = require('path');
-var regexpHelper = require('../../regexpHelper');
+var regexpHelper = require('../../src/regexpHelper');
 var assert = require('assert');
 
 function parseEntry(entry) {

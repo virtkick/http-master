@@ -1,5 +1,5 @@
 var nodeStatic = require('node-static');
-var regexpHelper = require('../regexpHelper');
+var regexpHelper = require('../../src/regexpHelper');
 
 module.exports = function StaticMiddleware() {
   return {

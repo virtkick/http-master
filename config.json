@@ -1,9 +1,7 @@
 {
+  "middleware": ["log -> combined"],
 	"ports": {
-		"4080" : ["log -> combined", {
-			"redirect": {
-				"*.code2flow.com/^(?<code>[a-f]{6})" : "http://code2flow.com/[code]"
-			},
+		"4080" : {
 			"errorHtmlPage": "/home/rush/Programowanie/rush-http-proxy/test.html",
       "router": {
         "local.code2flow.com": 80,
@@ -33,7 +31,7 @@
 			"static": {},
       gzip: true,
 
-		}],
+		},
     "40443": {
       "router": ["log -> test.log", {
         "local.code2flow.com/ddd": "websockify -> 22",
@@ -46,6 +44,7 @@
     }
 	},
   modules: {
-    appLog: "app.log"
+    appLog: "app.log",
+    accessLog: "alamakota.log"
   }
 }

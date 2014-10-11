@@ -279,6 +279,39 @@ describe('proxy middleware', function() {
       http11Request('hello', function(err, data) {
       }, '/upload?dupa');
     });
+    it('should proxy web sockets', function(endTest) {
+      var WebSocketServer = require('ws').Server;
+      var WebSocket = require('ws');
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:60000');
 
+      var ws = new WebSocket('ws://localhost:' + port1);
+
+      ws.on('open',  function() {
+
+      });
+      ws.on('message', function(msg) {
+        assert(msg === 'something');
+        ws.send('else');
+      });
+
+      server1.on('upgrade', function(req, socket, head) {
+        req.upgrade = {
+          socket: socket,
+          head: head
+        };
+        proxyMiddleware.requestHandler(req, {}, function(err) {
+          assert(false, "next should not be called, error has occured");
+        }, parsedTarget);
+      });
+
+      var wss = new WebSocketServer({port: 60000});
+      wss.on('connection', function(ws) {
+          ws.on('message', function(message) {
+              message.should.equal('else');
+              endTest();
+          });
+          ws.send('something');
+      });
+    });
   });
 });

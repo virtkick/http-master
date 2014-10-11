@@ -1,9 +1,9 @@
 'use strict';
-var HttpMaster = require('../HttpMaster');
+var HttpMaster = require('../src/HttpMaster');
 var assert = require('chai').assert;
 require('should');
 
-var testUtils = require('../testUtils');
+var testUtils = require('../src/testUtils');
 var assurePortNotListening = testUtils.assurePortNotListening;
 var assurePortIsListening = testUtils.assurePortIsListening;
 
@@ -46,7 +46,5 @@ describe('HttpMaster', function() {
         });
       });
     });
-
-
   });
 });

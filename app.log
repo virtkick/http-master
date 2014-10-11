@@ -1041,3 +1041,72 @@
 [2014-10-07T09:25:42.524Z] [8] Listening on port: port 40443
 [2014-10-07T09:25:42.524Z] [8] Start successful
 [2014-10-07T09:25:42.524Z] All workers started in 232ms
+[2014-10-11T22:14:31.986Z] Error loading module: accessLog Error: No recipe to resolve 'logMiddleware'
+[2014-10-11T22:14:31.988Z] Error loading module: accessLog Error: No recipe to resolve 'logMiddleware'
+[2014-10-11T22:14:32.024Z] Error loading module: accessLog Error: No recipe to resolve 'logMiddleware'
+[2014-10-11T22:14:32.047Z] Error loading module: accessLog Error: No recipe to resolve 'logMiddleware'
+[2014-10-11T22:14:32.075Z] [2] Listening on port: port 4080
+[2014-10-11T22:14:32.077Z] [2] Listening on port: port 40443
+[2014-10-11T22:14:32.078Z] [2] Start successful
+[2014-10-11T22:14:32.117Z] [1] Listening on port: port 4080
+[2014-10-11T22:14:32.121Z] [1] Listening on port: port 40443
+[2014-10-11T22:14:32.121Z] [1] Start successful
+[2014-10-11T22:14:32.132Z] [4] Listening on port: port 4080
+[2014-10-11T22:14:32.133Z] [4] Listening on port: port 40443
+[2014-10-11T22:14:32.134Z] [4] Start successful
+[2014-10-11T22:14:32.184Z] [3] Listening on port: port 4080
+[2014-10-11T22:14:32.188Z] [3] Listening on port: port 40443
+[2014-10-11T22:14:32.189Z] [3] Start successful
+[2014-10-11T22:14:32.191Z] All workers started in 467ms
+[2014-10-11T23:18:27.843Z] [1] Listening on port: port 4080
+[2014-10-11T23:18:27.846Z] [1] Listening on port: port 40443
+[2014-10-11T23:18:27.847Z] [1] Start successful
+[2014-10-11T23:18:27.853Z] [3] Listening on port: port 4080
+[2014-10-11T23:18:27.854Z] [3] Listening on port: port 40443
+[2014-10-11T23:18:27.854Z] [3] Start successful
+[2014-10-11T23:18:27.856Z] [2] Listening on port: port 4080
+[2014-10-11T23:18:27.857Z] [2] Listening on port: port 40443
+[2014-10-11T23:18:27.857Z] [2] Start successful
+[2014-10-11T23:18:27.875Z] [4] Listening on port: port 4080
+[2014-10-11T23:18:27.879Z] [4] Listening on port: port 40443
+[2014-10-11T23:18:27.879Z] [4] Start successful
+[2014-10-11T23:18:27.881Z] All workers started in 444ms
+[2014-10-11T23:18:43.271Z] [1] Listening on port: port 4080
+[2014-10-11T23:18:43.275Z] [1] Listening on port: port 40443
+[2014-10-11T23:18:43.276Z] [1] Start successful
+[2014-10-11T23:18:43.276Z] [2] Listening on port: port 4080
+[2014-10-11T23:18:43.277Z] [2] Listening on port: port 40443
+[2014-10-11T23:18:43.278Z] [2] Start successful
+[2014-10-11T23:18:43.287Z] [3] Listening on port: port 4080
+[2014-10-11T23:18:43.289Z] [3] Listening on port: port 40443
+[2014-10-11T23:18:43.289Z] [3] Start successful
+[2014-10-11T23:18:43.314Z] [4] Listening on port: port 4080
+[2014-10-11T23:18:43.318Z] [4] Listening on port: port 40443
+[2014-10-11T23:18:43.318Z] [4] Start successful
+[2014-10-11T23:18:43.320Z] All workers started in 457ms
+[2014-10-11T23:18:52.223Z] [2] Listening on port: port 4080
+[2014-10-11T23:18:52.224Z] [2] Listening on port: port 40443
+[2014-10-11T23:18:52.225Z] [2] Start successful
+[2014-10-11T23:18:52.226Z] [3] Listening on port: port 4080
+[2014-10-11T23:18:52.226Z] [3] Listening on port: port 40443
+[2014-10-11T23:18:52.227Z] [3] Start successful
+[2014-10-11T23:18:52.229Z] [1] Listening on port: port 4080
+[2014-10-11T23:18:52.230Z] [1] Listening on port: port 40443
+[2014-10-11T23:18:52.230Z] [1] Start successful
+[2014-10-11T23:18:52.241Z] [4] Listening on port: port 4080
+[2014-10-11T23:18:52.242Z] [4] Listening on port: port 40443
+[2014-10-11T23:18:52.243Z] [4] Start successful
+[2014-10-11T23:18:52.243Z] All workers started in 434ms
+[2014-10-11T23:19:43.298Z] [1] Listening on port: port 4080
+[2014-10-11T23:19:43.300Z] [1] Listening on port: port 40443
+[2014-10-11T23:19:43.300Z] [1] Start successful
+[2014-10-11T23:19:43.341Z] [3] Listening on port: port 4080
+[2014-10-11T23:19:43.343Z] [3] Listening on port: port 40443
+[2014-10-11T23:19:43.343Z] [3] Start successful
+[2014-10-11T23:19:43.344Z] [4] Listening on port: port 4080
+[2014-10-11T23:19:43.346Z] [4] Listening on port: port 40443
+[2014-10-11T23:19:43.346Z] [4] Start successful
+[2014-10-11T23:19:43.356Z] [2] Listening on port: port 4080
+[2014-10-11T23:19:43.359Z] [2] Listening on port: port 40443
+[2014-10-11T23:19:43.360Z] [2] Start successful
+[2014-10-11T23:19:43.361Z] All workers started in 377ms

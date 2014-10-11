@@ -180,7 +180,7 @@ function setupDi() {
     if( (m = name.match(/(.+)Service$/))) {
       name = m[1];
       try {
-        this.bindType(name + 'Service', require('./' + path.join('modules/services/', name)));
+        this.bindType(name + 'Service', require(path.join(__dirname , '..', 'modules', 'services', name)));
       } catch(err) {
         console.log(err && err.message);
         return;
@@ -209,7 +209,7 @@ function setupDi() {
     di.bindInstance('di', di);
     di.bindInstance('moduleConfig', config.modules[moduleName]);
     try {
-      di.resolve(require(path.join(__dirname, 'modules', moduleName)));
+      di.resolve(require(path.join(__dirname, '..', 'modules', moduleName)));
     } catch(err) {
       console.error("Error loading module:", moduleName, err);
     }

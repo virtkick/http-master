@@ -1,4 +1,4 @@
-var DI = require('../di');
+var DI = require('../src/di');
 var assert = require('chai').assert;
 require('should');
 

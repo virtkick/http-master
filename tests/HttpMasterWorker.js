@@ -2,9 +2,9 @@
 var net = require('net');
 var http = require('http');
 var async = require('async');
-var HttpMasterWorker = require('../HttpMasterWorker');
+var HttpMasterWorker = require('../src/HttpMasterWorker');
 require('should');
-var testUtils = require('../testUtils');
+var testUtils = require('../src/testUtils');
 
 var assurePortNotListening = testUtils.assurePortNotListening;
 var assurePortIsListening = testUtils.assurePortIsListening;

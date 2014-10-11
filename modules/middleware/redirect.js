@@ -1,5 +1,5 @@
 
-var regexpHelper = require('../../regexpHelper');
+var regexpHelper = require('../../src/regexpHelper');
 
 module.exports = function RedirectMiddleware() {
   return {

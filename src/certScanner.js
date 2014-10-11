@@ -7,7 +7,7 @@ var path = require('path');
 var moment = require('moment');
 var util = require('util');
 
-var EventEmitter = require('events').EventEmitter;
+var EventEmitter = require('eventemitter3');
 
 module.exports = function(sslDirectory, options) {
   var that = this;

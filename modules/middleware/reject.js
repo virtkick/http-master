@@ -21,8 +21,6 @@ module.exports = function RejectMiddleware(config, portConfig) {
 
   return {
     requestHandler: function(req, res, next, target) {
-      if(!res)
-        return;
       res.statusCode = target.code;
       var head = {};
 
