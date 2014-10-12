@@ -8,8 +8,8 @@ var path = require('path');
 
 describe('SSL directory scanner', function() {
   var SslScanner = require('../src/certScanner');
-  var realSslDir = 'tests/certs/';
-  var sslDir = 'tests/.work/';
+  var realSslDir = path.join(__dirname, '../tests/certs/');
+  var sslDir = path.join(__dirname, '../tests/.work/');
   var scanner = null;
 
   beforeEach(function() {
