@@ -4,30 +4,36 @@ var defaultModule = 'proxy';
 var entryRegexp = /^\s*(?:(\w+)\s*(?:->|: )\s*)?(.*)/;
 
 function handlerForMiddlewareList(middleware) {
+  console.log(middleware, middleware.length);
   return {
     middleware: function(req, res, next) {
-      var i = 0;
+      console.log("Middleware length", middleware.length);
+
       var length = middleware.length;
-      function runMiddleware() {
+
+      function runMiddleware(i) {
+        console.log(i, middleware[i]);
         if (i < length) {
           middleware[i].middleware(req, res, function(err) {
+            console.log("Err", err);
             if (err) {
               return next(err);
             }
-            i += 1;
             // delete matches so that each dispatch table
             // on separate routes fills their own
             // TODO: this is probably not correct ...
             delete req.hostMatch;
             delete req.pathMatch;
-            runMiddleware(req, res, next);
+            runMiddleware(i+1);
           }, middleware[i].dispatchTarget);
         } else {
           next();
         }
       }
-      runMiddleware();
-    }
+      runMiddleware(0);
+    },
+    moduleName: 'middlewareList',
+    entry: middleware
   };
 }
 
@@ -35,13 +41,16 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
 
   function passEntryToModule(moduleName, entry) {
     var instance = di.resolve(moduleName + 'Middleware');
+    var dispatchTarget = entry;
     if(instance.entryParser) {
       // allow modules to cache arbitrary data per entry
-      entry = instance.entryParser(entry);
+       dispatchTarget = instance.entryParser(entry);
     }
     return {
       middleware: instance.requestHandler,
-      dispatchTarget: entry
+      dispatchTarget: dispatchTarget,
+      moduleName: moduleName, // for debug
+      entry: entry // for debug
     };
   }
 
@@ -77,7 +86,7 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
             return parseSingleEntry(entry);
           },
           requestHandler: function(req, res, next, target) {
-
+            console.log("Request handler", target.moduleName, target.entry);
             target.middleware(req, res, next, target.dispatchTarget);
           }
         });
@@ -86,9 +95,10 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
         }
       });
 
-      return handlerForMiddlewareList(middlewareList)
+      return handlerForMiddlewareList(middlewareList);
     },
     requestHandler: function(req, res, next, target) {
+      console.log("Target " + target);
       target.middleware(req, res, next, target.dispatchTarget);
     }
   };

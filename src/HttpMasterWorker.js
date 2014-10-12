@@ -186,9 +186,8 @@ function createHandlers(portNumber, portConfig) {
   if(!(portConfig.router instanceof Array)) {
     portConfig.router == [portConfig.router];
   }
-  portConfig.router = (self.config.middleware || []).concat(portConfig.middleware || []).concat(portConfig.router);
 
-  portConfig.router.concat();
+  portConfig.router = (self.config.middleware || []).concat(portConfig.middleware || []).concat(portConfig.router);
 
   var reject = di.resolve('rejectMiddleware');
 

@@ -1,8 +1,8 @@
 var config = {};
 var cluster = require('cluster');
+var util = require('util');
 
 var droppedPrivileges = false;
-
 
 function logError(str) {
   console.log('[' + cluster.worker.id + '] ' + str);
@@ -10,14 +10,10 @@ function logError(str) {
 var logNotice = logError;
 
 console.log = function() {
-  process.sendMessage("logNotice",  Array.prototype.slice.call(arguments).map(function(arg) {
-    return arg?(arg.toString()):arg;
-  }).join(' '));
+  process.sendMessage("logNotice", util.format.apply(this, arguments));
 };
 console.error = function() {
-  process.sendMessage("logError",  Array.prototype.slice.call(arguments).map(function(arg) {
-    return arg?(arg.toString()):arg;
-  }).join(' '));
+  process.sendMessage("logError",  util.format.apply(this, arguments));
 }
 
 // TODO: move to common

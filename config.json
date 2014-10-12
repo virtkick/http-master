@@ -1,5 +1,5 @@
 {
-  "middleware": ["log -> combined"],
+  "middleware": ["log -> access.log"],
 	"ports": {
 		"4080" : {
 			"errorHtmlPage": "/home/rush/Programowanie/rush-http-proxy/test.html",
@@ -33,10 +33,10 @@
 
 		},
     "40443": {
-      "router": ["log -> test.log", {
+      "router": {
         "local.code2flow.com/ddd": "websockify -> 22",
         "local.code2flow.com": 80
-      }],
+      },
       ssl: {
         key: '/home/rush/Programowanie/node/test/fixtures/keys/agent2-key.pem',
         cert: '/home/rush/Programowanie/node/test/fixtures/keys/agent2-cert.pem'
@@ -44,7 +44,6 @@
     }
 	},
   modules: {
-    appLog: "app.log",
-    accessLog: "alamakota.log"
+    appLog: "app.log"
   }
 }
