@@ -4,18 +4,13 @@ var defaultModule = 'proxy';
 var entryRegexp = /^\s*(?:(\w+)\s*(?:->|: )\s*)?(.*)/;
 
 function handlerForMiddlewareList(middleware) {
-  console.log(middleware, middleware.length);
   return {
     middleware: function(req, res, next) {
-      console.log("Middleware length", middleware.length);
-
       var length = middleware.length;
 
       function runMiddleware(i) {
-        console.log(i, middleware[i]);
         if (i < length) {
           middleware[i].middleware(req, res, function(err) {
-            console.log("Err", err);
             if (err) {
               return next(err);
             }
@@ -86,7 +81,6 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
             return parseSingleEntry(entry);
           },
           requestHandler: function(req, res, next, target) {
-            console.log("Request handler", target.moduleName, target.entry);
             target.middleware(req, res, next, target.dispatchTarget);
           }
         });
@@ -98,7 +92,6 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
       return handlerForMiddlewareList(middlewareList);
     },
     requestHandler: function(req, res, next, target) {
-      console.log("Target " + target);
       target.middleware(req, res, next, target.dispatchTarget);
     }
   };

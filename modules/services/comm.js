@@ -18,10 +18,9 @@ module.exports = function CommService(events, master, worker) {
     };
   } else if(worker) {
     return function(namespace) {
-
       return {
         send : function(name, data) {
-          process.sendMessage(namespace + ':' + name, data);
+          worker.sendMessage(namespace + ':' + name, data);
         },
         on : function(name, cb) {
           events.on('msg:' + namespace + ':' + name, cb);

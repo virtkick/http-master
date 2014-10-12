@@ -75,6 +75,8 @@ process.sendMessage = function(type, data) {
   }));
 };
 
+worker.sendMessage = process.sendMessage;
+
 worker.on('loadService', function(service) {
   process.sendMessage('masterLoadService', service);
 });

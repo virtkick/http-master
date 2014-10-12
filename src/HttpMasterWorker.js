@@ -177,7 +177,7 @@ function createHandlers(portNumber, portConfig) {
   var router = di.resolve('routerMiddleware');
 
   // allow also for specifying 80: 'http://code2flow.com:8080'
-  if(typeof portConfig !== 'object') {
+  if(typeof portConfig !== 'object' || portConfig instanceof Array) {
     portConfig = {
       router: portConfig
     };
@@ -261,7 +261,9 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
       socket: socket,
       head: head
     };
-    handler(req, null);
+    handler(req, { // fake res object for log middleware to work
+      socket: socket
+    });
   });
 
   lazyGetTcpServer.call(self, portNumber, host, function(err, tcpServer) {

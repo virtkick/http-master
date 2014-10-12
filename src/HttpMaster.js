@@ -294,8 +294,15 @@ HttpMaster.prototype.init = function(config, initDone) {
 
     if(self.workerCount === 0) {
       var singleWorker = self.singleWorker = new (require('./HttpMasterWorker'))();
+
+      singleWorker.sendMessage = function(type, data) {
+        process.emit('msg:' + type, data);
+      }
       singleWorker.on('logNotice', self.logNotice.bind(self));
       singleWorker.on('logError', self.logError.bind(self));
+      singleWorker.on('loadService', function(name) {
+        self.di.resolve(name + 'Service');
+      });
       self.singleWorker.loadConfig(config, function(err) {
         if (err) {
           return initDone(err);

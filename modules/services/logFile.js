@@ -58,7 +58,6 @@ module.exports = function LogFileService(config, commService, master, worker) {
     return serviceFunction;
 
   } else {
-
     return function(logFile) {
       comm.send('open', logFile);
       return {
