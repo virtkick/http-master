@@ -46,6 +46,17 @@ module.exports = function(sslDirectory, options) {
                 keys[pem.publicExponent] = options.read ? rawCert : certPath;
                 return cb();
               }
+              if(err)  {
+                if(err.toString().match(/Unable to parse certificate/))
+                  return cb(null);
+                if(err.toString().match(/Certificate argument provided, but left blank/))
+                  return cb(null);
+                return cb(err);
+              }
+              if(!err && !cert && !pem) {
+                return cb();
+              }
+
 
               if(!options.acceptInvalidDates) {
                 if(moment(cert.notBefore).diff(moment()) < 0) { // valid
@@ -70,12 +81,6 @@ module.exports = function(sslDirectory, options) {
 
               var keyForCert = options.read ? rawCert : certPath;
               certs[keyForCert] = cert.publicExponent;
-
-              if(err)  {
-                if(err.toString().match(/Unable to parse certificate/))
-                  return cb(null);
-                return cb(err);
-              }
 
               async.each(altNames, function(domain, cb) {
                 outputConfig[domain] = {};
@@ -173,7 +178,9 @@ module.exports = function(sslDirectory, options) {
             fs.stat(certPath, function(err, statData) {
 
               if(statData.isDirectory()) {
-                return processDirectory(certPath, cb);
+                return processDirectory(certPath, function() {
+                  cb(false); // is a directory
+                });                
               }
 
               that.getCaCertsFromFile(certPath, function(err, certs, rawCerts) {
@@ -182,15 +189,14 @@ module.exports = function(sslDirectory, options) {
                 if (that.isDomainCert(certs)) {
                   return cb(false);
                 }
-
                 var matchingCa = certs.filter(function(cert, i) {
                   var res = that.caMatches(cert, parsedCert);
+
                   if(res) {
                     caRawResults.push(rawCerts[i]);
                   }
                   return res;
                 });
-
                 return cb(matchingCa.length);
               });
             });

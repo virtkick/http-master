@@ -15,7 +15,10 @@
     "https",
     "proxy"
   ],
-  "bin": "./bin/http-master",
+  "bin": {
+    "http-master: "./bin/http-master",
+    "cert-scan": "./bin/cert-scan"
+  },
   "author": "Damian Kaczmarek <damian@codecharm.co.uk>",
   "contributors": [
     "Damian Nowak <damian.nowak@atlashost.eu>"
