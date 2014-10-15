@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 var CertScanner = require('../src/certScanner');
 
-var argv = require('optimist').usage('Usage: cert-scan [path]\nTry to provide a relatively small directory, idealy containing only certificates. A JSON result will be returned.').demand(1).argv;
+var argv = require('yargs').usage('Usage: cert-scan [path]\nTry to provide a relatively small directory, idealy containing only certificates. A JSON result will be returned.').demand(1).argv;
 
 var scanner = new CertScanner(argv._[0], argv);
 

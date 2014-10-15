@@ -41,12 +41,12 @@ var help = [
   'See https://github.com/CodeCharmLtd/http-master for further info'
 ].join('\n');
 
-if (argv.h || argv.help || !argv.config || argv.config === true) {
-  return console.log(help);
+if(argv.version) {
+  return console.log(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'))).version);
 }
 
-if(argv.version) {
-  return console.log(JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'))).version);
+if (argv.h || argv.help || !argv.config || argv.config === true) {
+  return console.log(help);
 }
 
 var config = {};

@@ -28,7 +28,7 @@ function splitFirst(str) {
   return [m[1]];
 }
 
-function globStringToRegex(str, specialCh) {
+function globStringToRegex(str, specialCh, optionalEnding) {
   if(!specialCh)
     specialCh = '.';
   var inside = regexpQuote(str);
@@ -42,24 +42,24 @@ function globStringToRegex(str, specialCh) {
     inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
   inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)');
 
-  var regexp = new XRegExp('^' + inside + '$');
+  var regexp = new XRegExp('^' + inside + (optionalEnding?('(?:'+optionalEnding+')?'):'') +  '$');
   return regexp;
 }
 
-function getRegexpIfNeeded(str, specialCh) {
+function getRegexpIfNeeded(str, specialCh, optionalEnding) {
   if (typeof str == 'string') {
     var m = str.match(/^\^(.*)\$?$/);
     if (m) {
-      return new XRegExp('^' + m[1] + '$');
+      return new XRegExp('^' + m[1] + (optionalEnding?('(?:'+optionalEnding+')?'):'') +  '$');
     } else if (str.match(/[*?]/)) {
-      return globStringToRegex(str, specialCh);
+      return globStringToRegex(str, specialCh, optionalEnding);
     }
   }
   return undefined;
 }
 
 function postParseKey(entryKey, entry) {
-  var regexp = getRegexpIfNeeded(entryKey);
+  var regexp = getRegexpIfNeeded(entryKey, '.', ':' + entry.port);
   if (regexp)
     entry.regexp = regexp;
   return entryKey;
@@ -96,6 +96,7 @@ function DispatchTable(port, params) {
     }
     entry = {
       target: entry,
+      port: port
     };
     if (entryPath) {
       entry.path = entryPath;
