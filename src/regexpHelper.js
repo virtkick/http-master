@@ -1,27 +1,19 @@
-function processMatch(target, m, offset) {
+function processMatch(target, m) {
   var keyWithOffset;
-  if (m && m.length > 1) {
+  if (m && m.length > 0) {
     for(var key in m) {
-      if(offset && !isNaN(key)) {
-        key = parseInt(key);
-        keyWithOffset = (key + offset);
+      var replaceFrom = key;
+      if(!isNaN(key)) {
+        replaceFrom = parseInt(key)+1;
       }
-      else
-        keyWithOffset = key;
       var replaceValue = m[key];
-      target = target.replace("[" + keyWithOffset + "]", replaceValue?replaceValue:"");
+      target = target.replace("[" + replaceFrom + "]", replaceValue?replaceValue:"");
     }
   }
   return target;
 }
 
-module.exports = function(href, hostMatch, pathMatch) {
+module.exports = function(href, match) {
   var pathMatchOffset = 0;
-  if(hostMatch) {
-    pathMatchOffset = hostMatch.length - 1;
-  }
-  href = processMatch(href, hostMatch);
-
-  href = processMatch(href, pathMatch, pathMatchOffset);
-  return href;
+  return processMatch(href, match);
 }

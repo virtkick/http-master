@@ -58,4 +58,4 @@ module.exports = function(argv, data, cb) {
   });
   console.log("Migrated old config!");
 	cb(null, config);
-}
+};

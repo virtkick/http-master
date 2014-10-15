@@ -1,7 +1,7 @@
 'use strict';
 require('should');
 
-function makeReq(host, path, hostMatch, pathMatch) {
+function makeReq(host, path, match) {
 	return {
 		url: path,
 		headers: {
@@ -9,8 +9,7 @@ function makeReq(host, path, hostMatch, pathMatch) {
 		},
     parsedUrl: require('url').parse(path),
 		connection: {},
-    hostMatch: hostMatch,
-    pathMatch: pathMatch
+    match: match
 	};
 }
 
@@ -22,9 +21,9 @@ describe('redirect middleware', function() {
   beforeEach(function() {
     redirectMiddleware = require('../modules/middleware/redirect')({});
   });
-  function makeTest(target, host, path, cb, hostMatch, pathMatch) {
+  function makeTest(target, host, path, cb, match) {
     onTarget = cb;
-    redirectMiddleware.requestHandler(makeReq(host, path, hostMatch, pathMatch), {
+    redirectMiddleware.requestHandler(makeReq(host, path, match), {
       setHeader: function(str, target) {
         if(str == 'Location')
           cb(target);
@@ -50,7 +49,7 @@ describe('redirect middleware', function() {
    var assertPath = function(host, path, mustEqual) {
       makeTest('https://jira.atlashost.eu/[1]/[path]', host, path, function(target) {
         target.should.equal(mustEqual);
-      }, undefined, 'foo'.match(/(.*)/));
+      }, 'foo'.match(/(.*)/).slice(1));
     };
     assertPath('jira.atlashost.eu', '/test', 'https://jira.atlashost.eu/foo/test');
     assertPath('jira.atlashost.eu', '/', 'https://jira.atlashost.eu/foo/');

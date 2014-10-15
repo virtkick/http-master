@@ -226,12 +226,13 @@ describe('proxy middleware', function() {
       });
     });
 
-    it('should handle requests with hostMatch and pathMatch', function(endTest) {
+    it('should handle requests with match', function(endTest) {
       var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:'+port2 + '/[1]/[2]');
 
       server1.once('request', function(req, res) {
-        req.hostMatch = 'foo'.match(/(foo)/);
-        req.pathMatch = 'bar'.match(/(bar)/);
+        var hostMatch = 'foo'.match(/(foo)/);
+        var pathMatch = 'bar'.match(/(bar)/);
+        req.match = [].concat(hostMatch.slice(1)).concat(pathMatch.slice(1));
         req.parsedUrl = url.parse(req.url);
         proxyMiddleware.requestHandler(req, res, function(err) {
           assert(false, "next should not be called, error has occured");
@@ -239,23 +240,6 @@ describe('proxy middleware', function() {
       });
       server2.once('request', function(req, res) {
         req.url.should.equal('/foo/bar');
-        endTest();
-      });
-      http11Request('hello', function(err, data) {});
-    });
-
-    it('should handle requests with pathMatch and missing match', function(endTest) {
-      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:'+port2 + '/[1]/[2]');
-
-      server1.once('request', function(req, res) {
-        req.pathMatch = 'bar'.match(/(bar)/);
-        req.parsedUrl = url.parse(req.url);
-        proxyMiddleware.requestHandler(req, res, function(err) {
-          assert(false, "next should not be called, error has occured");
-        }, parsedTarget);
-      });
-      server2.once('request', function(req, res) {
-        req.url.should.equal('/bar/[2]');
         endTest();
       });
       http11Request('hello', function(err, data) {});

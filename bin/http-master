@@ -3,9 +3,11 @@
 
 var path = require('path'),
   fs = require('fs'),
-  argv = require('optimist').argv,
+  argv = require('yargs')
+  .argv,
   extend = require('extend'),
-  HttpMaster = require('../src/HttpMaster');
+  HttpMaster = require('../src/HttpMaster'),
+  util = require('util');
 
 process.title = 'http-master';
 
@@ -30,15 +32,16 @@ var help = [
   '  --config CONFIGFILE     Configuration file (YAML or JSON)',
   '  --configloader JS-FILE  Provide js file as config loader',
   '  --configloader-test     Test config configloader by printing out its output',
-  '  --watch                 Watch config for changes',
+  '  --watch                 Watch config for changes and automatically reload with zero downtime',
   '  --silent                Silence the log output',
   '  --user   USER           User to drop privileges to once server socket is bound',
   '  --group  GROUP          Group to drop privileges to once server socket is bound',
   '  --show-rules            Show all rules upon every config load',
-  '  -h, --help              You\'re staring at it'
+  '  -h, --help              You\'re staring at it',
+  'See https://github.com/CodeCharmLtd/http-master for further info'
 ].join('\n');
 
-if (argv.h || argv.help || Object.keys(argv).length === 2) {
+if (argv.h || argv.help || !argv.config || argv.config === true) {
   return console.log(help);
 }
 
@@ -117,6 +120,7 @@ var yaml = require('js-yaml');
 function fetchConfig(finish) {
 
   var configloader;
+  //console.log(fs.statSync(argv.configloader));
   if (argv.configloader) {
     configloader = require(argv.configloader);
   } else {
@@ -141,7 +145,7 @@ function fetchConfig(finish) {
       configloader(argv, data, function(err, config) {
         if(err) return finish(err);
         if(argv['show-rules'])
-          logNotice(config.ports);
+          logNotice(util.inspect(config.ports, {depth: null}));
         patchConfigWithArgv(config);
 
         finish(err, config);

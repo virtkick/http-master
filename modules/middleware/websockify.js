@@ -1,7 +1,9 @@
 var WebSocketServer = require('ws').Server;
 var EventEmitter = require('events').EventEmitter;
 
+var regexpHelper = require('../../src/regexpHelper');
 var net = require('net');
+var url = require('url');
 
 module.exports = function WebsockifyMiddleware() {
   return {
@@ -9,7 +11,17 @@ module.exports = function WebsockifyMiddleware() {
       if(req.upgrade) {
         var socket = new net.Socket();
 
-        socket.connect(parseInt(parsedEntry.port), parsedEntry.host || 'localhost',  function() {
+        var target = parsedEntry.target;
+
+        if (req.match) {
+          target = regexpHelper(target, req.match);
+        }
+        if(target.match(/^(\d+)$/)) {
+          target = 'localhost:' +  target;
+        }
+        var parsedTarget = url.parse('tcp://' + target);
+
+        socket.connect(parseInt(parsedTarget.port), parsedTarget.hostname || 'localhost',  function() {
           parsedEntry.wsServer.handleUpgrade(req, req.upgrade.socket, req.upgrade.head, function(client) {
             client.tcpSocket = socket;
             socket.on('data', function(data) {
@@ -48,13 +60,12 @@ module.exports = function WebsockifyMiddleware() {
       next();
     },
     entryParser: function(entry) {
-      var splitEntry = entry.split(/:/);
+
       return {
         wsServer: new WebSocketServer({
           server: new EventEmitter() // fake server for web socket server
         }),
-        host: splitEntry.length > 1?splitEntry[0]:null,
-        port: splitEntry.length > 1?splitEntry[1]:splitEntry[0],
+        target: entry
       };
     }
   };

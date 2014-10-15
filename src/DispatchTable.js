@@ -141,7 +141,11 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
   if(entry.pathRegexp) {
     m = pathname.match(entry.pathRegexp);
     if (m) {
-      req.pathMatch = m;
+      if(!req.match)
+        req.match = [];
+      for(var i = 1;i < m.length;++i) {
+        req.match.push(m[i]);
+      }
       return true;
     } 
   }
@@ -194,7 +198,10 @@ DispatchTable.prototype.getTargetForReq = function(req) {
       }
       m = host.match(entry.regexp);
       if (m) {
-        req.hostMatch = m;
+        if(!req.match)
+          req.match = [];
+        for(var i = 1;i < m.length;++i)
+          req.match.push(m[i]);
         if(this.checkPathForReq(req, entry)) {
           return entry.target;
         }

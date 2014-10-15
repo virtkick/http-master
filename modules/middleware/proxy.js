@@ -38,11 +38,11 @@ module.exports = function ProxyMiddleware(portConfig, di) {
   });
 
   var rewriteTargetAndPathIfNeeded = function(req, target) {
-    if(!(req.pathMatch || req.hostMatch)) {
+    if(!req.match) {
       return target;
     }
 
-    var processed = regexpHelper(target.href, req.hostMatch, req.pathMatch);
+    var processed = regexpHelper(target.href, req.match);
           
     if(req.parsedUrl.search)
       processed += req.parsedUrl.search;

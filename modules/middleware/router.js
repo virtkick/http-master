@@ -14,11 +14,7 @@ function handlerForMiddlewareList(middleware) {
             if (err) {
               return next(err);
             }
-            // delete matches so that each dispatch table
-            // on separate routes fills their own
-            // TODO: this is probably not correct ...
-            delete req.hostMatch;
-            delete req.pathMatch;
+            
             runMiddleware(i+1);
           }, middleware[i].dispatchTarget);
         } else {
