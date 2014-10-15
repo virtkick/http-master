@@ -3,3 +3,7 @@ coverage
 .idea
 tests/.work
 dev
+*.sublime-*
+config*.json
+*.log
+run_tests.sh
