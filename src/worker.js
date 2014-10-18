@@ -4,6 +4,8 @@ var util = require('util');
 
 var droppedPrivileges = false;
 
+process.title = 'http-master-worker#'+cluster.worker.id;
+
 function logError(str) {
   console.log('[' + cluster.worker.id + '] ' + str);
 }
