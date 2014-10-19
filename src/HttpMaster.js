@@ -4,7 +4,6 @@ var EventEmitter = require('eventemitter3').EventEmitter;
 var path = require('path');
 var CertScanner = require('./certScanner');
 var extend = require('extend');
-var fs = require('fs');
 var loadKeysForContext = require('./keyContextLoader');
 
 var token;
@@ -74,7 +73,7 @@ function initWorker(cb) {
   });
   worker.emitter = new EventEmitter();
   worker.on("message", function(msg) {
-    var msg = JSON.parse(msg);
+    msg = JSON.parse(msg);
     process.emit('msg:' + msg.type, msg.data, worker);
     worker.emit('msg:' + msg.type, msg.data);
     worker.emit('msg', {type: msg.type, data: msg.data});
@@ -109,11 +108,11 @@ HttpMaster.prototype = Object.create(EventEmitter.prototype);
 
 HttpMaster.prototype.logNotice = function(msg) {
   this.emit('logNotice', msg);
-}
+};
 
 HttpMaster.prototype.logError = function(msg) {
   this.emit('logError', msg);
-}
+};
 
 function preprocessPortConfig(config, cb) {
   var self = this;
@@ -281,7 +280,6 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
 var DI = require('./di');
 
 HttpMaster.prototype.init = function(config, initDone) {
-  var worker;
   var self = this;
   var workers = this.workers;
 
@@ -297,7 +295,7 @@ HttpMaster.prototype.init = function(config, initDone) {
 
       singleWorker.sendMessage = function(type, data) {
         process.emit('msg:' + type, data);
-      }
+      };
       singleWorker.on('logNotice', self.logNotice.bind(self));
       singleWorker.on('logError', self.logError.bind(self));
       singleWorker.on('loadService', function(name) {
@@ -338,7 +336,7 @@ HttpMaster.prototype.init = function(config, initDone) {
 
         //runModules("allWorkersStarted", config);
         if(initDone)
-          initDone()
+          initDone();
       });
     };
   }

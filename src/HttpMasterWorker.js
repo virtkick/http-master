@@ -1,11 +1,9 @@
 'use strict';
 var crypto = require('crypto'),
-  extend = require('extend'),
   net = require('net'),
   http = require('http'),
   async = require('async'),
   regexpQuote = require('./DispatchTable').regexpQuote,
-  url = require('url'),
   tls = require('tls'),
   DI = require('./di'),
   path = require('path');
@@ -14,7 +12,6 @@ var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
 var EventEmitter = require('eventemitter3');
 
-var argv = {}; // will be sent by master
 
 var punycode = require('punycode');
 
@@ -184,7 +181,7 @@ function createHandlers(portNumber, portConfig) {
   }
 
   if(!(portConfig.router instanceof Array)) {
-    portConfig.router == [portConfig.router];
+    portConfig.router = [portConfig.router];
   }
 
   portConfig.router = (self.config.middleware || []).concat(portConfig.middleware || []).concat(portConfig.router);
