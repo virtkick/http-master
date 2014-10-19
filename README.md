@@ -21,7 +21,12 @@
   * [SSL](#ssl)
   * [Websockify](#websockify)
   * [Logging](#logging)
-* [Advanced matching and routing](#advancedmatchingandrouting)
+  * [HTTP authentication](#auth)
+  * [Add header](#addheader)
+  * [Regexp matching](#regexpmatching)
+  * [Error handling](#reject)
+  * [Serve static directory](#static)
+  * [Advanced routing](#advancedrouting)
 * [Systemd](#systemd)
 * [Contributors](#contributors)
 * [Sponsors](#sponsors)
@@ -327,7 +332,7 @@ ports: {
   }
 }
 ```
-Everything above you can do with regexp matching which is described in 
+Everything above and more you can also do with regexp matching which is described in [Regexp matching](#regexpmatching) section.
 
 <a name="redirect"/>
 ## Redirect
@@ -436,9 +441,67 @@ ports: {
     router: {
       # call to wss://myserver.net/tcpgate/otherserver.com/22 would connect
       # to remote server's SSH
-      "myserver.net/tcpgate/*/*" : "websockify -> "[1]:[2]"
+      "myserver.net/tcpgate/*/*" : "websockify -> [1]:[2]"
     },
     ssl: {} # ssl should be configured here
+  }
+}
+```
+<a name="logging"/>
+## Logging
+To enable application log:
+```YAML
+ports: {}, # your port config here
+modules: {
+  appLog: "/path/to/app.log"
+}
+```
+
+To enable general access log:
+```YAML
+middleware: ["log -> /path/to/access.log"],
+ports: {} # your port config here
+```
+
+To enable logging per route (note, consult [Advanced routing](#advancedrouting) for more details)
+```YAML
+ports: {
+  80: {
+    router: {
+      "myapp.net": ["log -> /path/to/myapp.log", 3333]
+    }
+  }
+}
+```
+Rule of thumb is, wherever you had some target be it proxy or redirect, you can turn it to an array and place logging rule as first element.
+
+Logging is in apache format.
+
+Note: you may log to the same file from multiple routes, not a problem.
+
+<a name="auth"/>
+## HTTP authentication
+```YAML
+ports: {
+  80: {
+    router: {
+      "myapp.net": ["auth -> file.passwd", 3333]
+    }
+  }
+}
+```
+Basically you need to generate a passwd file and point http-master to it.
+You can generate one with [node version of htpasswd]{https://www.npmjs.org/package/htpasswd}.
+
+<a name="addHeader"/>
+## Add header
+You can add one or more arbitrary requests to incoming headers/
+```YAML
+ports: {
+  80: {
+    router: {
+      "myapp.net": ["addHeader -> X-Some-Header1=Value1", "addHeader -> X-Some-Header2=Value2", 3333]
+    }
   }
 }
 ```
@@ -446,9 +509,68 @@ ports: {
 <a name="regexpmatching"/>
 ## Regexp matching
 
-<a name="logging"/>
-## Logging
-TODO (open an issue if you need info now)
+Short-hand matching format with using `*` or `*?` can be replaced by using explicit regexp expression, such as this:
+
+```YAML
+ports: {
+  80: {
+    # [1] will contain app1 or app2, each number will reference regexp catch groups
+    "^(app1|app2)\\.go\\.there\\.com": "5050/[1]"
+  }
+}
+```
+Only problem is the necessity to escape characters for string inclusion.
+Named groups are also supported. Please open an issue to request more docs.
+
+<a name="reject" />
+## Error handling
+
+HTTP master will report some errors in plain text, you can override this behaviour by providing a custom html error page:
+```YAML
+ports: {}, # your port config here
+errorHtmlFile: "/path/to/error.html"
+```
+The html file may reference simple images which will be embedded to the response in form of base64. It cannot reference other files. Error html needs to be fast.
+
+You can in fact trigger errors manually as well, for scheduled downtime for example:
+```YAML
+ports: {
+  80: {
+    # this will report error 503
+    "domain.com" : "reject -> 503"
+  }
+}
+```
+
+<a name="static" />
+## Serve static directory
+You may also serve a static files , example:
+```YAML
+ports: {
+  80: {
+    "domain.com/*" : "static -> /home/domain/[1]"
+  }
+}
+```
+Please open an issue to request more docs.
+
+<a name="advancedrouting"/>
+## Advanced routing
+
+Advanced routing refers to ability of nesting multiple layers of rules, such as:
+
+```YAML
+ports: {
+  80 : {
+    "*.domain.com" : ["log -> domain.log", {
+      "*/path1" : 3333,
+      "*/path2" : 3334,
+      "*/*": 3335
+    }]
+  }
+}
+```
+Please open an issue to request more docs.
 
 <a name="systemd"/>
 ## Systemd
@@ -459,8 +581,6 @@ We provide an example systemd unit file. The config file is set to /etc/http-mas
 * `systemctl enable http-master` - auto-start
 * `systemctl reload http-master` - reload config with `kill -USR1`
 
-<a name="advancedmatchingandrouting"/>
-## Advanced routing
 
 <a name="contributors"/>
 ## Contributors
