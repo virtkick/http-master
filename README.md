@@ -507,7 +507,7 @@ ports: {
 }
 ```
 
-<a name="addHeader"/>
+<a name="gzip"/>
 ## Compression / GZIP
 
 The single passed argument is compression level, from 1 to 9. 9 is most compression but slowest. To enable compression for all requests:
