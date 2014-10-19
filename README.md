@@ -23,6 +23,7 @@
   * [Logging](#logging)
   * [HTTP authentication](#auth)
   * [Add header](#addheader)
+  * [Compression / GZIP](#gzip)
   * [Regexp matching](#regexpmatching)
   * [Error handling](#reject)
   * [Serve static directory](#static)
@@ -505,6 +506,26 @@ ports: {
   }
 }
 ```
+
+<a name="addHeader"/>
+## Compression / GZIP
+
+The single passed argument is compression level, from 1 to 9. 9 is most compression but slowest. To enable compression for all requests:
+
+```YAML
+middleware: ["gzip -> 9"],
+ports: {
+  router: {} #your rules here
+}
+```
+
+To enable compression for a single route:
+```YAML
+ports: {
+  router: {
+    "domain.com" : ["gzip -> 9", 3333]
+  }
+}
 
 <a name="regexpmatching"/>
 ## Regexp matching

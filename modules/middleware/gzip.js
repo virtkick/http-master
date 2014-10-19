@@ -6,7 +6,9 @@ module.exports = function GzipMiddleware() {
       middlewareInstance(req, res, next);
     },
     entryParser: function(entry) {
-      return require('compression')();;
+      return require('compression')({
+        level: parseInt(entry)
+      });
     }
   };
 };

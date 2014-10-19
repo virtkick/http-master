@@ -23,6 +23,13 @@ module.exports = function(argv, data, cb) {
     delete config.logging;
   }
   config.ports = config.ports || {};
+  if(config.gzip) {
+    config.middleware = config.middleware || [];
+    config.middleware.push(
+      'gzip -> 9'
+    );
+    delete config.gzip;
+  }
   Object.keys(config.ports).forEach(function(port) {
 
     var portConfig = config.ports[port];
