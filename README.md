@@ -37,7 +37,7 @@ Some of the features:
 * Support SNI extension - multiple SSL certificates on the same IP.
 * Supports web sockets.
 * Easy all in one place configuration for every listening port (eg. 80 and 443 together)
-  * Setup reverse proxy with optional URL rewriting and optional regexp matching of host and/or path.
+  * Setup reverse proxy with optional URL rewriting and optional regexp matching of host and path.
   * Setup redirect with optional regexp matching to construct final URL.
   * Setup basic static files server for a given route.
   * Setup Basic-AUTH for a given route (sponsored feature)
@@ -128,7 +128,7 @@ http-master --config http-master.conf --show-rules
 ```
 
 Alternatively you may setup ssl manually:
-```
+```YAML
 # this part belongs to some port configuration
 ssl : {
   key: "/path/to/crt/domain.key",
@@ -226,13 +226,13 @@ If you have an old 0.7.0 config, you can also load it with a provided config loa
 Proxy is a default action what to do with a http request but in each place where a number or host are used, you could do a redirect as well.
 
 ### Proxy all requests from port 80 to port 4080
-```
+```YAML
 # Short-hand syntax
 ports: {
   80: 4080
 }
 ```
-```
+```YAML
 # A bit longer short-hand syntax (but could be used with ssl)
 ports: {
   443: {
@@ -241,7 +241,7 @@ ports: {
   }
 }
 ```
-```
+```YAML
 # Normal syntax - baseline for extending
 ports: {
   80: {
@@ -253,7 +253,7 @@ ports: {
 ```
 
 ### Proxy by domain name
-```
+```YAML
 ports: {
   80: {
     router: {
@@ -273,7 +273,7 @@ ports: {
 ```
 
 ### Proxy by domain name and/or path
-```
+```YAML
 ports: {
   80: {
     router: {
@@ -293,7 +293,7 @@ ports: {
 ## URL rewrite
 All proxy example can be adapted to also do URL rewriting. All matching rules can do either wildcard (implicit) regexp matching explicit regexp matching. Let's focus on implicit first.
 
-```
+```YAML
 ports: {
   80: {
     router: {
@@ -307,7 +307,7 @@ ports: {
 }
 ```
 So what if you want to rewrite two levels of subdomains?
-```
+```YAML
 ports: {
   80: {
     router: {
@@ -318,7 +318,7 @@ ports: {
 ```
 
 You can also match paths and rewrite:
-```
+```YAML
 ports: {
   80: {
     router: {
@@ -334,7 +334,7 @@ Everything above you can do with regexp matching which is described in
 Redirect is a feature implemented and invoked in a similiar way to proxy.
 The different is that instead of proxy target, you should point rules to `"redirect -> http://target"`. The way target is constructed often is desired to be dynamic, for example that's how https to http redirect is usually used.
 
-```
+```YAML
 ports: {
   80: {
     router: {
@@ -361,7 +361,7 @@ ports: {
 ## SSL
 SSL can be configured for any port by simply providing "ssl" key to its entry, for example below is an auto-configuration example that also handles SNI:
 
-```
+```YAML
 ports: {
   443: {
     router: {}, # your rules here
@@ -376,7 +376,7 @@ ports: {
 ```
 
 If for some reason auto-configuration does not work for you, it may be configured manually:
-```
+```YAML
 ports: {
   443: {
     router: {}, # your rules here
@@ -407,7 +407,7 @@ ports: {
 ## Websockify
 Websockify is a feature which can turn any TCP socket to a web socket.
 
-```
+```YAML
 ports: {
   443: {
     router: {
@@ -427,6 +427,21 @@ ssh localhost -p 2222 # this will connect to the remote server over HTTPS!!
 ```
 
 Another interesting use is running websockify to turn other services such as VNC to be usable by the browser. That's what [noVNC project]{http://kanaka.github.io/noVNC/} is already doing. In fact, http-master works out of the box with noVNC.
+
+Interesting type of use would be to turn this into a general gateway to any TCP services (auth can be added for some security):
+
+```YAML
+ports: {
+  443: {
+    router: {
+      # call to wss://myserver.net/tcpgate/otherserver.com/22 would connect
+      # to remote server's SSH
+      "myserver.net/tcpgate/*/*" : "websockify -> "[1]:[2]"
+    },
+    ssl: {} # ssl should be configured here
+  }
+}
+```
 
 <a name="regexpmatching"/>
 ## Regexp matching
