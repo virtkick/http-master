@@ -1,5 +1,6 @@
 'use strict';
 var XRegExp = require('xregexp').XRegExp;
+var assert = require('assert');
 
 // globStringToRegex from: http://stackoverflow.com/a/13818704/403571
 function regexpQuote(str, delimiter) {
@@ -19,8 +20,7 @@ function regexpQuote(str, delimiter) {
 }
 
 function splitFirst(str) {
-
-  var m = str.match(/^(\^?[^\/]+)\$?(?:(\/)(\^?)(.+))?$/);
+  var m = str.match(/^(\^?[^\/]*)\$?(?:(\/)(\^?)(.*))?$/);
   if(m.length > 2) {
     // make ^/path from /^path
     return [m[1], m[3] + m[2]+m[4]]; 
@@ -28,9 +28,7 @@ function splitFirst(str) {
   return [m[1]];
 }
 
-
-
-function globStringToRegex(str, specialCh) {
+function globStringToRegex(str, specialCh, optionalEnding) {
   if(!specialCh)
     specialCh = '.';
   var inside = regexpQuote(str);
@@ -44,33 +42,32 @@ function globStringToRegex(str, specialCh) {
     inside = inside.replace(/\/\\\*$/g, '(?:\/(?<rest>.*|)|)');
   inside = inside.replace(/\\\*/g, '([^'+specialCh+']+)');
 
-  var regexp = new XRegExp('^' + inside + '$');
+  var regexp = new XRegExp('^' + inside + (optionalEnding?('(?:'+optionalEnding+')?'):'') +  '$');
   return regexp;
 }
 
-function getRegexpIfNeeded(str, specialCh) {
+function getRegexpIfNeeded(str, specialCh, optionalEnding) {
   if (typeof str == 'string') {
     var m = str.match(/^\^(.*)\$?$/);
     if (m) {
-      return new XRegExp('^' + m[1] + '$');
+      return new XRegExp('^' + m[1] + (optionalEnding?('(?:'+optionalEnding+')?'):'') +  '$');
     } else if (str.match(/[*?]/)) {
-      return globStringToRegex(str, specialCh);
+      return globStringToRegex(str, specialCh, optionalEnding);
     }
   }
   return undefined;
 }
 
 function postParseKey(entryKey, entry) {
-  var regexp = getRegexpIfNeeded(entryKey);
+  var regexp = getRegexpIfNeeded(entryKey, '.', ':' + entry.port);
   if (regexp)
     entry.regexp = regexp;
   return entryKey;
 }
 
-function DispatchTable(params) {
+function DispatchTable(port, params) {
   var parseEntry = params.entryParser;
   var config = params.config;
-  var port = params.port;
 
   var self = this;
   this.requestHandler = params.requestHandler;
@@ -78,7 +75,7 @@ function DispatchTable(params) {
   this.table = {};
   this.regexpEntries = [];
   this.failedEntries = {};
-  Object.keys(config).forEach(function(entryKey) {
+  Object.keys(config || {}).forEach(function(entryKey) {
     var entry = config[entryKey];
 
 
@@ -93,22 +90,13 @@ function DispatchTable(params) {
     }
 
     if (parseEntry) {
-      try {
-        var parsed = parseEntry(entryKey, entry);
-        entryKey = parsed[0];
-        entry = parsed[1];
-      } catch(err) {
-        // save failed parsed entry for future
-        // error reporting
-        self.failedEntries[entryKey] = {
-          err: err,
-          entry: entry
-        };
-        return;
-      }
+      var parsedEntry = parseEntry(entry);
+      assert(typeof parsedEntry !== 'undefined', 'entryParser should have returned something');
+      entry = parsedEntry;
     }
     entry = {
       target: entry,
+      port: port
     };
     if (entryPath) {
       entry.path = entryPath;
@@ -122,7 +110,6 @@ function DispatchTable(params) {
     if (entry.regexp) {
       self.regexpEntries.push(entry);
     } else {
-
       if (self.table[entryKey]) {
         if (self.table[entryKey] instanceof Array) {
           self.table[entryKey].push(entry);
@@ -155,7 +142,11 @@ DispatchTable.prototype.checkPathForReq = function(req, entry) {
   if(entry.pathRegexp) {
     m = pathname.match(entry.pathRegexp);
     if (m) {
-      req.pathMatch = m;
+      if(!req.match)
+        req.match = [];
+      for(var i = 1;i < m.length;++i) {
+        req.match.push(m[i]);
+      }
       return true;
     } 
   }
@@ -169,49 +160,56 @@ DispatchTable.prototype.getTargetForReq = function(req) {
   var i, m;
   var host = req.unicodeHost || req.headers.host || ''; // host can be undefined
 
-  if (this.table[host]) {
-    if (this.table[host].target) {
-      if(this.checkPathForReq(req, this.table[host])) {
-        return this.table[host].target;
+  var self = this;
+  var target;
+
+  // look for specific host match first
+  // and generic path-only match then
+  [host, ''].some(function(host) {
+    var entry = self.table[host];
+    if (entry) {
+      if (entry.target) {
+        if(self.checkPathForReq(req, entry)) {
+          target = entry.target
+          return true;
+        }
+      }
+      else { // multiple entries, check pathnames
+        var targetEntries = entry;
+        for (i = 0; i < targetEntries.length; ++i) {
+          if(self.checkPathForReq(req, targetEntries[i])) {
+            target = targetEntries[i].target;
+            return true;
+          }
+        }
       }
     }
-    else { // multiple entries, check pathnames
-      var targetEntries = this.table[host];
-      for (i = 0; i < targetEntries.length; ++i) {
-        if(this.checkPathForReq(req, targetEntries[i]))
-          return targetEntries[i].target;
-      }
-    }
+  });
+  if(target) {
+    return target;
   }
+  // if host-only matches failed, look for path matches
   if (this.regexpEntries.length) {
     var regexpEntries = this.regexpEntries;
     for (i = 0; i < regexpEntries.length; ++i) {
       var entry = regexpEntries[i];
       if(!entry.regexp) {
         // TODO: research this
-        console.log('Should not happen', (new Error()).toString());
         continue;
       }
       m = host.match(entry.regexp);
       if (m) {
-        req.hostMatch = m;
-        if(this.checkPathForReq(req, entry))
+        if(!req.match)
+          req.match = [];
+        for(var i = 1;i < m.length;++i)
+          req.match.push(m[i]);
+        if(this.checkPathForReq(req, entry)) {
           return entry.target;
+        }
       }
     }
   }
 };
-
-DispatchTable.prototype.dispatchUpgrade = function(req, socket, head) {
-  var target = this.getTargetForReq(req);
-  if(target && this.upgradeHandler) {
-    this.upgradeHandler(req, socket, head, target);
-    return true;
-  }
-  return false;
-};
-
-DispatchTable.prototype.handleUpgrade = DispatchTable.prototype.dispatchUpgrade;
 
 DispatchTable.prototype.dispatchRequest = function(req, res, next) {
   var target = this.getTargetForReq(req);

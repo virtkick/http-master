@@ -1,138 +1,301 @@
 'use strict';
 require('should');
 var url = require('url');
-
-function makeReq(host, path) {
-	return {
-		url: path,
-		headers: {
-			host: host
-		},
-		connection: {},
-    parsedUrl: url.parse(path)
-	};
-}
+var http = require('http');
+var EventEmitter = require('events').EventEmitter;
+var net = require('net');
+var path = require('path');
+var fs = require('fs');
+var assert = require('chai').assert;
 
 
-var onTarget;
+describe('proxy middleware', function() {
 
-var httpProxy = require('http-proxy');
-var oldProxyServer = httpProxy.createProxyServer;
+  describe('entryParser', function() {
+    var proxyMiddleware;
+    beforeEach(function() {
+      proxyMiddleware = require('../modules/middleware/proxy')({});
+    });
 
-function patchProxyServer() {
-  httpProxy.createProxyServer = function() {
+    it('should parse target entry by port number', function() {
+      var parsed = proxyMiddleware.entryParser(4040);
+      parsed.host.should.equal('127.0.0.1:4040');
+      parsed.path.should.equal('/');
+      parsed.withPath.should.equal(false);
+    });
+    it('should parse target entry by port string', function() {
+      var parsed = proxyMiddleware.entryParser('4040');
+      parsed.host.should.equal('127.0.0.1:4040');
+      parsed.path.should.equal('/');
+      parsed.withPath.should.equal(false);
+    });
+    it('should parse target entry by ipv4 and', function() {
+      var parsed = proxyMiddleware.entryParser('127.0.0.1:4040');
+      parsed.host.should.equal('127.0.0.1:4040');
+      parsed.path.should.equal('/');
+      parsed.withPath.should.equal(false);
+    });
+    it('should parse target entry by localhost', function() {
+      var parsed = proxyMiddleware.entryParser('localhost:4040');
+      parsed.host.should.equal('localhost:4040');
+      parsed.path.should.equal('/');
+      parsed.withPath.should.equal(false);
+    });
+    it('should parse target entry by host', function() {
+      var parsed = proxyMiddleware.entryParser('code2flow.com:80');
+      parsed.host.should.equal('code2flow.com:80');
+      parsed.path.should.equal('/');
+      parsed.withPath.should.equal(false);
+    });
+    it('should parse target entry by protocol and host', function() {
+      var parsed = proxyMiddleware.entryParser('http://code2flow.com:80');
+      parsed.host.should.equal('code2flow.com:80');
+      parsed.path.should.equal('/');
+      parsed.withPath.should.equal(false);
+    });
+    it('should parse target entry by host and path', function() {
+      var parsed = proxyMiddleware.entryParser('code2flow.com:80/');
+      parsed.host.should.equal('code2flow.com:80');
+      parsed.path.should.equal('/');
+      parsed.withPath.should.equal(true);
+    });
+  });
+  describe('requestHandler', function() {
 
-    return {
-      web: function(req, res, options) {
-        if (onTarget)
-          onTarget(options.target, req);
-      },
-      on: function() {}
-    };
-  };
-}
 
-function unpatchProxyServer() {
-  httpProxy.createProxyServer = oldProxyServer;
-}
+    var port1 = 61380;
+    var port2 = 61390;
+    var proxyMiddleware;
+    var server1, server2;
+    server1 = require('http').createServer().listen(port1);
+    server2 = require('http').createServer().listen(port2);
 
-
-patchProxyServer();
-delete require.cache[require.resolve('../modules/proxy')];
-var proxy = require('../modules/proxy');
-delete require.cache[require.resolve('../modules/proxy')];
-// clear the patched module from cache so that other tests can
-// resolve unpatched module
-unpatchProxyServer();
-
-var middleware;
-
-function makeTest(host, path, cb) {
-	onTarget = cb;
-  var req = makeReq(host, path);
-	middleware.handleRequest(req, {}, function(err) {
-		onTarget({
-			href: ''
-		}, {});
-	});
-}
-
-var assertPath = function(host, path, mustEqual) {
-	makeTest(host, path, function(target, req) {
-    var reqUrl = req.url || '';
-    target.path = reqUrl;
-     var m = reqUrl.match(/([?])(.*)/);
-
-     if(m) {
-       target.search = m[1] + m[2];
-       target.query = m[2];
+    function handleFullRequests(server) {
+      var gotData = '';
+      server.on('request', function(req, res) {
+        req.on('data', function(data) {
+          gotData += data.toString('utf8');
+        });
+        req.on('end', function() {
+          setTimeout(function() {
+            res.statusCode = 200;
+            if(EventEmitter.listenerCount(server, 'fullRequest')) {
+              server.emit('fullRequest', req, res, gotData);
+            }
+          }, 0);
+        });
+      });
     }
-    target.pathname = reqUrl.replace(/\?.*/, '');
+    beforeEach(function() {
+      proxyMiddleware = require('../modules/middleware/proxy')({});
+      handleFullRequests(server1);
+      handleFullRequests(server2);
+    });
+    afterEach(function() {
+      server1.removeAllListeners('request');
+      server2.removeAllListeners('request');
+      server1.removeAllListeners('fullRequest');
+      server2.removeAllListeners('fullRequest');
+    });
+    function http11Request(input, cb, customPath) {
+      var targetPort = port1;
+      var preparedRequest = http.request({
+        hostname: '127.0.0.1',
+        port: 61380,
+        method: 'POST',
+        path: customPath || '/upload'
+      }, function(res) {
+        var gotData = '';
+        res.on('data', function(data) {
+          gotData += data.toString('utf8');
+        });
+        res.on('end', function() {
+          cb(null, gotData);
+        });
+      });
+      preparedRequest.write(input);
+      preparedRequest.end();      
+      preparedRequest.on('error', function(err) {
+        cb(err);
+      });
+    }
 
-    var formatted = url.format(target);
-    formatted.should.equal(mustEqual);
-	});
-};
+    function http10Request(input, cb) {
+      var opts = {
+        host: '127.0.0.1',
+        port: port1
+      };
+      var socket = net.connect(opts, function() {
+        socket.write('POST / HTTP/1.0\r\n' +
+             'Content-Type: application/x-www-form-urlencoded\r\n' +
+             'Content-Length: ' + input.length + '\r\n' +
+              '\r\n' + input);
+      });
+      var gotData = '';
+      socket.on('data', function(data) {
+        gotData += data.toString('utf8');
+      });
+      socket.on('end', function() {
+        gotData = gotData.replace(/^[^]+\n/, '');
+        cb(null, gotData);
+      });
+    }
+
+    function runTestRequest(requestFunction, endCb) {
+      var testString = 'alksjdlkadjlkqwjlkewqjlksdajds';
+      var testString2 = 'vckxjhkhoiewruweoiuroiuweoijccc';
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61390');
+      server1.once('request', function(req, res) {
+        proxyMiddleware.requestHandler(req, res, function(err) {
+          assert(false, "next should not be called, error has occured");
+        }, parsedTarget);
+      });
+      server2.once('fullRequest', function(req, res, gotData) {
+        req.headers.host.should.equal('127.0.0.1:61390');
+        gotData.should.equal(testString);
+        res.write(testString2);
+        res.end();
+      });
+      requestFunction(testString, function(err, data) {
+        data.should.equal(testString2);
+        endCb();
+      });
+    }
 
 
-describe('proxy module', function() {
-  
-
-	it('should rewrite URL with implicit ending / to explicit /', function() {
-
-
-		middleware = proxy.middleware({
-			proxy: {
-				'jira.atlashost.eu/code2flow/*': 'jira:14900/code2flow/[1]'
-			}
-		});
-		assertPath('jira.atlashost.eu', '/code2flow', 'http://jira:14900/code2flow/');
-		assertPath('jira.atlashost.eu', '/code2flow/', 'http://jira:14900/code2flow/');
-		assertPath('jira.atlashost.eu', '/code2flow//', 'http://jira:14900/code2flow//');
-		assertPath('jira.atlashost.eu', '/code2flo', '');
-
-	});
-	it('should try to connect to fake route', function() {
-		middleware = proxy.middleware({
-			proxy: {
-				'*': 'localhost:0'
-			}
-		});
-		assertPath('jira.atlashost.eu', '/test', 'http://localhost:0/test');
-	});
-  it('should forward path with query parameters', function() {
-
-    middleware = proxy.middleware({
-      proxy: {
-        'jira.atlashost.eu/code2flow/*': 'jira:14900/code2flow/[rest]'
-      }
+    it('should proxy simple HTTP/1.1 requests', function(endTest) {
+      runTestRequest(http11Request, endTest);
     });
 
-    assertPath('jira.atlashost.eu', '/code2flow?params', 'http://jira:14900/code2flow/?params');
-    assertPath('jira.atlashost.eu', '/code2flow/?params', 'http://jira:14900/code2flow/?params');
-    assertPath('jira.atlashost.eu', '/code2flow//?params', 'http://jira:14900/code2flow//?params');
-    assertPath('jira.atlashost.eu', '/code2flow/test?params', 'http://jira:14900/code2flow/test?params');
-    assertPath('jira.atlashost.eu', '/code2flo', '');
-
-  });
-
-  it('should handle simple url rewrite', function() {
-    middleware = proxy.middleware({
-      proxy: {
-        'jira.atlashost.eu/waysgo/*': 'jira:14900/waysgo/[1]',
-        'dragon.rushbase.net/rush/*': '127.0.0.1:8080/~rush/[1]',
-        'test.net' : 1000
-      }
+    it('should proxy simple HTTP/1.0 requests', function(endTest) {
+      runTestRequest(http10Request, endTest);
     });
 
-    assertPath('jira.atlashost.eu', '/waysgo/secure/MyJiraHome.jspa', 'http://jira:14900/waysgo/secure/MyJiraHome.jspa');
-    assertPath('dragon.rushbase.net', '/rush/test.js', 'http://127.0.0.1:8080/~rush/test.js');
+    it('should allow to set timeout which closes request socket', function(endTest) {
+      proxyMiddleware = require('../modules/middleware/proxy')({
+        proxyTimeout: 10
+      });
 
-    assertPath('jira.atlashost.eu', '/waysgo/plugins/servlet/gadgets/ifr?container=atlassian&mid=0&country=US&lang=en&view=default&view-params=%7B%22writable%22%3A%22false%22%7D&st=atlassian%3AZXk4Vbj6JrQXyvhOBv0iyMrxSLRxI%2BDE1DLWB9x6GlICiJtW7i5jOjjvJjX6bTeQn4ONYISfvalhmLe0j%2Ffa18QJgwh9ksWhttnox%2B%2FvuN5daiMOVg7UcT7XzkwvEUiPgjOB2L5GJUyKerbGNh3BAQdlJOApQxk%2BlWcNWOza%2BhQDEwfko3qobsrVSSky1zuK4hOFyNN0Ds6zUx7flsC4LkOVBjO4f90uMIuG2I1DDU%2F%2FTVK0&up_isPublicMode=false&up_isElevatedSecurityCheckShown=false&up_loginFailedByPermissions=false&up_externalUserManagement=false&up_loginSucceeded=false&up_allowCookies=true&up_externalPasswordManagement=&up_captchaFailure=false&up_isAdminFormOn=true&url=https%3A%2F%2Fjira.atlashost.eu%2Fwaysgo%2Frest%2Fgadgets%2F1.0%2Fg%2Fcom.atlassian.jira.gadgets%2Fgadgets%2Flogin.xml&libs=auth-refresh#rpctoken=7574331', 'http://jira:14900/waysgo/plugins/servlet/gadgets/ifr?container=atlassian&mid=0&country=US&lang=en&view=default&view-params=%7B%22writable%22%3A%22false%22%7D&st=atlassian%3AZXk4Vbj6JrQXyvhOBv0iyMrxSLRxI%2BDE1DLWB9x6GlICiJtW7i5jOjjvJjX6bTeQn4ONYISfvalhmLe0j%2Ffa18QJgwh9ksWhttnox%2B%2FvuN5daiMOVg7UcT7XzkwvEUiPgjOB2L5GJUyKerbGNh3BAQdlJOApQxk%2BlWcNWOza%2BhQDEwfko3qobsrVSSky1zuK4hOFyNN0Ds6zUx7flsC4LkOVBjO4f90uMIuG2I1DDU%2F%2FTVK0&up_isPublicMode=false&up_isElevatedSecurityCheckShown=false&up_loginFailedByPermissions=false&up_externalUserManagement=false&up_loginSucceeded=false&up_allowCookies=true&up_externalPasswordManagement=&up_captchaFailure=false&up_isAdminFormOn=true&url=https%3A%2F%2Fjira.atlashost.eu%2Fwaysgo%2Frest%2Fgadgets%2F1.0%2Fg%2Fcom.atlassian.jira.gadgets%2Fgadgets%2Flogin.xml&libs=auth-refresh');
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61396');
+      var server = net.createServer().listen(61396);
+      var connCounter = 0;
+      server.on('connection', function(connection) {
+        connCounter++;
+      });
 
-    assertPath('test.net', '/test/path?query', 'http://127.0.0.1:1000/test/path?query');
+      server1.once('request', function(req, res) {
+        proxyMiddleware.requestHandler(req, res, function(err) {
+          
+       }, parsedTarget);
+      });
+      http11Request('hello', function(err, data) {
+        if(err) {
+          err.code.should.equal('ECONNRESET');
+          connCounter.should.equal(1);
+          return endTest();
+        }
+        assert(false, "Err was expected");
+      });
+    });
 
+    it('should allow to set timeout and call next(err) when times out', function(endTest) {
+      proxyMiddleware = require('../modules/middleware/proxy')({
+        proxyTargetTimeout: 10
+      });
+
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61395');
+      var server = net.createServer().listen(61395);
+      var connCounter = 0;
+      server.on('connection', function(connection) {
+        connCounter++;
+      });
+
+      server1.once('request', function(req, res) {
+        proxyMiddleware.requestHandler(req, res, function(err) {
+          err.code.should.equal('ECONNRESET');
+          res.end("Got timeout but we can report it!");
+        }, parsedTarget);
+      });
+      http11Request('hello', function(err, data) {
+        if(err) {
+          return endTest(err);
+        }
+        data.should.equal('Got timeout but we can report it!');
+        connCounter.should.equal(1);
+        endTest();
+      });
+    });
+
+    it('should handle requests with match', function(endTest) {
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:'+port2 + '/[1]/[2]');
+
+      server1.once('request', function(req, res) {
+        var hostMatch = 'foo'.match(/(foo)/);
+        var pathMatch = 'bar'.match(/(bar)/);
+        req.match = [].concat(hostMatch.slice(1)).concat(pathMatch.slice(1));
+        req.parsedUrl = url.parse(req.url);
+        proxyMiddleware.requestHandler(req, res, function(err) {
+          assert(false, "next should not be called, error has occured");
+        }, parsedTarget);
+      });
+      server2.once('request', function(req, res) {
+        req.url.should.equal('/foo/bar');
+        endTest();
+      });
+      http11Request('hello', function(err, data) {});
+    });
+
+    it('should pass query parameters to target server', function(endTest) {
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:'+port2 + '');
+
+      server1.once('request', function(req, res) {
+        req.hostMatch = 'foo'.match(/(foo)/);
+        req.pathMatch = 'bar'.match(/(bar)/);
+        req.parsedUrl = url.parse(req.url);
+        proxyMiddleware.requestHandler(req, res, function(err) {
+          assert(false, "next should not be called, error has occured");
+        }, parsedTarget);
+      });
+      server2.once('request', function(req, res) {
+        req.url.should.equal('/upload?dupa');
+        endTest();
+      });
+      http11Request('hello', function(err, data) {
+      }, '/upload?dupa');
+    });
+    it('should proxy web sockets', function(endTest) {
+      var WebSocketServer = require('ws').Server;
+      var WebSocket = require('ws');
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:60000');
+
+      var ws = new WebSocket('ws://localhost:' + port1);
+
+      ws.on('open',  function() {
+
+      });
+      ws.on('message', function(msg) {
+        assert(msg === 'something');
+        ws.send('else');
+      });
+
+      server1.on('upgrade', function(req, socket, head) {
+        req.upgrade = {
+          socket: socket,
+          head: head
+        };
+        proxyMiddleware.requestHandler(req, {}, function(err) {
+          assert(false, "next should not be called, error has occured");
+        }, parsedTarget);
+      });
+
+      var wss = new WebSocketServer({port: 60000});
+      wss.on('connection', function(ws) {
+          ws.on('message', function(message) {
+              message.should.equal('else');
+              endTest();
+          });
+          ws.send('something');
+      });
+    });
   });
-  
 });
-

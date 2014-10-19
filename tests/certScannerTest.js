@@ -7,9 +7,9 @@ var path = require('path');
 //TODO: test to find out how errors are handled
 
 describe('SSL directory scanner', function() {
-  var SslScanner = require('../certScanner');
-  var realSslDir = 'tests/certs/';
-  var sslDir = 'tests/.work/';
+  var SslScanner = require('../src/certScanner');
+  var realSslDir = path.join(__dirname, '../tests/certs/');
+  var sslDir = path.join(__dirname, '../tests/.work/');
   var scanner = null;
 
   beforeEach(function() {

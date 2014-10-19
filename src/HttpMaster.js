@@ -1,8 +1,6 @@
 var async = require('async');
 
-var EventEmitter = require('events').EventEmitter;
-var common = require('./common');
-var runModules = common.runModules;
+var EventEmitter = require('eventemitter3').EventEmitter;
 var path = require('path');
 var CertScanner = require('./certScanner');
 var extend = require('extend');
@@ -40,8 +38,10 @@ function HttpMaster()
     args: []
   });
 
+
+
   
-this.autoRestartWorkers = true;
+  this.autoRestartWorkers = true;
 
   var self = this;
   cluster.on('exit', function(worker, code, signal) {
@@ -77,6 +77,7 @@ function initWorker(cb) {
     var msg = JSON.parse(msg);
     process.emit('msg:' + msg.type, msg.data, worker);
     worker.emit('msg:' + msg.type, msg.data);
+    worker.emit('msg', {type: msg.type, data: msg.data});
   });
   
   worker.once('msg:started', function() {
@@ -171,13 +172,59 @@ function preprocessConfig(config, cb) {
 }
 
 
+function setupDi() {
+  var self = this;
+  var di = this.di  = new DI();
+  di.onMissing = function(name) {
+    var m;
+    if( (m = name.match(/(.+)Service$/))) {
+      name = m[1];
+      try {
+        this.bindType(name + 'Service', require(path.join(__dirname , '..', 'modules', 'services', name)));
+      } catch(err) {
+        console.log(err && err.message);
+        return;
+      }
+      self.emit('loadService', name);
+      return this.resolve(name + 'Service');
+    }
+  };
+
+  di.bindInstance('di', di);
+  di.bindInstance('master', this);
+  di.bindInstance('worker', null);
+  di.bindInstance('events', process);
+
+  di.bindResolver('config', function() {
+    return self.config;
+  });
+  var config = self.config;
+
+  config.modules = config.modules || {};
+
+  Object.keys(config.modules).forEach(function(moduleName) {
+    if(!config.modules[moduleName])
+      return;
+    var di = self.di.makeChild();
+    di.bindInstance('di', di);
+    di.bindInstance('moduleConfig', config.modules[moduleName]);
+    try {
+      di.resolve(require(path.join(__dirname, '..', 'modules', moduleName)));
+    } catch(err) {
+      console.error("Error loading module:", moduleName, err);
+    }
+  });
+}
+
 HttpMaster.prototype.reload = function(config, reloadDone) {
   var self = this;
+  this.emit('reload');
 
   function actualReload(config) {
     self.config = config;
     var workers = self.workers;
 
+    setupDi.call(self);
 
     if((config.workerCount || 0) !== self.workerCount) {
       //self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
@@ -231,6 +278,7 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
   preprocessConfig.call(this, config, actualReload);
 };
 
+var DI = require('./di');
 
 HttpMaster.prototype.init = function(config, initDone) {
   var worker;
@@ -240,20 +288,28 @@ HttpMaster.prototype.init = function(config, initDone) {
   function actualInit(config) {
     self.config = config;
 
-    runModules("initMaster", self, config);
+    setupDi.call(self);
+
     self.workerCount = config.workerCount || 0;
 
     if(self.workerCount === 0) {
       var singleWorker = self.singleWorker = new (require('./HttpMasterWorker'))();
+
+      singleWorker.sendMessage = function(type, data) {
+        process.emit('msg:' + type, data);
+      }
       singleWorker.on('logNotice', self.logNotice.bind(self));
       singleWorker.on('logError', self.logError.bind(self));
+      singleWorker.on('loadService', function(name) {
+        self.di.resolve(name + 'Service');
+      });
       self.singleWorker.loadConfig(config, function(err) {
         if (err) {
           return initDone(err);
         }
         self.emit('allWorkersStarted');
 
-        runModules("allWorkersStarted", config);
+        //runModules("allWorkersStarted", config);
         if(initDone)
           initDone()
 
@@ -264,9 +320,15 @@ HttpMaster.prototype.init = function(config, initDone) {
       self.token = token;
 
       async.times((config.workerCount), function(n, next) {
-        workers.push(initWorker.call(self, function() {
+        var worker = initWorker.call(self, function() {
           next(null);
-        }));
+        })
+        worker.on('msg:logNotice', self.logNotice.bind(self));
+        worker.on('msg:logError', self.logError.bind(self));
+        worker.on('msg:masterLoadService', function(name) {
+          self.di.resolve(name + 'Service');
+        });
+        workers.push(worker);
       }, function(err) {
         if (err) {
           return initDone(err);
@@ -274,7 +336,7 @@ HttpMaster.prototype.init = function(config, initDone) {
 
         self.emit('allWorkersStarted');
 
-        runModules("allWorkersStarted", config);
+        //runModules("allWorkersStarted", config);
         if(initDone)
           initDone()
       });

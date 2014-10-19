@@ -1,17 +1,22 @@
 var config = {};
 var cluster = require('cluster');
-
-var common = require('./common');
-var runModules = common.runModules;
+var util = require('util');
 
 var droppedPrivileges = false;
 
+process.title = 'http-master-worker#'+cluster.worker.id;
+
 function logError(str) {
-  if (config.silent)
-    return;
   console.log('[' + cluster.worker.id + '] ' + str);
 }
 var logNotice = logError;
+
+console.log = function() {
+  process.sendMessage("logNotice", util.format.apply(this, arguments));
+};
+console.error = function() {
+  process.sendMessage("logError",  util.format.apply(this, arguments));
+}
 
 // TODO: move to common
 function dropPrivileges() {
@@ -44,14 +49,14 @@ var worker = new HttpMasterWorker({
   tlsSessionStore: {
     get: function(id, cb) {
       process.once('msg:session:' + id.toString('base64'), function(data) {
-        logNotice("Got session data " + data);
+//        logNotice("Got session data " + data);
         cb(null, data.length ? new Buffer(data, 'base64') : null, null);
       });
-      logNotice("Get session data " + id.toString('base64'));
+//      logNotice("Get session data " + id.toString('base64'));
       process.sendMessage('tlsSession:get', id.toString('base64'));
     },
     set: function(id, data, cb) {
-      logNotice("Set session data " + id.toString('base64') + " " + data.toString('base64'));
+//      logNotice("Set session data " + id.toString('base64') + " " + data.toString('base64'));
       process.sendMessage('tlsSession:set', {
         id: id.toString('base64'),
         data: data.toString('base64')
@@ -72,8 +77,15 @@ process.sendMessage = function(type, data) {
   }));
 };
 
+worker.sendMessage = process.sendMessage;
+
+worker.on('loadService', function(service) {
+  process.sendMessage('masterLoadService', service);
+});
+
 process.on('message', function(msg) {
   var msg = JSON.parse(msg);
+  process.emit('msg', {type: msg.type, data: msg.data});
   process.emit('msg:' + msg.type, msg.data);
 });
 
@@ -84,7 +96,8 @@ process.on('uncaughtException', function(err) {
 
 process.on('msg:start', function(data) {
   config = data.config;
-  runModules("initWorker", data.config);
+  process.emit('initWorker');
+
   dropPrivileges();
   worker.token = data.token;
   worker.loadConfig(data.config, function(err) {
@@ -103,8 +116,26 @@ process.on('msg:unbind', function() {
     process.sendMessage("unbindFinished");
   });
 });
+
+process.on('msg', function(data) {
+  if(worker.handleMessage)
+    worker.handleMessage(data);;
+});
+
+var originalLog = console.log;
+var originalError = console.error;
+
 process.on('msg:reload', function(config) {
+  if (config.silent) {
+    console.log = function(msg) {}
+    console.error = function(msg) {}
+  } else {
+    console.log = originalLog;
+    console.error = originalError;
+  }    
+
   worker.loadConfig(config, function(err) {
+
     if (err) {
       process.sendMessage('exception', err);
       logError("Exitting worker due to error: " + err.toString())
