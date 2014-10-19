@@ -11,7 +11,7 @@
 
 * [About](#about)
 * [Installation and basic usage](#installandbasicusage)
-* [Usage as a module](#installandusage)
+* [Usage as a module](#module)
 * [Watch config for changes](#watchconfig)
 * [Use custom config loader](#configloader)
 * Features
@@ -494,7 +494,7 @@ ports: {
 Basically you need to generate a passwd file and point http-master to it.
 You can generate one with [node version of htpasswd]{https://www.npmjs.org/package/htpasswd}.
 
-<a name="addHeader"/>
+<a name="addheader"/>
 ## Add header
 You can add one or more arbitrary requests to incoming headers/
 ```YAML
@@ -526,6 +526,7 @@ ports: {
     "domain.com" : ["gzip -> 9", 3333]
   }
 }
+```
 
 <a name="regexpmatching"/>
 ## Regexp matching
