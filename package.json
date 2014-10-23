@@ -1,8 +1,8 @@
 {
   "name": "http-master",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
-  "main": "src/master.js",
+  "main": "src/HttpMaster.js",
   "scripts": {
     "test": "./node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha -- -R spec tests/"
   },
@@ -33,6 +33,7 @@
     "http-auth": "2.1.6",
     "http-proxy": "1.5.3",
     "js-yaml": "3.2.2",
+    "jsonfn": "^0.31.0",
     "jsonlint-lines": "1.6.0",
     "moment": "2.6.0",
     "morgan": "^1.3.2",

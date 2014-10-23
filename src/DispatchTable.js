@@ -88,7 +88,6 @@ function DispatchTable(port, params) {
     if(entryPath) {
       entryPath = decodeURIComponent(entryPath);
     }
-
     if (parseEntry) {
       var parsedEntry = parseEntry(entry);
       assert(typeof parsedEntry !== 'undefined', 'entryParser should have returned something');

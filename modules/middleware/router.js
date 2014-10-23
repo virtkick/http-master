@@ -30,8 +30,8 @@ function handlerForMiddlewareList(middleware) {
 
 module.exports = function RouterMiddleware(di, portConfig, portNumber) {
 
-  function passEntryToModule(moduleName, entry) {
-    var instance = di.resolve(moduleName + 'Middleware');
+
+  function passEntryToModuleInstance(instance, entry) {
     var dispatchTarget = entry;
     if(instance.entryParser) {
       // allow modules to cache arbitrary data per entry
@@ -39,13 +39,20 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
     }
     return {
       middleware: instance.requestHandler,
-      dispatchTarget: dispatchTarget,
-      moduleName: moduleName, // for debug
-      entry: entry // for debug
+      dispatchTarget: dispatchTarget
     };
   }
 
+  function passEntryToModule(moduleName, entry) {
+    var instance = di.resolve(moduleName + 'Middleware');
+    return passEntryToModuleInstance(instance, entry);
+  }
+
   function parseSingleEntry(entry) {
+    if(typeof entry === 'function') {
+      return passEntryToModuleInstance(di.resolve(entry), {});
+    }
+
     var m = entry.toString().match(entryRegexp);
     var moduleName = m[1] || defaultModule;
     var entryKey = m[2];

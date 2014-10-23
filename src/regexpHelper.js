@@ -1,6 +1,6 @@
 function processMatch(target, m) {
   var keyWithOffset;
-  if (m && m.length > 0) {
+  if (m) {
     for(var key in m) {
       var replaceFrom = key;
       if(!isNaN(key)) {

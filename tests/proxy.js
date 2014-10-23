@@ -145,13 +145,15 @@ describe('proxy middleware', function() {
       var testString = 'alksjdlkadjlkqwjlkewqjlksdajds';
       var testString2 = 'vckxjhkhoiewruweoiuroiuweoijccc';
       var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61390');
+
       server1.once('request', function(req, res) {
         proxyMiddleware.requestHandler(req, res, function(err) {
           assert(false, "next should not be called, error has occured");
         }, parsedTarget);
       });
       server2.once('fullRequest', function(req, res, gotData) {
-        req.headers.host.should.equal('127.0.0.1:61390');
+//        req.headers.host.should.equal('localhost:61380');
+        console.log(req.headers.host);
         gotData.should.equal(testString);
         res.write(testString2);
         res.end();

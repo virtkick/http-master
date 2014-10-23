@@ -6,10 +6,8 @@ var CertScanner = require('./certScanner');
 var extend = require('extend');
 var loadKeysForContext = require('./keyContextLoader');
 
-var token;
-require('crypto').randomBytes(48, function(ex, buf) {
-  token = buf.toString('hex');
-});
+var token = require('crypto').randomBytes(64).toString('hex');
+var JSONfn = require('jsonfn').JSONfn;
 
 // TODO: Windows support?
 function exitIfEACCES(err)
@@ -61,7 +59,7 @@ function initWorker(cb) {
   var self = this;
   var worker = this.cluster.fork();
   worker.sendMessage = function(type, data) {
-    worker.send(JSON.stringify({
+    worker.send(JSONfn.stringify({
       type: type,
       data: data
     }));
@@ -289,7 +287,6 @@ HttpMaster.prototype.init = function(config, initDone) {
     setupDi.call(self);
 
     self.workerCount = config.workerCount || 0;
-
     if(self.workerCount === 0) {
       var singleWorker = self.singleWorker = new (require('./HttpMasterWorker'))();
 

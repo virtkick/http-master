@@ -63,9 +63,9 @@ module.exports = function ProxyMiddleware(portConfig, di) {
         req.headers.host = '';
       }
       var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget);
-      var m = req.headers.host.match(/^(.+):\d+$/);
+      var m = req.headers.host.match(/^(.+):(\d+)$/);
       if(m) {
-        req.headers.host = m[1] + ':' + proxyTarget.port;
+        req.headers.host = m[1] + ':' + m[2];
       }
 
       // work around weirdness of new http-proxy url handling

@@ -284,6 +284,8 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
 function handleConfig(config, configHandled) {
   var self = this;
 
+  self.config = config;
+
   async.parallel(Object.keys(config.ports || {}).map(function(portEntry) {
     return function(asyncCallback) {
       var m;
@@ -428,7 +430,6 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
       console.error("Error loading module:", moduleName, err);
     }
   });
-
 
   handleConfig.call(this, config, function(err) {
     if (err) return configLoaded(err);

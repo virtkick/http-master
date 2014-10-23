@@ -83,8 +83,10 @@ worker.on('loadService', function(service) {
   process.sendMessage('masterLoadService', service);
 });
 
+var JSONfn = require('jsonfn').JSONfn;
+
 process.on('message', function(msg) {
-  var msg = JSON.parse(msg);
+  var msg = JSONfn.parse(msg);
   process.emit('msg', {type: msg.type, data: msg.data});
   process.emit('msg:' + msg.type, msg.data);
 });
