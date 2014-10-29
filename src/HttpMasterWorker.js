@@ -57,7 +57,7 @@ function loadKeysforConfigEntry(config, callback) {
     var SNImatchers = {};
     if (config.ssl.SNI) {
       for (key in config.ssl.SNI) {
-        SNImatchers[key] = new RegExp(regexpQuote(key).replace(/^\\\*\\\./g, '^([^.]+\\.)?'), 'i'); // domain names are case insensitive
+        SNImatchers[key] = new RegExp('^' + regexpQuote(key).replace(/^\\\*\\\./g, '^([^.]+\\.)?') + '$', 'i'); // domain names are case insensitive
       }
       var sniCallback = function(hostname, cb) {
         hostname = punycode.toUnicode(hostname);
@@ -317,9 +317,6 @@ function handleConfig(config, configHandled) {
       return configHandled(err);
     }
     self.logNotice('Start successful');
-
-    // TODO
-    //dropPrivileges();
 
     self.servers = results.filter(function(server) {
       return !!server;
