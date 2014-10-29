@@ -21,6 +21,9 @@ module.exports = function WebsockifyMiddleware() {
         }
         var parsedTarget = url.parse('tcp://' + target);
 
+        socket.once('error', function(err) {
+          req.upgrade.connection.end();
+        });
         socket.connect(parseInt(parsedTarget.port), parsedTarget.hostname || 'localhost',  function() {
           parsedEntry.wsServer.handleUpgrade(req, req.upgrade.socket, req.upgrade.head, function(client) {
             client.tcpSocket = socket;
@@ -34,10 +37,10 @@ module.exports = function WebsockifyMiddleware() {
                 socket.end();
               }
             });
-            socket.on('end', function() {
+            socket.once('end', function() {
               client.close();
             });
-            socket.on('error', function() {
+            socket.once('error', function() {
               socket.end();
               client.close();
             });
@@ -48,10 +51,10 @@ module.exports = function WebsockifyMiddleware() {
               else
                 socket.write(msg, 'binary');
             });
-            client.on('close', function(code, reason) {
+            client.once('close', function(code, reason) {
               socket.end();
             });
-            client.on('error', function(err) {
+            client.once('error', function(err) {
               socket.end();
             });
           });
