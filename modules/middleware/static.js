@@ -1,30 +1,20 @@
-var nodeStatic = require('node-static');
-var regexpHelper = require('../../src/regexpHelper');
+var serveStatic = require('serve-static');
+var send = require('send');
+var path = require('path');
 
 module.exports = function StaticMiddleware() {
   return {
     requestHandler: function(req, res, next, target) {
-      var fileServer = target.server;
-      target = target.target;
-      target = target.replace('[path]', req.url);
+      target.middleware(req, res, function(err) {
+        if(err) return next(err);
 
-      req.url = regexpHelper(target, req.hostMatch, req.pathMatch);
-
-      fileServer.serve(req, res, function(e, serveRes) {
-        if (e && (e.status === 404)) { // If the file wasn't found
-          var promise = fileServer.serveFile('/404.html', 404, {}, req, res);
-          promise.on('error', function(err) {
-            res.writeHead(500, {
-              'Content-Type': 'text/plain'
-            });
-            res.write('');
-            res.end();
-          });
-        }
+        var stream = send(req, path.join(target.entry, '404.html'), {});
+        stream.on('error', next);
+        stream.pipe(res);
       });
     },
-    entryParser: function(entryKey, entry) {
-      return {server: new nodeStatic.Server(entry.path || entry), target: entry.target || "[path]"};
+    entryParser: function(entry) {
+      return {middleware: serveStatic(entry), entry: entry};
     }
   };
 }

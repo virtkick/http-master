@@ -1,11 +1,12 @@
 var http = require('http');
-var url = require('url');
+var parseurl = require('parseurl');
 
 var punycode = require('punycode');
 
 module.exports = function(handler, finalHandler) {
   return function(req, res) {
-    req.parsedUrl = url.parse(req.url);
+    req.parsedUrl = parseurl(req);
+
     if(req.headers.host) { // this legally can be undefined
       var hostSplit = req.headers.host.split(':');
       try {
