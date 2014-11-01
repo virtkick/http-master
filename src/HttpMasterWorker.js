@@ -479,6 +479,10 @@ HttpMasterWorker.prototype.gcServers = function(gcFinished) {
     if (require('events').EventEmitter.listenerCount(server, 'connection') === 0) {
       toClose.push(server);
       delete self.tcpServers[key];
+      if(self.cachedServers[key]) {
+        self.cachedServers[key].server.removeAllListeners();
+        delete self.cachedServers[key];  
+      }      
     }
   });
   async.each(toClose, function(server, cb) {
