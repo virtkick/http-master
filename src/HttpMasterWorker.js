@@ -6,7 +6,8 @@ var crypto = require('crypto'),
   regexpQuote = require('./DispatchTable').regexpQuote,
   tls = require('tls'),
   DI = require('./di'),
-  path = require('path');
+  path = require('path'),
+  extend = require('extend');
 
 var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
@@ -202,6 +203,60 @@ function createHandlers(portNumber, portConfig) {
   };
 }
 
+
+function serverForPortConfig(host, portNumber, portConfig) {
+  var self = this;
+  var server;
+
+  self.cachedServers = self.cachedServers || {};
+  var key = (host? host + ':' + portNumber : portNumber);
+
+
+  var sslCachedConfig = extend({}, portConfig.ssl);
+  delete sslCachedConfig.SNI;
+
+  var cached = self.cachedServers[key];
+  if(cached) {
+    server = self.cachedServers[key].server;
+    server.removeAllListeners();
+    if(JSON.stringify(sslCachedConfig) === cached.sslConfig) {
+      return server;
+    }
+  }
+
+  if (portConfig.ssl) {
+    var baseModule = portConfig.ssl.spdy ? require('spdy') : require('https');
+
+    patchSslConfig.call(self, portConfig.ssl);
+
+    server = baseModule.createServer(portConfig.ssl);
+
+    if (!portConfig.ssl.skipWorkerSessionResumption) {
+      server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
+      server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
+
+      if (self.token) {
+        if (server._setServerData) {
+          server._setServerData({
+            ticketKeys: self.token
+          });
+        } else {
+          self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
+        }
+      }
+    }
+  } else {
+    server = http.createServer();
+  }
+
+
+  self.cachedServers[key] = {
+    server: server,
+    sslConfig: JSON.stringify(sslCachedConfig)
+  }
+  return server;
+}
+
 function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
   var self = this;
 
@@ -211,30 +266,9 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
 
   var server;
   try {
-    if (config.ssl) {
-      var baseModule = config.ssl.spdy ? require('spdy') : require('https');
-
-      patchSslConfig.call(self, config.ssl);
-
-      server = baseModule.createServer(config.ssl, handler);
-
-      if (!config.ssl.skipWorkerSessionResumption) {
-        server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
-        server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
-
-        if (self.token) {
-          if (server._setServerData) {
-            server._setServerData({
-              ticketKeys: self.token
-            });
-          } else {
-            self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
-          }
-        }
-      }
-    } else {
-      server = http.createServer(handler);
-    }
+    server = serverForPortConfig.call(this, host, portNumber, config);
+    server.removeAllListeners('request');
+    server.on('request', handler);
   } catch (err) {
     return callback(err, null);
   }
@@ -253,6 +287,8 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
 
   server.once('listening', listeningHandler);
   server.once('error', errorHandler);
+
+  server.removeAllListeners('upgrade');
   server.on('upgrade', function(req, socket, head) {
     req.upgrade = {
       socket: socket,
