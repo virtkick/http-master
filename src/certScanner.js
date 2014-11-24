@@ -1,6 +1,6 @@
 'use strict';
 
-var x509 = require('parse-x509');
+var x509 = require('x509.js');
 var fs = require('fs');
 var async = require('async');
 var path = require('path');
@@ -47,7 +47,9 @@ module.exports = function(sslDirectory, options) {
                 return cb();
               }
               if(err)  {
-                if(err.toString().match(/Unable to parse certificate/))
+                if(err.toString().match(/Certificate data larger than/))
+                  return cb(null);
+                if(err.toString().match(/Unable to parse/))
                   return cb(null);
                 if(err.toString().match(/Certificate argument provided, but left blank/))
                   return cb(null);
@@ -134,17 +136,29 @@ module.exports = function(sslDirectory, options) {
     });
   };
 
+  var readPart = function(file, maxRead, cb) {
+    fs.open(file, 'r', function(err, fd) {
+      if(err) return cb(err);
+      var buf = new Buffer(maxRead);
+      fs.read(fd, buf, 0, maxRead, null, function(err, bytesRead, buffer) {
+        fs.close(fd);
+        if(bytesRead < maxRead)
+          return cb(err, buffer.slice(0, bytesRead));
+        return cb(err, buffer.toString(encoding));
+      });
+    });
+  };
+
   this.getCertOrPem = function(certPath, cb) {
-    fs.readFile(certPath, 'utf8', function(err, rawCert) {
+    readPart(certPath, 65536, function(err, rawCert) {
       if(err) return cb(err);
       try {
         var cert = x509.parseCert(rawCert);
         return cb(null, cert, null, rawCert);
         
       } catch(err) {
-
         try {
-          var pem = x509.parsePem(rawCert);
+          var pem = x509.parseKey(rawCert);
           return cb(null, null, pem, rawCert);
         } catch(err2) {
 
@@ -155,7 +169,7 @@ module.exports = function(sslDirectory, options) {
   };
 
   this.getCaFor = function(certPath, cb) {
-    fs.readFile(certPath, 'utf8', function(err, rawCert) {
+    readPart(certPath, 65636, function(err, rawCert) {
       if(err) return cb(err);
 
       var parsedCert;
@@ -164,7 +178,6 @@ module.exports = function(sslDirectory, options) {
       } catch(err) {
         return cb(err);
       }
-
       var caResults = [];
       var caRawResults = [];
       function processDirectory(dirName, cb) {
@@ -237,11 +250,14 @@ module.exports = function(sslDirectory, options) {
 
     var expectedIssuer = issuedCertificatedbyCA.issuer;
 
-    return expectedIssuer.countryName === subject.countryName &&
-        expectedIssuer.organizationName === subject.organizationName &&
-        expectedIssuer.organizationalUnitName === subject.organizationalUnitName &&
-        expectedIssuer.commonName === subject.commonName &&
-        caCert.publicModulus === issuedCertificatedbyCA.publicModulus;
+    var status =
+     expectedIssuer.countryName === subject.countryName
+        && expectedIssuer.organizationName === subject.organizationName
+        && expectedIssuer.organizationalUnitName === subject.organizationalUnitName
+        && expectedIssuer.commonName === subject.commonName
+       && caCert.publicExponent === issuedCertificatedbyCA.publicExponent
+        ;
+        return status;
   };
 
   var beginCertToken = '-----BEGIN CERTIFICATE-----';
