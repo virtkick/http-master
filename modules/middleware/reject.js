@@ -16,7 +16,11 @@ module.exports = function RejectMiddleware(config, portConfig) {
   var content;
   var errorHtmlFile = portConfig.errorHtmlFile || config.errorHtmlFile;
   if(errorHtmlFile) {
-    content = loadHtmlFile(errorHtmlFile);
+    if(typeof errorHtmlFile === 'function') {
+      content = errorHtmlFile();
+    } else {
+      content = loadHtmlFile(errorHtmlFile);
+    }
   }
 
   return {
