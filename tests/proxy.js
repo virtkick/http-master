@@ -268,7 +268,7 @@ describe('proxy middleware', function() {
     it('should proxy web sockets', function(endTest) {
       var WebSocketServer = require('ws').Server;
       var WebSocket = require('ws');
-      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:60000');
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:60367');
 
       var ws = new WebSocket('ws://localhost:' + port1);
 
@@ -290,7 +290,7 @@ describe('proxy middleware', function() {
         }, parsedTarget);
       });
 
-      var wss = new WebSocketServer({port: 60000});
+      var wss = new WebSocketServer({port: 60367});
       wss.on('connection', function(ws) {
           ws.on('message', function(message) {
               message.should.equal('else');

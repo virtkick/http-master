@@ -38,12 +38,14 @@ describe('HttpMaster', function() {
         }
       });
       master.once('allWorkersReloaded', function() {
+        setTimeout(function() {
         assurePortIsListening(40400, function() {
           assurePortIsListening(40401, function() {
             master.reload({});
             cb();
           });
         });
+        }, 10);
       });
     });
   });
