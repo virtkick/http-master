@@ -229,21 +229,15 @@ function serverForPortConfig(host, portNumber, portConfig) {
 
     patchSslConfig.call(self, portConfig.ssl);
 
+    if(self.token) {
+        portConfig.ticketKeys = self.token;
+    }
+
     server = baseModule.createServer(portConfig.ssl);
 
     if (!portConfig.ssl.skipWorkerSessionResumption) {
       server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
       server.on('newSession', self.tlsSessionStore.set.bind(self.tlsSessionStore));
-
-      if (self.token) {
-        if (server._setServerData) {
-          server._setServerData({
-            ticketKeys: self.token
-          });
-        } else {
-          self.logNotice('SSL/TLS ticket session resumption may not work due to missing method _setServerData, you might be using an old version of Node');
-        }
-      }
     }
   } else {
     server = http.createServer();
