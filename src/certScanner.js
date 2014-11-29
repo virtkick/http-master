@@ -137,7 +137,7 @@ module.exports = function(sslDirectory, options) {
     });
   };
 
-  var readPart = function(file, maxRead, cb) {
+  var readPart = async.memoize(function(file, maxRead, cb) {
     fs.open(file, 'r', function(err, fd) {
       if(err) return cb(err);
       var buf = new Buffer(maxRead);
@@ -148,7 +148,7 @@ module.exports = function(sslDirectory, options) {
         return cb(err, buffer.toString('utf8'));
       });
     });
-  };
+  });
 
   this.getCertOrPem = function(certPath, cb) {
     readPart(certPath, 65536, function(err, rawCert) {
@@ -168,9 +168,9 @@ module.exports = function(sslDirectory, options) {
         cb(err);
       }
     });
-  };
+  }
 
-  this.getCaFor = function(certPath, cb) {
+  this.getCaFor = async.memoize(function(certPath, cb) {
     readPart(certPath, 65636, function(err, rawCert) {
       if(err) return cb(err);
 
@@ -239,7 +239,7 @@ module.exports = function(sslDirectory, options) {
         }
       });
     });
-  };
+  });
 
   this.isDomainCert = function(certs) {
     return certs.some(function(cert) {
@@ -268,7 +268,7 @@ module.exports = function(sslDirectory, options) {
   var endCertToken = '-----END CERTIFICATE-----';
   this.getCaCertsFromFile = function(certPath, cb) {
     // TODO: This can possibly be replaced with some regexp.
-    fs.readFile(certPath, 'utf8', function(err, certFileContent) {
+    readPart(certPath, 4*65536, function(err, certFileContent) {
       if(err) return cb(err);
 
       var possibleCerts = certFileContent.split(beginCertToken);
