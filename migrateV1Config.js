@@ -28,11 +28,15 @@ module.exports = function(argv, data, cb) {
     config.middleware.push(
       'gzip -> 9'
     );
-    delete config.gzip;
   }
+  delete config.gzip;
   Object.keys(config.ports).forEach(function(port) {
-
     var portConfig = config.ports[port];
+    if(portConfig.gzip) {
+	config.ports[port] = ['gzip -> 9', portConfig];
+    }
+    delete portConfig.gzip;
+    
     portConfig.router = portConfig.router || {};
 
     function migrateEntries(name) {
@@ -40,6 +44,9 @@ module.exports = function(argv, data, cb) {
         var portConfigEntry = portConfig[name][key];
         if(name !== 'proxy')
           portConfigEntry = name + " -> " + portConfigEntry.toString();
+        if(name === 'proxy' && portConfigEntry.auth) {
+    	    portConfigEntry = ['auth -> ' + portConfigEntry.auth, portConfigEntry.target];
+        }
         portConfig.router[key] = portConfigEntry;
       });
     }
@@ -47,6 +54,10 @@ module.exports = function(argv, data, cb) {
     if(portConfig.reject) {
       migrateEntries('reject');
       delete portConfig.reject;
+    }
+    if(portConfig.static) {
+     migrateEntries('static');
+     delete portConfig.static;
     }
     if(portConfig.redirect) {
      migrateEntries('redirect');
