@@ -3,8 +3,8 @@
 
 [![Package version](https://img.shields.io/npm/v/http-master.svg)](https://www.npmjs.org/package/http-master)
 [![Package version](https://img.shields.io/npm/dm/http-master.svg)](https://www.npmjs.org/package/http-master)
-[![GPA](https://img.shields.io/codeclimate/github/encharm/http-master.svg)](https://codeclimate.com/github/CodeCharmLtd/http-master)
-[![Code coverage](https://img.shields.io/codeclimate/coverage/github/encharm/http-master.svg)](https://codeclimate.com/github/CodeCharmLtd/http-master)
+[![GPA](https://img.shields.io/codeclimate/github/encharm/http-master.svg)](https://codeclimate.com/github/encharm/http-master)
+[![Code coverage](https://img.shields.io/codeclimate/coverage/github/encharm/http-master.svg)](https://codeclimate.com/github/encharm/http-master)
 [![Build status](https://img.shields.io/travis/encharm/http-master.svg)](https://travis-ci.org/encharm/http-master)
 [![Dependcies status](http://img.shields.io/gemnasium/encharm/http-master.svg)](https://gemnasium.com/encharm/http-master)
 
