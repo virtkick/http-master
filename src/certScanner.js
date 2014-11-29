@@ -43,7 +43,7 @@ module.exports = function(sslDirectory, options) {
 
             that.getCertOrPem(certPath, function(err, cert, pem, rawCert) {
               if(pem) {
-                keys[pem.publicExponent] = options.read ? rawCert : certPath;
+                keys[pem.publicModulus] = options.read ? rawCert : certPath;
                 return cb();
               }
               if(err)  {
@@ -61,9 +61,10 @@ module.exports = function(sslDirectory, options) {
 
 
               if(!options.acceptInvalidDates) {
-                if(moment(cert.notBefore).diff(moment()) < 0) { // valid
-                  if(moment(cert.notAfter).diff(moment()) > 0) { // valid
-                    if(moment(cert.notAfter).diff(moment(), 'd') < 90)
+                var dateFormat = 'MMM DD HH:mm:ss YYYY';
+                if(moment.parseZone(cert.notBefore, dateFormat).diff(moment()) < 0) { // valid
+                  if(moment.parseZone(cert.notAfter, dateFormat).diff(moment()) > 0) { // valid
+                    if(moment.parseZone(cert.notAfter, dateFormat).diff(moment(), 'd') < 90)
                       that.emit('notice', path.join(dirName, certPath) + ': valid only for ' + moment(cert.notAfter).diff(moment(), 'd').toString() + ' days');
                   }
                   else { //expired
@@ -82,7 +83,7 @@ module.exports = function(sslDirectory, options) {
               var altNames = cert.altNames;
 
               var keyForCert = options.read ? rawCert : certPath;
-              certs[keyForCert] = cert.publicExponent;
+              certs[keyForCert] = cert.publicModulus;
 
               async.each(altNames, function(domain, cb) {
                 outputConfig[domain] = {};
@@ -143,8 +144,8 @@ module.exports = function(sslDirectory, options) {
       fs.read(fd, buf, 0, maxRead, null, function(err, bytesRead, buffer) {
         fs.close(fd);
         if(bytesRead < maxRead)
-          return cb(err, buffer.slice(0, bytesRead));
-        return cb(err, buffer.toString(encoding));
+          return cb(err, buffer.slice(0, bytesRead).toString('utf8'));
+        return cb(err, buffer.toString('utf8'));
       });
     });
   };
@@ -159,6 +160,7 @@ module.exports = function(sslDirectory, options) {
       } catch(err) {
         try {
           var pem = x509.parseKey(rawCert);
+
           return cb(null, null, pem, rawCert);
         } catch(err2) {
 
@@ -255,8 +257,10 @@ module.exports = function(sslDirectory, options) {
         && expectedIssuer.organizationName === subject.organizationName
         && expectedIssuer.organizationalUnitName === subject.organizationalUnitName
         && expectedIssuer.commonName === subject.commonName
+       && caCert.publicModulo === issuedCertificatedbyCA.publicModulo
        && caCert.publicExponent === issuedCertificatedbyCA.publicExponent
         ;
+
         return status;
   };
 
