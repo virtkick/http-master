@@ -85,24 +85,17 @@ describe('proxy middleware', function() {
     }
 
     beforeEach(function(cb) {
-      async.map([1, 2], function(num, cb) {
-        testUtils.findPort(cb);
-      }, function(err, ports) {
+      testUtils.findPorts(2, function(err, ports) {
         port1 = ports[0];
         port2 = ports[1];
         server1 = require('http').createServer().listen(port1);
         server2 = require('http').createServer().listen(port2);
-
         server2.on('listening', function() {
-
           proxyMiddleware = require('../modules/middleware/proxy')({});
           handleFullRequests(server1);
           handleFullRequests(server2);
           cb();
-
         });
-
-
       });
     });
 
@@ -213,13 +206,21 @@ describe('proxy middleware', function() {
       });
     });
 
+    var listenPort;
+    before(function(cb) {
+      testUtils.findPort(function(err, num) {
+        listenPort = num;
+        cb();
+      });
+    });
+
     it('should allow to set timeout and call next(err) when times out', function(endTest) {
       proxyMiddleware = require('../modules/middleware/proxy')({
         proxyTargetTimeout: 10
       });
 
-      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61395');
-      var server = net.createServer().listen(61395);
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:'+listenPort);
+      var server = net.createServer().listen(listenPort);
       var connCounter = 0;
       server.on('connection', function(connection) {
         connCounter++;
@@ -278,10 +279,21 @@ describe('proxy middleware', function() {
       http11Request('hello', function(err, data) {
       }, '/upload?dupa');
     });
+
+
+    var wsPort;
+    before(function(cb) {
+      testUtils.findPort(function(err, num) {
+        wsPort = num;
+        cb();
+      });
+    });
+
+
     it('should proxy web sockets', function(endTest) {
       var WebSocketServer = require('ws').Server;
       var WebSocket = require('ws');
-      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:60367');
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:'+wsPort);
 
       var ws;
 
@@ -295,7 +307,7 @@ describe('proxy middleware', function() {
         }, parsedTarget);
       });
 
-      var wss = new WebSocketServer({port: 60367});
+      var wss = new WebSocketServer({port: wsPort});
       wss.on('connection', function(ws) {
           ws.on('message', function(message) {
               message.should.equal('else');

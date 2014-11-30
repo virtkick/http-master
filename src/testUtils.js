@@ -19,6 +19,14 @@ exports.findPort = function(fn) {
   .listen(0);
 };
 
+exports.findPorts = function(num, cb) {
+  async.times(num, function(n, cb) {
+    exports.findPort(cb);
+  }, function(err, port) {
+    cb(err, port);
+  }, cb);
+}
+
 exports.assurePortNotListening =function(port, cb) {
   var client = net.connect({
       port: port
