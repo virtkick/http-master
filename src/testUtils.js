@@ -1,4 +1,23 @@
 var net = require('net');
+var async = require('async');
+
+exports.findPort = function(fn) {
+  var net = require('net')
+  var tester = net.createServer();
+  var port;
+  tester.once('error', function (err) {
+    if (err.code !== 'EADDRINUSE') return fn(err)
+    exports.findPort(fn);
+  })
+  .once('listening', function() {
+    port = tester.address().port;
+    tester.once('close', function() {
+      fn(null, port);
+    })
+    tester.close();
+  })
+  .listen(0);
+};
 
 exports.assurePortNotListening =function(port, cb) {
   var client = net.connect({

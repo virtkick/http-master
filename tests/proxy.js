@@ -7,7 +7,8 @@ var net = require('net');
 var path = require('path');
 var fs = require('fs');
 var assert = require('chai').assert;
-
+var testUtils = require('../src/testUtils');
+var async = require('async');
 
 describe('proxy middleware', function() {
 
@@ -61,14 +62,10 @@ describe('proxy middleware', function() {
     });
   });
   describe('requestHandler', function() {
-
-
-    var port1 = 61380;
-    var port2 = 61390;
+    var port1;
+    var port2;
     var proxyMiddleware;
     var server1, server2;
-    server1 = require('http').createServer().listen(port1);
-    server2 = require('http').createServer().listen(port2);
 
     function handleFullRequests(server) {
       var gotData = '';
@@ -86,11 +83,29 @@ describe('proxy middleware', function() {
         });
       });
     }
-    beforeEach(function() {
-      proxyMiddleware = require('../modules/middleware/proxy')({});
-      handleFullRequests(server1);
-      handleFullRequests(server2);
+
+    beforeEach(function(cb) {
+      async.map([1, 2], function(num, cb) {
+        testUtils.findPort(cb);
+      }, function(err, ports) {
+        port1 = ports[0];
+        port2 = ports[1];
+        server1 = require('http').createServer().listen(port1);
+        server2 = require('http').createServer().listen(port2);
+
+        server2.on('listening', function() {
+
+          proxyMiddleware = require('../modules/middleware/proxy')({});
+          handleFullRequests(server1);
+          handleFullRequests(server2);
+          cb();
+
+        });
+
+
+      });
     });
+
     afterEach(function() {
       server1.removeAllListeners('request');
       server2.removeAllListeners('request');
@@ -101,7 +116,7 @@ describe('proxy middleware', function() {
       var targetPort = port1;
       var preparedRequest = http.request({
         hostname: '127.0.0.1',
-        port: 61380,
+        port: port1,
         method: 'POST',
         path: customPath || '/upload'
       }, function(res) {
@@ -144,7 +159,7 @@ describe('proxy middleware', function() {
     function runTestRequest(requestFunction, endCb) {
       var testString = 'alksjdlkadjlkqwjlkewqjlksdajds';
       var testString2 = 'vckxjhkhoiewruweoiuroiuweoijccc';
-      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61390');
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:' + port2);
 
       server1.once('request', function(req, res) {
         proxyMiddleware.requestHandler(req, res, function(err) {
@@ -152,8 +167,6 @@ describe('proxy middleware', function() {
         }, parsedTarget);
       });
       server2.once('fullRequest', function(req, res, gotData) {
-//        req.headers.host.should.equal('localhost:61380');
-        console.log(req.headers.host);
         gotData.should.equal(testString);
         res.write(testString2);
         res.end();
@@ -270,15 +283,7 @@ describe('proxy middleware', function() {
       var WebSocket = require('ws');
       var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:60367');
 
-      var ws = new WebSocket('ws://localhost:' + port1);
-
-      ws.on('open',  function() {
-
-      });
-      ws.on('message', function(msg) {
-        assert(msg === 'something');
-        ws.send('else');
-      });
+      var ws;
 
       server1.on('upgrade', function(req, socket, head) {
         req.upgrade = {
@@ -297,6 +302,17 @@ describe('proxy middleware', function() {
               endTest();
           });
           ws.send('something');
+      });
+      wss.on('listening', function() {
+        ws = new WebSocket('ws://localhost:' + port1);
+
+        ws.on('open',  function() {
+
+        });
+        ws.on('message', function(msg) {
+          assert(msg === 'something');
+          ws.send('else');
+        });
       });
     });
   });
