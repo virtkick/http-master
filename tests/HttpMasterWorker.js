@@ -17,10 +17,10 @@ var url = require('url');
 var parseUrl = url.parse.bind(url);
 var assert = require('assert');
 
+var listenPortNum;
+
 function testPortConfig(portConfig, targetPort, handler) {
   var worker = new HttpMasterWorker();
-
-  var listenPortNum = targetPort + 1000;
 
   var listenConfig = {};
   listenConfig[listenPortNum] = portConfig;
@@ -91,12 +91,16 @@ function testPortConfig(portConfig, targetPort, handler) {
 }
 
 
-var portCounter = 50880;
+var port;
 
 describe('HttpMasterWorker', function() {
 
-  beforeEach(function() {
-    portCounter++;
+  beforeEach(function(cb) {
+    testUtils.findPorts(2, function(err, ports) {
+      port = ports[0];
+      listenPortNum = ports[1];
+      cb(err);
+    });
   });
 
   describe('basic operation', function() {
@@ -105,16 +109,16 @@ describe('HttpMasterWorker', function() {
 
     function testOpenAndCloseConfig(finished) {
       var _ports = {};
-      _ports[portCounter] = {};
-      assurePortNotListening(portCounter, function() {
+      _ports[port] = {};
+      assurePortNotListening(port, function() {
         worker.loadConfig({
           ports: _ports
         }, function(err) {
           if (err) finished(err);
-          assurePortIsListening(portCounter, function() {
+          assurePortIsListening(port, function() {
             worker.loadConfig({}, function(err) {
               if (err) finished(err);
-              assurePortNotListening(portCounter, function() {
+              assurePortNotListening(port, function() {
                 finished();
               });
             });
@@ -134,8 +138,8 @@ describe('HttpMasterWorker', function() {
 
     it('should proxy multiple requests', function(finished) {
       var tester = testPortConfig({
-        router: portCounter
-      }, portCounter);
+        router: port
+      }, port);
 
       var urls = [];
       for (var i = 0; i < 20; ++i) {
@@ -156,10 +160,10 @@ describe('HttpMasterWorker', function() {
       var tester = testPortConfig({
         router: {
           '*': {
-            '*': portCounter
+            '*': port
           }
         }
-      }, portCounter);
+      }, port);
 
       tester.request('http://alibaba/sdfsd', function(err) {
         finished(err);
@@ -174,11 +178,11 @@ describe('HttpMasterWorker', function() {
             '*': [
               'addHeader -> user-agent=x-test',
               'addHeader -> user-agent-2=x-test-2',
-              portCounter
+              port
             ]
           }
         }
-      }, portCounter);
+      }, port);
 
       tester.request('http://alibaba/sdfsd', function(err, req, res) {
         
@@ -193,7 +197,7 @@ describe('HttpMasterWorker', function() {
       var tester = testPortConfig({
         router: {
         }
-      }, portCounter);
+      }, port);
 
       tester.request('http://alibaba/sdfsd', function(err, req, res) {
         
@@ -215,7 +219,7 @@ describe('HttpMasterWorker', function() {
             ]
           }
         }]
-      }, portCounter);
+      }, port);
 
       tester.request('http://alibaba/sdfsd', function(err, req, res) {
         
@@ -228,32 +232,35 @@ describe('HttpMasterWorker', function() {
     });
 
     it('should handle router/proxy errors', function(finished) {
-      var tester = testPortConfig({
-        router: {
-          '*': (portCounter+2000)
-        }
-      }, portCounter);
-      var rejectingServer = net.createServer();
-      rejectingServer.listen(portCounter+2000);
-      rejectingServer.on('connection', function(conn) {
-        conn.end();
+      testUtils.findPort(function(err, port2) {
+        var tester = testPortConfig({
+          router: {
+            '*': port2
+          }
+        }, port);
+        var rejectingServer = net.createServer();
+        rejectingServer.listen(port2);
+        rejectingServer.on('connection', function(conn) {
+          conn.end();
+        });
+        tester.request('http://test.com', function(err) {
+        }, function(res) {
+          res.statusCode.should.equal(500);
+        }, null, function(data) {
+          data.should.equal('500 Internal Server Error');
+          rejectingServer.close();
+          finished();
+        });
       });
-      tester.request('http://test.com', function(err) {
-      }, function(res) {
-        res.statusCode.should.equal(500);
-      }, null, function(data) {
-        data.should.equal('500 Internal Server Error');
-        rejectingServer.close();
-        finished();
-      });
+      
     });
 
     it('should support unicode domains', function(finished) {
       var tester = testPortConfig({
         router: {
-          'źdźbło.pl': portCounter
+          'źdźbło.pl': port
         }
-      }, portCounter);
+      }, port);
       tester.request('http://źdźbło.pl', function(err) {
         finished(err);
         tester.finish();
@@ -263,9 +270,9 @@ describe('HttpMasterWorker', function() {
     it('should support http entities in requests', function(finished) {
       var tester = testPortConfig({
         router: {
-          'test.pl/test%20kota/ d': portCounter
+          'test.pl/test%20kota/ d': port
         }
-      }, portCounter);
+      }, port);
       tester.request('http://test.pl/test%20kota/ d', function(err) {
         finished(err);
         tester.finish();
@@ -277,9 +284,9 @@ describe('HttpMasterWorker', function() {
     it('should redirect multiple requests', function(finished) {
       var tester = testPortConfig({
         router: {
-          '*': 'redirect -> http://[1]:'+portCounter+'/[path]'
+          '*': 'redirect -> http://[1]:'+port+'/[path]'
         }
-      }, portCounter);
+      }, port);
 
       var urls = [];
       for (var i = 0; i < 20; ++i) {

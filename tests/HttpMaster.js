@@ -22,6 +22,15 @@ describe('HttpMaster', function() {
       });
     });
 
+    var port1, port2;
+    before(function(cb) {
+      testUtils.findPorts(2, function(err, ports) {
+        port1 = ports[0];
+        port2 = ports[1];
+        cb(err);
+      });
+    });
+
     it('should not start any workers by default', function() {
       Object.keys(require('cluster').workers).length.should.equal(0);
     });
@@ -31,16 +40,16 @@ describe('HttpMaster', function() {
       master.reload({});
     });
     it('should reload config to multiple ports and send event', function(cb) {
+      var ports = {};
+      ports[port1] = {};
+      ports[port2] = {};
       master.reload({
-        ports: {
-          40400: {},
-          40401: {},
-        }
+        ports: ports
       });
       master.once('allWorkersReloaded', function() {
         setTimeout(function() {
-        assurePortIsListening(40400, function() {
-          assurePortIsListening(40401, function() {
+        assurePortIsListening(port1, function() {
+          assurePortIsListening(port2, function() {
             master.reload({});
             cb();
           });
