@@ -28,6 +28,7 @@
   * [Error handling](#reject)
   * [Serve static directory](#static)
   * [Advanced routing](#advancedrouting)
+* [Upstart](#upstart)
 * [Systemd](#systemd)
 * [Contributors](#contributors)
 * [Sponsors](#sponsors)
@@ -606,13 +607,11 @@ We provide an example systemd unit file. The config file is set to /etc/http-mas
 <a name="upstart"/>
 ## Upstart
 
-Also provided is `http-master.conf` which can be used with Upstart. As above, the config file is set to /etc/http-master/http-master.conf by default. Copy `http-master.conf` to `/etc/init` to use it.
+Also provided is `http-master-upstart.conf` which can be used with Upstart. As above, the config file is set to /etc/http-master/http-master.conf by default. Copy `http-master-upstart.conf` to `/etc/init/http-master.conf` to use it.
 
 * `service http-master start`
 * `service http-master stop`
 * `service http-master restart`
-
-Note: if you are using an SSL certificate with a password, you will need to decrypt the `.key` file so http-master can read it without requiring a password: `openssl rsa -in key.pem -out newkey.pem`
 
 <a name="contributors"/>
 ## Contributors
