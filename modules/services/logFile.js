@@ -31,7 +31,7 @@ module.exports = function LogFileService(config, commService, master, worker) {
         stream.once('open', function() {
           watch = fs.watch(logFile, function(action, filename) {
             if (action == 'rename') {
-              watcher[logFile].close();
+              watch.close();
               openLogFile(logFile);
             }
           });

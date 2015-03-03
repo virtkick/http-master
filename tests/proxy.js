@@ -258,12 +258,11 @@ describe('proxy middleware', function() {
         req.url.should.equal('/foo/bar');
         endTest();
       });
-      http11Request('hello', function(err, data) {});
+      http11Request('hello', function(err, data) {}, '/1/2');
     });
 
     it('should pass query parameters to target server', function(endTest) {
       var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:'+port2 + '');
-
       server1.once('request', function(req, res) {
         req.hostMatch = 'foo'.match(/(foo)/);
         req.pathMatch = 'bar'.match(/(bar)/);
