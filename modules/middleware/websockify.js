@@ -22,7 +22,9 @@ module.exports = function WebsockifyMiddleware() {
         var parsedTarget = url.parse('tcp://' + target);
 
         socket.once('error', function(err) {
-          req.upgrade.connection.end();
+          if(req.upgrade.connection) {
+            req.upgrade.connection.end();
+          }
         });
         socket.connect(parseInt(parsedTarget.port), parsedTarget.hostname || 'localhost',  function() {
           parsedEntry.wsServer.handleUpgrade(req, req.upgrade.socket, req.upgrade.head, function(client) {

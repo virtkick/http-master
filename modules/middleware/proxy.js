@@ -80,7 +80,8 @@ module.exports = function ProxyMiddleware(portConfig, di) {
       var options = {
         target: proxyTarget,
         proxyTimeout: portConfig.proxyTargetTimeout,
-        timeout: portConfig.proxyTimeout
+        timeout: portConfig.proxyTimeout,
+        toProxy: true
       };
 
       if(req.upgrade) {

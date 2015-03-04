@@ -28,6 +28,7 @@
   * [Error handling](#reject)
   * [Serve static directory](#static)
   * [Advanced routing](#advancedrouting)
+* [Upstart](#upstart)
 * [Systemd](#systemd)
 * [Contributors](#contributors)
 * [Sponsors](#sponsors)
@@ -603,6 +604,14 @@ We provide an example systemd unit file. The config file is set to /etc/http-mas
 * `systemctl enable http-master` - auto-start
 * `systemctl reload http-master` - reload config with `kill -USR1`
 
+<a name="upstart"/>
+## Upstart
+
+Also provided is `http-master-upstart.conf` which can be used with Upstart. As above, the config file is set to /etc/http-master/http-master.conf by default. Copy `http-master-upstart.conf` to `/etc/init/http-master.conf` to use it.
+
+* `service http-master start`
+* `service http-master stop`
+* `service http-master restart`
 
 <a name="contributors"/>
 ## Contributors
