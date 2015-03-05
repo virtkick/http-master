@@ -4,11 +4,8 @@ var url = require('url');
 var http = require('http');
 var EventEmitter = require('events').EventEmitter;
 var net = require('net');
-var path = require('path');
-var fs = require('fs');
 var assert = require('chai').assert;
 var testUtils = require('../src/testUtils');
-var async = require('async');
 
 describe('proxy middleware', function() {
 
@@ -106,7 +103,6 @@ describe('proxy middleware', function() {
       server2.removeAllListeners('fullRequest');
     });
     function http11Request(input, cb, customPath) {
-      var targetPort = port1;
       var preparedRequest = http.request({
         hostname: '127.0.0.1',
         port: port1,
@@ -179,6 +175,29 @@ describe('proxy middleware', function() {
       runTestRequest(http10Request, endTest);
     });
 
+    it('should allow to set proxy agent', function(endTest) {
+      proxyMiddleware = require('../modules/middleware/proxy')({
+        agentSettings: {
+          keepAlive: true,
+          maxSockets: 10
+        }
+      });
+
+      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61345');
+      var server = net.createServer().listen(61345);
+
+      server1.on('request', function(req, res) {
+        proxyMiddleware.requestHandler(req, res, function(err) {
+        }, parsedTarget);
+        req.connection.proxy.options.agent.maxSockets.should.equal(10);
+        res.end();
+      });
+      http11Request('hello', function(err, data) {
+        server.close();
+        endTest();
+      });
+    });
+
     it('should allow to set timeout which closes request socket', function(endTest) {
       proxyMiddleware = require('../modules/middleware/proxy')({
         proxyTimeout: 10
@@ -193,10 +212,10 @@ describe('proxy middleware', function() {
 
       server1.once('request', function(req, res) {
         proxyMiddleware.requestHandler(req, res, function(err) {
-          
-       }, parsedTarget);
+        }, parsedTarget);
       });
       http11Request('hello', function(err, data) {
+        server.close();
         if(err) {
           err.code.should.equal('ECONNRESET');
           connCounter.should.equal(1);
@@ -266,6 +285,7 @@ describe('proxy middleware', function() {
       server1.once('request', function(req, res) {
         req.hostMatch = 'foo'.match(/(foo)/);
         req.pathMatch = 'bar'.match(/(bar)/);
+        req.match = [req.hostMatch.slice(1), req.pathMatch.slice(1)];
         req.parsedUrl = url.parse(req.url);
         proxyMiddleware.requestHandler(req, res, function(err) {
           assert(false, "next should not be called, error has occured");

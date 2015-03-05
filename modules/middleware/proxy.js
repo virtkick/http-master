@@ -1,9 +1,8 @@
 'use strict';
 
+var http = require('http');
 var httpProxy = require('http-proxy');
 var url = require('url');
-var fs = require('fs');
-var path = require('path');
 var regexpHelper = require('../../src/regexpHelper');
 var assert = require('assert');
 
@@ -23,15 +22,18 @@ function parseEntry(entry) {
   if(!entry.match(/https?:\/\//)) {
     entry = 'http://' + entry;
   }
-  entry = url.parse(entry, true, true)
+  entry = url.parse(entry, true, true);
   entry.withPath = withPath;
   return entry;
 }
 
 
 module.exports = function ProxyMiddleware(portConfig, di) {
-  
-  var proxy = httpProxy.createProxyServer({xfwd: true, agent: false});
+  var agent = false;
+  if (portConfig.agentSettings) {
+    agent = new http.Agent(portConfig.agentSettings);
+  }
+  var proxy = httpProxy.createProxyServer({xfwd: true, agent: agent});
   proxy.on('error', function(err, req, res) {
     req.err = err;
     req.next(err);
@@ -43,9 +45,10 @@ module.exports = function ProxyMiddleware(portConfig, di) {
     }
 
     var processed = regexpHelper(target.href, req.match);
-          
-    if(req.parsedUrl.search)
+
+    if (req.parsedUrl.search) {
       processed += req.parsedUrl.search;
+    }
 
     var newTarget = url.parse(processed);
     if(target.withPath) {
@@ -93,4 +96,4 @@ module.exports = function ProxyMiddleware(portConfig, di) {
       return parseEntry(entry.target || entry);
     }
   };
-}
+};
