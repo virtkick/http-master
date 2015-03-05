@@ -189,7 +189,7 @@ describe('proxy middleware', function() {
       server1.on('request', function(req, res) {
         proxyMiddleware.requestHandler(req, res, function(err) {
         }, parsedTarget);
-        req.connection.proxy.options.agent.maxSockets.should.equal(10);
+        req.connection.agent.maxSockets.should.equal(10);
         res.end();
       });
       http11Request('hello', function(err, data) {

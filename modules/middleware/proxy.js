@@ -60,6 +60,7 @@ module.exports = function ProxyMiddleware(portConfig, di) {
   return {
     requestHandler: function(req, res, next, dispatchTarget) {
       req.connection.proxy = proxy;
+      req.connection.agent = agent;
       req.next = next;
       // workaround for node-http-proxy/#591
       if(!req.headers.host) {
