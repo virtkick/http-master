@@ -8,5 +8,5 @@ addons:
       secure: Ew9Pi/cVS/herXT082k3E/xwcpI8BORzgQpcLCdtir7nXqRRi7g0HOR31OH375+xO4F5sJLGKNSK5zJ1iSJvxChJXdwU4e2ZEgTlbm8z7Ewh7kd39dGg+JIqwcIrqpIXyniqbw6Ntu6Jwk8QjQXgbtkYwNw35WxsLGEF7fKY41M=
 script:
 - "./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha tests/"
-- cat coverage/lcov.info | ./node_modules/codeclimate-test-reporter/bin/codeclimate.js
+- (cat coverage/lcov.info | ./node_modules/codeclimate-test-reporter/bin/codeclimate.js) || (echo Code climate failed - not criticial)
 
