@@ -27,12 +27,17 @@ function parseEntry(entry) {
   return entry;
 }
 
-
-module.exports = function ProxyMiddleware(portConfig, di) {
+function getAgent(config, portConfig) {
   var agent = false;
-  if (portConfig.agentSettings) {
-    agent = new http.Agent(portConfig.agentSettings);
+  var agentSettings = portConfig.agentSettings || config.agentSettings;
+  if (agentSettings) {
+    agent = new http.Agent(agentSettings);
   }
+  return agent;
+}
+
+module.exports = function ProxyMiddleware(config, portConfig, di) {
+  var agent = getAgent(config, portConfig);
   var proxy = httpProxy.createProxyServer({xfwd: true, agent: agent});
   proxy.on('error', function(err, req, res) {
     req.err = err;

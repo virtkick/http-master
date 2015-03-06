@@ -12,7 +12,7 @@ describe('proxy middleware', function() {
   describe('entryParser', function() {
     var proxyMiddleware;
     beforeEach(function() {
-      proxyMiddleware = require('../modules/middleware/proxy')({});
+      proxyMiddleware = require('../modules/middleware/proxy')({}, {});
     });
 
     it('should parse target entry by port number', function() {
@@ -88,7 +88,7 @@ describe('proxy middleware', function() {
         server1 = require('http').createServer().listen(port1);
         server2 = require('http').createServer().listen(port2);
         server2.on('listening', function() {
-          proxyMiddleware = require('../modules/middleware/proxy')({});
+          proxyMiddleware = require('../modules/middleware/proxy')({}, {});
           handleFullRequests(server1);
           handleFullRequests(server2);
           cb();
@@ -176,20 +176,29 @@ describe('proxy middleware', function() {
     });
 
     it('should allow to set proxy agent', function(endTest) {
-      proxyMiddleware = require('../modules/middleware/proxy')({
-        agentSettings: {
-          keepAlive: true,
-          maxSockets: 10
-        }
+      var agentSettings = {
+        keepAlive: true,
+        maxSockets: 10
+      };
+      var proxyMiddleware = require('../modules/middleware/proxy');
+      var proxyWithNoAgent = proxyMiddleware({}, {});
+      var proxyWithConfigAgent = proxyMiddleware({
+        agentSettings: agentSettings
+      }, {});
+      var proxyWithPortConfigAgent = proxyMiddleware({}, {
+        agentSettings: agentSettings
       });
 
-      var parsedTarget = proxyMiddleware.entryParser('127.0.0.1:61345');
+      var parsedTarget = proxyWithConfigAgent.entryParser('127.0.0.1:61345');
       var server = net.createServer().listen(61345);
 
       server1.on('request', function(req, res) {
-        proxyMiddleware.requestHandler(req, res, function(err) {
-        }, parsedTarget);
-        req.connection.agent.maxSockets.should.equal(10);
+        proxyWithConfigAgent.requestHandler(req, res, function() {}, parsedTarget);
+        req.connection.agent.maxSockets.should.equal(agentSettings.maxSockets);
+        proxyWithNoAgent.requestHandler(req, res, function () {}, parsedTarget);
+        req.connection.agent.should.equal(false);
+        proxyWithPortConfigAgent.requestHandler(req, res, function () {}, parsedTarget);
+        req.connection.agent.maxSockets.should.equal(agentSettings.maxSockets);
         res.end();
       });
       http11Request('hello', function(err, data) {
@@ -199,7 +208,7 @@ describe('proxy middleware', function() {
     });
 
     it('should allow to set timeout which closes request socket', function(endTest) {
-      proxyMiddleware = require('../modules/middleware/proxy')({
+      proxyMiddleware = require('../modules/middleware/proxy')({}, {
         proxyTimeout: 10
       });
 
@@ -234,7 +243,7 @@ describe('proxy middleware', function() {
     });
 
     it('should allow to set timeout and call next(err) when times out', function(endTest) {
-      proxyMiddleware = require('../modules/middleware/proxy')({
+      proxyMiddleware = require('../modules/middleware/proxy')({}, {
         proxyTargetTimeout: 10
       });
 

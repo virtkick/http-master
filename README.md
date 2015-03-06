@@ -312,7 +312,7 @@ ports: {
 }
 ```
 In addition to `router`, following setting could be set per port:
-* `agentSettings`, for full list of options check node documentation for [http.Agent](http://nodejs.org/api/http.html#http_class_http_agent)
+* `agentSettings`, for full list of options check node documentation for [http.Agent](http://nodejs.org/api/http.html#http_class_http_agent). You can also set default agent settings at the root level in your config, using the same `agentSettings` name
 * `proxyTargetTimeout` sets timeout for target connection
 * `proxyTimeout` sets timeout for proxy connection
 
@@ -638,6 +638,7 @@ Also provided is `http-master-upstart.conf` which can be used with Upstart. As a
 
 * Damian Kaczmarek <damian@codecharm.co.uk>
 * Damian Nowak <damian.nowak@atlashost.eu>
+* Sergey Zarouski <sergey@webuniverse.io>
 
 <a name="sponsors"/>
 ## Sponsors
