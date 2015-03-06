@@ -296,6 +296,26 @@ ports: {
 }
 ```
 
+### Proxy port settings
+```YAML
+ports: {
+  80: {
+    router: {
+      "domain.com" : 5012
+    },
+    agentSettings: {
+      keepAlive: true
+    },
+    proxyTargetTimeout: 1500,
+    proxyTimeout: 1000
+  }
+}
+```
+In addition to `router`, following setting could be set per port:
+* `agentSettings`, for full list of options check node documentation for [http.Agent](http://nodejs.org/api/http.html#http_class_http_agent). You can also set default agent settings at the root level in your config, using the same `agentSettings` name
+* `proxyTargetTimeout` sets timeout for target connection
+* `proxyTimeout` sets timeout for proxy connection
+
 <a name="urlrewrite"/>
 ## URL rewrite
 All proxy example can be adapted to also do URL rewriting. All matching rules can do either wildcard (implicit) regexp matching explicit regexp matching. Let's focus on implicit first.
@@ -618,6 +638,7 @@ Also provided is `http-master-upstart.conf` which can be used with Upstart. As a
 
 * Damian Kaczmarek <damian@codecharm.co.uk>
 * Damian Nowak <damian.nowak@atlashost.eu>
+* Sergey Zarouski <sergey@webuniverse.io>
 
 <a name="sponsors"/>
 ## Sponsors

@@ -21,7 +21,8 @@
   },
   "author": "Damian Kaczmarek <damian@codecharm.co.uk>",
   "contributors": [
-    "Damian Nowak <damian.nowak@atlashost.eu>"
+    "Damian Nowak <damian.nowak@atlashost.eu>",
+    "Sergey Zarouski <sergey@webuniverse.io>"
   ],
   "license": "MIT",
   "dependencies": {
