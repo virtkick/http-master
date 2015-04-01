@@ -22,8 +22,8 @@ module.exports = function WebsockifyMiddleware() {
         var parsedTarget = url.parse('tcp://' + target);
 
         socket.once('error', function(err) {
-          if(req.upgrade.connection) {
-            req.upgrade.connection.end();
+          if(req.connection) {
+            req.connection.end();
           }
         });
         socket.connect(parseInt(parsedTarget.port), parsedTarget.hostname || 'localhost',  function() {
