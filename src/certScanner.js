@@ -65,15 +65,15 @@ module.exports = function(sslDirectory, options) {
                 if(moment.parseZone(cert.notBefore, dateFormat).diff(moment()) < 0) { // valid
                   if(moment.parseZone(cert.notAfter, dateFormat).diff(moment()) > 0) { // valid
                     if(moment.parseZone(cert.notAfter, dateFormat).diff(moment(), 'd') < 90)
-                      that.emit('notice', path.join(dirName, certPath) + ': valid only for ' + moment(cert.notAfter).diff(moment(), 'd').toString() + ' days');
+                      that.emit('notice', path.join(dirName, certPath) + ': valid only for ' + moment(new Date(cert.notAfter)).diff(moment(), 'd').toString() + ' days');
                   }
                   else { //expired
-                    that.emit('notice', path.join(dirName, certPath) + ': expired ' + (-moment(cert.notAfter).diff(moment(), 'd')).toString() + ' days ago');
+                    that.emit('notice', path.join(dirName, certPath) + ': expired ' + (-moment(new Date(cert.notAfter)).diff(moment(), 'd')).toString() + ' days ago');
                     return cb();
                   }
                 }
                 else { // not yet valid
-                  that.emit('notice', path.join(dirName, certPath) + ': not yet valid for ' + (moment(cert.notBefore).diff(moment(), 'd')).toString() + ' days');
+                  that.emit('notice', path.join(dirName, certPath) + ': not yet valid for ' + (moment(new Date(cert.notBefore)).diff(moment(), 'd')).toString() + ' days');
                   return cb();
                 }
               }

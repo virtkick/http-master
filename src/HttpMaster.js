@@ -142,7 +142,7 @@ function preprocessPortConfig(config, cb) {
         } else {
           var firstKey = Object.keys(SNIconfig)[0];
           if(firstKey) {
-            self.logNotice("Primary domain not set, assuming: " + config.ssl.certDir);
+            self.logNotice("Primary domain not set, assuming: " + firstKey);
             config.ssl = extend(true, {}, config.ssl, SNIconfig[firstKey]);
           }
         }

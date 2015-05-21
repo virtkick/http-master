@@ -105,8 +105,8 @@ process.on('msg:start', function(data) {
   worker.loadConfig(data.config, function(err) {
     if (err) {
       process.sendMessage('exception', err);
-      logError("Exitting worker due to error: " + err.toString())
-      return process.exit();
+   //   logError("Exitting worker due to error: " + err.toString())
+     // return process.exit();
     }
     process.sendMessage("started");
   });
