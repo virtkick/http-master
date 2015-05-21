@@ -1,6 +1,6 @@
 var async = require('async');
 
-var EventEmitter = require('eventemitter3').EventEmitter;
+var EventEmitter = require('eventemitter3');
 var path = require('path');
 var CertScanner = require('./certScanner');
 var extend = require('extend');
@@ -139,6 +139,12 @@ function preprocessPortConfig(config, cb) {
         //sslConfig = {SNI: sslConfig};
         if(config.ssl.primaryDomain) {
           config.ssl = extend(true, {}, config.ssl, SNIconfig[config.ssl.primaryDomain]);
+        } else {
+          var firstKey = Object.keys(SNIconfig)[0];
+          if(firstKey) {
+            self.logNotice("Primary domain not set, assuming: " + config.ssl.certDir);
+            config.ssl = extend(true, {}, config.ssl, SNIconfig[firstKey]);
+          }
         }
         config.ssl = extend(true, {}, config.ssl, {SNI: SNIconfig});
         certScanner.removeAllListeners();
@@ -341,3 +347,4 @@ HttpMaster.prototype.init = function(config, initDone) {
 }
 
 module.exports = HttpMaster;
+module.exports.CertScanner = CertScanner;
