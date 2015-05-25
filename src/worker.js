@@ -103,12 +103,12 @@ process.on('msg:start', function(data) {
   dropPrivileges();
   worker.token = data.token;
   worker.loadConfig(data.config, function(err) {
-    if (err) {
-      process.sendMessage('exception', err);
+    //if (err) {
+    //  process.sendMessage('exception', err);
    //   logError("Exitting worker due to error: " + err.toString())
      // return process.exit();
-    }
-    process.sendMessage("started");
+    //}
+    process.sendMessage("started", err);
   });
 });
 

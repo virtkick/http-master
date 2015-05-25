@@ -77,8 +77,8 @@ function initWorker(cb) {
     worker.emit('msg', {type: msg.type, data: msg.data});
   });
   
-  worker.once('msg:started', function() {
-    cb();
+  worker.once('msg:started', function(err) {
+    cb(err);
   });
   worker.on('msg:exception', function(err) {
     exitIfEACCES.call(self, err);
@@ -321,8 +321,8 @@ HttpMaster.prototype.init = function(config, initDone) {
       self.token = token;
 
       async.times((config.workerCount), function(n, next) {
-        var worker = initWorker.call(self, function() {
-          next(null);
+        var worker = initWorker.call(self, function(err) {
+          next(err);
         })
         worker.on('msg:logNotice', self.logNotice.bind(self));
         worker.on('msg:logError', self.logError.bind(self));
@@ -331,15 +331,10 @@ HttpMaster.prototype.init = function(config, initDone) {
         });
         workers.push(worker);
       }, function(err) {
-        if (err) {
-          return initDone(err);
-        }
-
         self.emit('allWorkersStarted');
 
-        //runModules("allWorkersStarted", config);
         if(initDone)
-          initDone();
+          initDone(err);
       });
     };
   }
