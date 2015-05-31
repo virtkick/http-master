@@ -343,3 +343,4 @@ HttpMaster.prototype.init = function(config, initDone) {
 
 module.exports = HttpMaster;
 module.exports.CertScanner = CertScanner;
+module.exports.regexpHelper = require('./regexpHelper');
