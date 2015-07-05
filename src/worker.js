@@ -103,12 +103,12 @@ process.on('msg:start', function(data) {
   dropPrivileges();
   worker.token = data.token;
   worker.loadConfig(data.config, function(err) {
-    if (err) {
-      process.sendMessage('exception', err);
-      logError("Exitting worker due to error: " + err.toString());
-      return process.exit();
-    }
-    process.sendMessage("started");
+    // if (err) {
+    //   process.sendMessage('exception', err);
+    //   logError("Exitting worker due to error: " + err.toString());
+    //   return process.exit();
+    // }
+    process.sendMessage("started", err);
   });
 });
 
@@ -121,7 +121,7 @@ process.on('msg:unbind', function() {
 
 process.on('msg', function(data) {
   if (worker.handleMessage)
-    worker.handleMessage(data);;
+    worker.handleMessage(data);
 });
 
 var originalLog = console.log;
@@ -137,13 +137,12 @@ process.on('msg:reload', function(config) {
   }
 
   worker.loadConfig(config, function(err) {
-
-    if (err) {
-      process.sendMessage('exception', err);
-      logError("Exitting worker due to error: " + err.toString());
-      return process.exit();
-    }
-    process.sendMessage("started");
+    // if (err) {
+    //   process.sendMessage('exception', err);
+    //   logError("Exitting worker due to error: " + err.toString());
+    //   return process.exit();
+    // }
+    process.sendMessage("started", err);
   });
 });
 

@@ -5,7 +5,6 @@ var path = require('path'),
   fs = require('fs'),
   argv = require('yargs')
   .argv,
-  extend = require('extend'),
   HttpMaster = require('../src/HttpMaster'),
   util = require('util');
 
@@ -19,7 +18,7 @@ function logError(str) {
 function logNotice(str) {
   if (argv.silent || config.silent)
     return;
-  console.log(str); 
+  console.log(str);
 }
 
 var help = [
@@ -118,7 +117,6 @@ function patchConfigWithArgv(config) {
 var yaml = require('js-yaml');
 
 function fetchConfig(finish) {
-
   var configloader;
   //console.log(fs.statSync(argv.configloader));
   if (argv.configloader) {
@@ -129,14 +127,16 @@ function fetchConfig(finish) {
       var oldWarn = console.warn;
       try {
         console.warn = function() {};
-        finish(null, yaml.safeLoad(data));
+        finish(null, yaml.safeLoad(data, {
+          onWarning: function() {}
+        }));
         console.warn = oldWarn;
       } catch(err) {
         console.warn = oldWarn;
         finish(err);
       }
     };
-  }  
+  }
 
   fs.readFile(argv.config, function(err, data) {
     if(err) return finish(err);
@@ -188,13 +188,12 @@ fetchConfig(function(err, parsedConfig) {
   setConsole(config);
 
   master.init(config, function(err) {
-    if(err) { 
+    if(err) {
       logError('Workers failed to start');
       throw err;
     }
     master.logNotice('All workers started in ' + (new Date().getTime() - startTime) + 'ms');
     dropPrivileges();
-
 
     var watch = require('node-watch');
     if (config.watchConfig || argv.watch) {
