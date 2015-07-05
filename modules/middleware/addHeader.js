@@ -8,7 +8,9 @@ module.exports = function AddHeaderMiddleware() {
       if(!config.match(/\s*=\s*/)) {
         throw new Error('Bad format, should be key=value');
       }
-      return config.split(/\s*=\s*/);
+      var m = config.match(/^(.*?)\s*=\s*(.*$)/);
+      m.shift();
+      return m;
     }
   };
 };

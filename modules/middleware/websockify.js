@@ -1,6 +1,3 @@
-var WebSocketServer = require('ws').Server;
-var EventEmitter = require('events').EventEmitter;
-
 var regexpHelper = require('../../src/regexpHelper');
 var net = require('net');
 var url = require('url');
@@ -22,54 +19,18 @@ module.exports = function WebsockifyMiddleware() {
         var parsedTarget = url.parse('tcp://' + target);
 
         socket.once('error', function(err) {
-          if(req.upgrade.connection) {
-            req.upgrade.connection.end();
+          if(req.connection) {
+            req.connection.end();
           }
         });
         socket.connect(parseInt(parsedTarget.port), parsedTarget.hostname || 'localhost',  function() {
-          parsedEntry.wsServer.handleUpgrade(req, req.upgrade.socket, req.upgrade.head, function(client) {
-            client.tcpSocket = socket;
-            socket.on('data', function(data) {
-              try {
-                if(client.protocol === 'base64')
-                  client.send(new Buffer(data).toString('base64'));
-                else
-                  client.send(data, {binary: true});
-              } catch(e) {
-                socket.end();
-              }
-            });
-            socket.once('end', function() {
-              client.close();
-            });
-            socket.once('error', function() {
-              socket.end();
-              client.close();
-            });
-
-            client.on('message', function(msg) {
-              if(client.protocol === 'base64')
-                socket.write(new Buffer(msg, 'base64'));
-              else
-                socket.write(msg, 'binary');
-            });
-            client.once('close', function(code, reason) {
-              socket.end();
-            });
-            client.once('error', function(err) {
-              socket.end();
-            });
-          });
+          websockifyService(req, socket);
         });
       }
       next();
     },
     entryParser: function(entry) {
-
       return {
-        wsServer: new WebSocketServer({
-          server: new EventEmitter() // fake server for web socket server
-        }),
         target: entry
       };
     }

@@ -1,6 +1,6 @@
 var async = require('async');
 
-var EventEmitter = require('eventemitter3').EventEmitter;
+var EventEmitter = require('eventemitter3');
 var path = require('path');
 var CertScanner = require('./certScanner');
 var extend = require('extend');
@@ -10,16 +10,14 @@ var token = require('crypto').randomBytes(64).toString('hex');
 var JSONfn = require('jsonfn').JSONfn;
 
 // TODO: Windows support?
-function exitIfEACCES(err)
-{
-  if(err && err.syscall === 'bind' && err.code === 'EACCES') {
+function exitIfEACCES(err) {
+  if (err && err.syscall === 'bind' && err.code === 'EACCES') {
     this.logError("Unable to bind to port, exiting! Hopefully we will be restarted with privileges to bind the port.");
     process.exit(1);
   }
 }
 
-function HttpMaster()
-{
+function HttpMaster() {
   var workers = this.workers = [];
   this.tlsSessionStore = {};
 
@@ -39,7 +37,7 @@ function HttpMaster()
 
   var self = this;
   cluster.on('exit', function(worker, code, signal) {
-    if(!self.autoRestartWorkers) {
+    if (!self.autoRestartWorkers) {
       return;
     }
     self.logError("Worker " + worker.id + " failed with code " + code + "/" + signal + " ... starting replacement");
@@ -71,11 +69,14 @@ function initWorker(cb) {
     msg = JSON.parse(msg);
     process.emit('msg:' + msg.type, msg.data, worker);
     worker.emit('msg:' + msg.type, msg.data);
-    worker.emit('msg', {type: msg.type, data: msg.data});
+    worker.emit('msg', {
+      type: msg.type,
+      data: msg.data
+    });
   });
-  
-  worker.once('msg:started', function() {
-    cb();
+
+  worker.once('msg:started', function(err) {
+    cb(err);
   });
   worker.on('msg:exception', function(err) {
     exitIfEACCES.call(self, err);
@@ -90,10 +91,10 @@ function initWorker(cb) {
 
   worker.on('msg:tlsSession:get', function(id) {
     var data = '';
-    if(self.tlsSessionStore[id]) {
+    if (self.tlsSessionStore[id]) {
       data = self.tlsSessionStore[id].data;
     }
-    worker.sendMessage('session:'+id, data);
+    worker.sendMessage('session:' + id, data);
   });
 
   return worker;
@@ -111,41 +112,51 @@ HttpMaster.prototype.logError = function(msg) {
 
 function preprocessPortConfig(config, cb) {
   var self = this;
-  if(config.ssl) {
+  if (config.ssl) {
 
     var loadsToDo = [];
     loadsToDo.push(config.ssl);
-    if(config.ssl.SNI) {
-      for(var key in config.ssl.SNI)
+    if (config.ssl.SNI) {
+      for (var key in config.ssl.SNI)
         loadsToDo.push(config.ssl.SNI[key]);
     }
     async.each(loadsToDo, loadKeysForContext, function(err) {
-      if(!config.ssl.certDir)
+      if (!config.ssl.certDir)
         return cb(config);
 
-      var certScanner = new CertScanner(config.ssl.certDir, {read: true, onlyWithKey: true});
+      var certScanner = new CertScanner(config.ssl.certDir, {
+        read: true,
+        onlyWithKey: true
+      });
       certScanner.on('notice', function(msg) {
         self.logNotice(msg);
       });
       self.logNotice("Scanning for certificates in directory: " + config.ssl.certDir);
       certScanner.scan(function(err, SNIconfig) {
-        if(err)  {
+        if (err) {
           self.logError("Error processing certDir: " + err.toString());
           return cb(config);
         }
         //sslConfig = {SNI: sslConfig};
-        if(config.ssl.primaryDomain) {
+        if (config.ssl.primaryDomain) {
           config.ssl = extend(true, {}, config.ssl, SNIconfig[config.ssl.primaryDomain]);
+        } else {
+          var firstKey = Object.keys(SNIconfig)[0];
+          if (firstKey) {
+            self.logNotice("Primary domain not set, assuming: " + firstKey);
+            config.ssl = extend(true, {}, config.ssl, SNIconfig[firstKey]);
+          }
         }
-        config.ssl = extend(true, {}, config.ssl, {SNI: SNIconfig});
+        config.ssl = extend(true, {}, config.ssl, {
+          SNI: SNIconfig
+        });
         certScanner.removeAllListeners();
         cb(config);
       });
 
     });
 
-  }
-  else {
+  } else {
     cb(config);
   }
 }
@@ -159,7 +170,7 @@ function preprocessConfig(config, cb) {
     });
   }, function() {
 
-    if(config.debug === 'config')
+    if (config.debug === 'config')
       console.log(require('util').inspect(config, false, null));
     cb(config);
   });
@@ -168,14 +179,14 @@ function preprocessConfig(config, cb) {
 
 function setupDi() {
   var self = this;
-  var di = this.di  = new DI();
+  var di = this.di = new DI();
   di.onMissing = function(name) {
     var m;
-    if( (m = name.match(/(.+)Service$/))) {
+    if ((m = name.match(/(.+)Service$/))) {
       name = m[1];
       try {
-        this.bindType(name + 'Service', require(path.join(__dirname , '..', 'modules', 'services', name)));
-      } catch(err) {
+        this.bindType(name + 'Service', require(path.join(__dirname, '..', 'modules', 'services', name)));
+      } catch (err) {
         console.log(err && err.message);
         return;
       }
@@ -197,14 +208,14 @@ function setupDi() {
   config.modules = config.modules || {};
 
   Object.keys(config.modules).forEach(function(moduleName) {
-    if(!config.modules[moduleName])
+    if (!config.modules[moduleName])
       return;
     var di = self.di.makeChild();
     di.bindInstance('di', di);
     di.bindInstance('moduleConfig', config.modules[moduleName]);
     try {
       di.resolve(require(path.join(__dirname, '..', 'modules', moduleName)));
-    } catch(err) {
+    } catch (err) {
       console.error("Error loading module:", moduleName, err);
     }
   });
@@ -220,30 +231,29 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
 
     setupDi.call(self);
 
-    if((config.workerCount || 0) !== self.workerCount) {
+    if ((config.workerCount || 0) !== self.workerCount) {
       //self.logError("Different workerCount, exiting! Hopefully we will be restarted and run with new workerCount");
       var err = new Error('Got different workerCount than initialized with');
       self.emit('error', err);
       self.emit('restartIfPossible'); // http-master may exit
-      if(reloadDone)
+      if (reloadDone)
         reloadDone(err);
       return;
     }
 
-    if(self.singleWorker) {
+    if (self.singleWorker) {
       self.singleWorker.loadConfig(config, function(err) {
         exitIfEACCES.call(self, err);
-        if(!err)
+        if (!err)
           self.emit('allWorkersReloaded');
         else
           self.emit('error', err);
 
         self.emit('allWorkersReloaded');
-        if(reloadDone)
+        if (reloadDone)
           reloadDone(err);
       });
-    }
-    else {
+    } else {
       async.parallel(workers.filter(function(worker) {
           return !!worker;
         }) // dead workers leave undefined keys
@@ -258,12 +268,13 @@ HttpMaster.prototype.reload = function(config, reloadDone) {
             });
             worker.sendMessage('unbind');
           };
-        }), function(err) {
-          if(!err)
+        }),
+        function(err) {
+          if (!err)
             self.emit('allWorkersReloaded');
           else
             self.emit('error', err);
-          if(reloadDone)
+          if (reloadDone)
             reloadDone(err);
         });
     }
@@ -284,8 +295,8 @@ HttpMaster.prototype.init = function(config, initDone) {
     setupDi.call(self);
 
     self.workerCount = config.workerCount || 0;
-    if(self.workerCount === 0) {
-      var singleWorker = self.singleWorker = new (require('./HttpMasterWorker'))();
+    if (self.workerCount === 0) {
+      var singleWorker = self.singleWorker = new(require('./HttpMasterWorker'))();
 
       singleWorker.sendMessage = function(type, data) {
         process.emit('msg:' + type, data);
@@ -302,19 +313,18 @@ HttpMaster.prototype.init = function(config, initDone) {
         self.emit('allWorkersStarted');
 
         //runModules("allWorkersStarted", config);
-        if(initDone)
-          initDone()
-
+        if (initDone) {
+          initDone();
+        }
       });
-    }
-    else {
-      while(!token) {} // busy wait in case we have not got it yet..
+    } else {
+      while (!token) {} // busy wait in case we have not got it yet..
       self.token = token;
 
       async.times((config.workerCount), function(n, next) {
-        var worker = initWorker.call(self, function() {
-          next(null);
-        })
+        var worker = initWorker.call(self, function(err) {
+          next(err);
+        });
         worker.on('msg:logNotice', self.logNotice.bind(self));
         worker.on('msg:logError', self.logError.bind(self));
         worker.on('msg:masterLoadService', function(name) {
@@ -322,19 +332,16 @@ HttpMaster.prototype.init = function(config, initDone) {
         });
         workers.push(worker);
       }, function(err) {
-        if (err) {
-          return initDone(err);
-        }
-
         self.emit('allWorkersStarted');
 
-        //runModules("allWorkersStarted", config);
-        if(initDone)
-          initDone();
+        if (initDone)
+          initDone(err);
       });
-    };
+    }
   }
   preprocessConfig.call(this, config, actualInit);
-}
+};
 
 module.exports = HttpMaster;
+module.exports.CertScanner = CertScanner;
+module.exports.regexpHelper = require('./regexpHelper');

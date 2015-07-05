@@ -178,22 +178,22 @@ describe('SSL directory scanner', function() {
     scanner.scan(function(err, scannedConfig) {
       assert.deepEqualIgnoreOrder(scannedConfig, {
         'pacmanvps.com': {
-          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem'
+          'cert': path.normalize(sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem')
         },
         '*.pacmanvps.com': {
-          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem'
+          'cert': path.normalize(sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem')
         },
         'jira-e-instruments.com': {
-          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem'
+          'cert': path.normalize(sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem')
         },
         'www.jira-e-instruments.com': {
-          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem'
+          'cert': path.normalize(sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem')
         },
         'softwaremill.com': {
-          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem'
+          'cert': path.normalize(sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem')
         },
         '*.softwaremill.com': {
-          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem'
+          'cert': path.normalize(sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem')
         }
       });
       cb(err);
@@ -207,28 +207,28 @@ describe('SSL directory scanner', function() {
     scanner.scan(function(err, scannedConfig) {
       assert.deepEqualIgnoreOrder(scannedConfig, {
         'pacmanvps.com': {
-          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem',
-          'ca': sslDir + 'ca/startssl/startssl.pem'
+          'cert': path.normalize(sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem'),
+          'ca': path.normalize(sslDir + 'ca/startssl/startssl.pem')
         },
         '*.pacmanvps.com': {
-          'cert': sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem',
-          'ca': sslDir + 'ca/startssl/startssl.pem'
+          'cert': path.normalize(sslDir + 'pacmanvps.com/startssl-wildcard.pacmanvps.com.pem'),
+          'ca': path.normalize(sslDir + 'ca/startssl/startssl.pem')
         },
         'jira-e-instruments.com': {
-          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem',
-          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+          'cert': path.normalize(sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem'),
+          'ca': path.normalize(sslDir + 'ca/unizeto/unizeto.pem')
         },
         'www.jira-e-instruments.com': {
-          'cert': sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem',
-          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+          'cert': path.normalize(sslDir + 'jira-e-instruments.com/unizeto-jira-e-instruments.com.pem'),
+          'ca': path.normalize(sslDir + 'ca/unizeto/unizeto.pem')
         },
         'softwaremill.com': {
-          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem',
-          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+          'cert': path.normalize(sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem'),
+          'ca': path.normalize(sslDir + 'ca/unizeto/unizeto.pem')
         },
         '*.softwaremill.com': {
-          'cert': sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem',
-          'ca': sslDir + 'ca/unizeto/unizeto.pem'
+          'cert': path.normalize(sslDir + 'softwaremill.com/unizeto-wildcard.softwaremill.com.pem'),
+          'ca': path.normalize(sslDir + 'ca/unizeto/unizeto.pem')
         }
       });
       cb(err);

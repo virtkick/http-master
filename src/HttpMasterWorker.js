@@ -295,7 +295,7 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
 
   lazyGetTcpServer.call(self, portNumber, host, function(err, tcpServer) {
 
-    if (err) return callback(err, server);
+    if (err) return callback(err, null);
 
     tcpServer.removeAllListeners();
     tcpServer.on('connection', function(socket) {
@@ -316,6 +316,8 @@ function handleConfig(config, configHandled) {
 
   self.config = config;
 
+  var errors = {};
+
   async.parallel(Object.keys(config.ports || {}).map(function(portEntry) {
     return function(asyncCallback) {
       var m;
@@ -332,6 +334,7 @@ function handleConfig(config, configHandled) {
             self.logError('Error while starting entry ' + entryString + ' : ' + err.toString());
             if (err.stack)
               self.logError(err.stack);
+            errors[portEntry] = err;
           }
           if (server) {
             self.logNotice('Listening on port: ' + entryString);
@@ -343,15 +346,19 @@ function handleConfig(config, configHandled) {
       }
     };
   }), function(err, results) {
-    if (err) {
-      return configHandled(err);
-    }
+    // if (err) {
+    //   return configHandled(err);
+    // } 
     self.logNotice('Start successful');
 
     self.servers = results.filter(function(server) {
       return !!server;
     });
-    configHandled();
+    if(Object.keys(errors).length == 0) {
+      configHandled(null);
+    } else {
+      configHandled(errors);
+    }
   });
 }
 
@@ -459,8 +466,10 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
   });
 
   handleConfig.call(this, config, function(err) {
-    if (err) return configLoaded(err);
-    self.gcServers(configLoaded);
+    self.gcServers(function() {
+      if(configLoaded)
+        configLoaded(err);
+    });
   });
 };
 
