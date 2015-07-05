@@ -35,9 +35,6 @@ function HttpMaster()
     args: []
   });
 
-
-
-  
   this.autoRestartWorkers = true;
 
   var self = this;

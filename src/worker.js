@@ -4,7 +4,7 @@ var util = require('util');
 
 var droppedPrivileges = false;
 
-process.title = 'http-master-worker#'+cluster.worker.id;
+process.title = 'http-master-worker#' + cluster.worker.id;
 
 function logError(str) {
   console.log('[' + cluster.worker.id + '] ' + str);
@@ -15,8 +15,8 @@ console.log = function() {
   process.sendMessage("logNotice", util.format.apply(this, arguments));
 };
 console.error = function() {
-  process.sendMessage("logError",  util.format.apply(this, arguments));
-}
+  process.sendMessage("logError", util.format.apply(this, arguments));
+};
 
 // TODO: move to common
 function dropPrivileges() {
@@ -49,19 +49,16 @@ var worker = new HttpMasterWorker({
   tlsSessionStore: {
     get: function(id, cb) {
       process.once('msg:session:' + id.toString('base64'), function(data) {
-//        logNotice("Got session data " + data);
         cb(null, data.length ? new Buffer(data, 'base64') : null, null);
       });
-//      logNotice("Get session data " + id.toString('base64'));
       process.sendMessage('tlsSession:get', id.toString('base64'));
     },
     set: function(id, data, cb) {
-//      logNotice("Set session data " + id.toString('base64') + " " + data.toString('base64'));
       process.sendMessage('tlsSession:set', {
         id: id.toString('base64'),
         data: data.toString('base64')
       });
-      if(cb)
+      if (cb)
         cb();
     }
   }
@@ -86,8 +83,11 @@ worker.on('loadService', function(service) {
 var JSONfn = require('jsonfn').JSONfn;
 
 process.on('message', function(msg) {
-  var msg = JSONfn.parse(msg);
-  process.emit('msg', {type: msg.type, data: msg.data});
+  msg = JSONfn.parse(msg);
+  process.emit('msg', {
+    type: msg.type,
+    data: msg.data
+  });
   process.emit('msg:' + msg.type, msg.data);
 });
 
@@ -105,7 +105,7 @@ process.on('msg:start', function(data) {
   worker.loadConfig(data.config, function(err) {
     if (err) {
       process.sendMessage('exception', err);
-      logError("Exitting worker due to error: " + err.toString())
+      logError("Exitting worker due to error: " + err.toString());
       return process.exit();
     }
     process.sendMessage("started");
@@ -120,7 +120,7 @@ process.on('msg:unbind', function() {
 });
 
 process.on('msg', function(data) {
-  if(worker.handleMessage)
+  if (worker.handleMessage)
     worker.handleMessage(data);;
 });
 
@@ -129,18 +129,18 @@ var originalError = console.error;
 
 process.on('msg:reload', function(config) {
   if (config.silent) {
-    console.log = function(msg) {}
-    console.error = function(msg) {}
+    console.log = function(msg) {};
+    console.error = function(msg) {};
   } else {
     console.log = originalLog;
     console.error = originalError;
-  }    
+  }
 
   worker.loadConfig(config, function(err) {
 
     if (err) {
       process.sendMessage('exception', err);
-      logError("Exitting worker due to error: " + err.toString())
+      logError("Exitting worker due to error: " + err.toString());
       return process.exit();
     }
     process.sendMessage("started");
@@ -150,3 +150,5 @@ process.on('msg:reload', function(config) {
 process.on('msg:unregister', function() {
   process.removeAllListeners();
 });
+
+process.on('SIGINT', function() {});
