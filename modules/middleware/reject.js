@@ -12,7 +12,6 @@ function loadHtmlFile(errorHtmlFile) {
 }
 
 module.exports = function RejectMiddleware(config, portConfig) {
-
   var content;
   var errorHtmlFile = portConfig.errorHtmlFile || config.errorHtmlFile;
   if(errorHtmlFile) {
@@ -31,13 +30,22 @@ module.exports = function RejectMiddleware(config, portConfig) {
 
       content = target.html || content;
 
-      if(content) {
+      var contentType = req.headers['accept'] || '';
+
+      if(content && contentType.match(/text\/html/)) {
         head['Content-Type'] = 'text/html';
         res.writeHead(target.code, head);
         res.write(content);
         res.end();
+      } else if(contentType.match(/application\/json/)) {
+        head['Content-Type'] = 'application/json';
+        res.writeHead(target.code, head);
+        res.end(JSON.stringify({
+          error: target.code + ' ' + (http.STATUS_CODES[target.code] || 'Forbidden')
+        }));
       } else {
-        res.statusCode = target.code;
+        head['Content-Type'] = 'text/plain';
+        res.writeHead(target.code, head);
         res.end(target.code + ' ' + (http.STATUS_CODES[target.code] || 'Forbidden') );
       }
 
@@ -58,5 +66,3 @@ module.exports = function RejectMiddleware(config, portConfig) {
     }
   };
 };
-
-

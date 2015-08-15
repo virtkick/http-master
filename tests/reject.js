@@ -1,11 +1,12 @@
 'use strict';
 require('should');
 
-function makeReq(host, path, hostMatch, pathMatch) {
+function makeReq(host, path, hostMatch, pathMatch, contentType) {
   return {
     url: path,
     headers: {
-      host: host
+      host: host,
+      accept: contentType
     },
     parsedUrl: require('url').parse(path),
     connection: {},
@@ -14,17 +15,17 @@ function makeReq(host, path, hostMatch, pathMatch) {
   };
 }
 
-var onTarget;1
+var onTarget;
 
 describe('reject middleware', function() {
   var rejectMiddleware;
   beforeEach(function() {
     rejectMiddleware = require('../modules/middleware/reject')({}, {});
   });
-  function makeTest(target, host, path, cb, hostMatch, pathMatch) {
+  function makeTest(target, host, path, cb, hostMatch, pathMatch, contentType) {
     onTarget = cb;
     var written = '';
-    rejectMiddleware.requestHandler(makeReq(host, path, hostMatch, pathMatch), {
+    rejectMiddleware.requestHandler(makeReq(host, path, hostMatch, pathMatch, contentType), {
       end: function(str) {
         cb(written + (str?str:''), this);
       },
@@ -73,7 +74,7 @@ describe('reject middleware', function() {
         str.should.equal('<b>Hello, world!</b><img src="data:image/png;base64,dGVzdA==" />');
         res.statusCode.should.equal(403);
         endTest();
-    });
+    },  null, null, 'text/html');
   });
 
 
@@ -88,7 +89,7 @@ describe('reject middleware', function() {
         str.should.equal('<b>Hello, world!</b><img src="data:image/png;base64,dGVzdA==" />');
         res.statusCode.should.equal(403);
         endTest();
-    });
+    },  null, null, 'text/html');
   });
 
   it('should show default errorHtmlPage when site is offline (from portConfig)', function(endTest) {
@@ -103,9 +104,17 @@ describe('reject middleware', function() {
         str.should.equal('<b>Hello, world!</b><img src="data:image/png;base64,dGVzdA==" />');
         res.statusCode.should.equal(403);
         endTest();
-    });
+    }, null, null, 'text/html');
   });
 
+  it('should not show htmlPage if requesting json', function(endTest) {
+
+    makeTest({
+        htmlFile: errorHtmlFile
+      }, '', '', function(str, res) {
+        str.should.equal("{\"error\":\"403 Forbidden\"}");
+        res.statusCode.should.equal(403);
+        endTest();
+    },  null, null, 'application/json');
+  });
 });
-
-
