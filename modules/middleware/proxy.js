@@ -64,13 +64,14 @@ module.exports = function ProxyMiddleware(config, portConfig, di) {
 
   return {
     requestHandler: function(req, res, next, dispatchTarget) {
-      req.connection.proxy = proxy;
-      req.connection.agent = agent;
+      req.__proxy = proxy;
+      req.__agent = agent;
       req.next = next;
       // workaround for node-http-proxy/#591
       if(!req.headers.host) {
         req.headers.host = '';
       }
+            
       var proxyTarget = rewriteTargetAndPathIfNeeded(req, dispatchTarget);
       var m = req.headers.host.match(/^(.+):(\d+)$/);
       if(m) {

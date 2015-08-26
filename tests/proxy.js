@@ -118,7 +118,7 @@ describe('proxy middleware', function() {
         });
       });
       preparedRequest.write(input);
-      preparedRequest.end();      
+      preparedRequest.end();
       preparedRequest.on('error', function(err) {
         cb(err);
       });
@@ -194,11 +194,11 @@ describe('proxy middleware', function() {
 
       server1.on('request', function(req, res) {
         proxyWithConfigAgent.requestHandler(req, res, function() {}, parsedTarget);
-        req.connection.agent.maxSockets.should.equal(agentSettings.maxSockets);
+        req.__agent.maxSockets.should.equal(agentSettings.maxSockets);
         proxyWithNoAgent.requestHandler(req, res, function () {}, parsedTarget);
-        req.connection.agent.should.equal(false);
+        req.__agent.should.equal(false);
         proxyWithPortConfigAgent.requestHandler(req, res, function () {}, parsedTarget);
-        req.connection.agent.maxSockets.should.equal(agentSettings.maxSockets);
+        req.__agent.maxSockets.should.equal(agentSettings.maxSockets);
         res.end();
       });
       http11Request('hello', function(err, data) {
