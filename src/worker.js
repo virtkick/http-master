@@ -151,3 +151,9 @@ process.on('msg:unregister', function() {
 });
 
 process.on('SIGINT', function() {});
+
+if(global.gc) { // if gc is exposed then utilize it
+  setInterval(function() {
+    global.gc();
+  }, 30000);
+}
