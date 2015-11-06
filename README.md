@@ -637,7 +637,7 @@ Also provided is `http-master-upstart.conf` which can be used with Upstart. As a
 ## Contributors
 
 * Damian Kaczmarek <damian@codecharm.co.uk>
-* Damian Nowak <damian.nowak@atlashost.eu>
+* Damian Nowak <nowaker@virtkick.com>
 * Sergey Zarouski <sergey@webuniverse.io>
 
 <a name="sponsors"/>
@@ -655,6 +655,6 @@ Example sponsored features could include:
 
 <a name="license"/>
 ## License
-Copyright (c) 2013-2014 [Code Charm Ltd](http://codecharm.co.uk)
+Copyright (c) 2013-2015 [Virtkick, Inc.](https://www.virtkick.com/)
 
 Licensed under the MIT license, see `LICENSE` for details.
