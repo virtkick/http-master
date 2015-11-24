@@ -1,13 +1,14 @@
 'use strict';
-var crypto = require('crypto'),
-  net = require('net'),
-  http = require('http'),
-  async = require('async'),
-  regexpQuote = require('./DispatchTable').regexpQuote,
-  tls = require('tls'),
-  DI = require('./di'),
-  path = require('path'),
-  extend = require('extend');
+var crypto = require('crypto');
+var net = require('net');
+var http = require('http');
+var async = require('async');
+var regexpQuote = require('./DispatchTable').regexpQuote;
+var tls = require('tls');
+var DI = require('./di');
+var path = require('path');
+var extend = require('extend');
+var ocsp = require('ocsp');
 
 var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
