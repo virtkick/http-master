@@ -232,6 +232,8 @@ function serverForPortConfig(host, portNumber, portConfig) {
       portConfig.ticketKeys = self.token;
     }
 
+    server = baseModule.createServer(portConfig.ssl);
+
     var cache = this.ocspCache = this.ocspCache || new ocsp.Cache();
     server.on('OCSPRequest', function(cert, issuer, cb) {
       ocsp.getOCSPURI(cert, function(err, uri) {
