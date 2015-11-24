@@ -328,6 +328,11 @@ function handleConfig(config, configHandled) {
 
   var errors = {};
 
+  if (config.disableTlsClientRenegotiation) {
+    tls.CLIENT_RENEG_LIMIT = 0;
+    tls.CLIENT_RENEG_WINDOW = 0;
+  }
+
   async.parallel(Object.keys(config.ports || {}).map(function(portEntry) {
     return function(asyncCallback) {
       var m;
