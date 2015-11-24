@@ -13,11 +13,10 @@ var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
 var EventEmitter = require('eventemitter3');
 
-
 var punycode = require('punycode');
 
 var createCredentials;
-if(tls.createSecureContext) {
+if (tls.createSecureContext) {
   createCredentials = tls.createSecureContext;
 } else {
   createCredentials = crypto.createCredentials;
@@ -83,7 +82,7 @@ function loadKeysforConfigEntry(config, callback) {
       }
 
       async.each(todo, function(key, sniLoaded) {
-        if(config.ssl.spdy && SNI[key].spdy === false) {
+        if (config.ssl.spdy && SNI[key].spdy === false) {
           SNI[key].NPNProtocols = ['http/1.1', 'http/1.0'];
           SNI[key].ALPNProtocols = ['http/1.1', 'http/1.0'];
         }
@@ -127,23 +126,22 @@ function handlePortEntryConfig(host, portNumber, portEntryConfig, callback) {
 }
 
 function patchSslConfig(portEntrySslConfig) {
-  if(nodeVersion >= 0.11) { // use fancy cipher settings only for 0.11
-    if(portEntrySslConfig.honorCipherOrder !== false) {
-       // prefer server ciphers over clients - prevents BEAST attack
-       portEntrySslConfig.honorCipherOrder = true;
+  if (nodeVersion >= 0.11) { // use fancy cipher settings only for 0.11
+    if (portEntrySslConfig.honorCipherOrder !== false) {
+      // prefer server ciphers over clients - prevents BEAST attack
+      portEntrySslConfig.honorCipherOrder = true;
     }
-    if(!portEntrySslConfig.ciphers) {
+    if (!portEntrySslConfig.ciphers) {
       portEntrySslConfig.ciphers = 'EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+AES+SHA:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS::+RC4:RC4';
-      if(portEntrySslConfig.disableWeakCiphers) {
+      if (portEntrySslConfig.disableWeakCiphers) {
         portEntrySslConfig.ciphers += ':!RC4';
       }
-    }
-    else if(portEntrySslConfig.disableWeakCiphers) {
+    } else if (portEntrySslConfig.disableWeakCiphers) {
       this.logNotice('disableWeakCiphers is incompatible with pre-set cipher list');
     }
-  } else if(portEntrySslConfig.disableWeakCiphers) {
+  } else if (portEntrySslConfig.disableWeakCiphers) {
     this.logNotice('disableWeakCiphers is unsupported for node 0.10');
-  }  
+  }
 }
 
 
@@ -160,11 +158,11 @@ function createHandlers(portNumber, portConfig) {
   di.onMissing = function(name) {
 
     var m;
-    if( (m = name.match(/(.+)Middleware$/))) {
+    if ((m = name.match(/(.+)Middleware$/))) {
       name = m[1];
       try {
         di.bindType(name + 'Middleware', require('../' + path.join('modules/middleware/', name)));
-      } catch(err) {
+      } catch (err) {
         console.log(err && err.message);
         return;
       }
@@ -175,13 +173,13 @@ function createHandlers(portNumber, portConfig) {
   var router = di.resolve('routerMiddleware');
 
   // allow also for specifying 80: 'http://code2flow.com:8080'
-  if(typeof portConfig !== 'object' || portConfig instanceof Array) {
+  if (typeof portConfig !== 'object' || portConfig instanceof Array) {
     portConfig = {
       router: portConfig
     };
   }
 
-  if(!(portConfig.router instanceof Array)) {
+  if (!(portConfig.router instanceof Array)) {
     portConfig.router = [portConfig.router];
   }
 
@@ -196,7 +194,7 @@ function createHandlers(portNumber, portConfig) {
     },
     error: function(err, req, res) {
       var code = 500;
-      if(!err)
+      if (!err)
         code = 503;
       reject.requestHandler(req, res, null, reject.entryParser(500));
     }
@@ -209,17 +207,17 @@ function serverForPortConfig(host, portNumber, portConfig) {
   var server;
 
   self.cachedServers = self.cachedServers || {};
-  var key = (host? host + ':' + portNumber : portNumber);
+  var key = (host ? host + ':' + portNumber : portNumber);
 
 
   var sslCachedConfig = extend({}, portConfig.ssl);
   delete sslCachedConfig.SNI;
 
   var cached = self.cachedServers[key];
-  if(cached) {
+  if (cached) {
     server = self.cachedServers[key].server;
     server.removeAllListeners();
-    if(JSON.stringify(sslCachedConfig) === cached.sslConfig) {
+    if (JSON.stringify(sslCachedConfig) === cached.sslConfig) {
       return server;
     }
   }
@@ -229,11 +227,24 @@ function serverForPortConfig(host, portNumber, portConfig) {
 
     patchSslConfig.call(self, portConfig.ssl);
 
-    if(self.token) {
-        portConfig.ticketKeys = self.token;
+    if (self.token) {
+      portConfig.ticketKeys = self.token;
     }
 
-    server = baseModule.createServer(portConfig.ssl);
+    var cache = this.ocspCache = this.ocspCache || new ocsp.Cache();
+    server.on('OCSPRequest', function(cert, issuer, cb) {
+      ocsp.getOCSPURI(cert, function(err, uri) {
+        if (err) {
+          return cb(err);
+        }
+        var req = ocsp.request.generate(cert, issuer);
+        var options = {
+          url: uri,
+          ocsp: req.data
+        };
+        cache.request(req.id, options, cb);
+      });
+    });
 
     if (!portConfig.ssl.skipWorkerSessionResumption) {
       server.on('resumeSession', self.tlsSessionStore.get.bind(self.tlsSessionStore));
@@ -294,7 +305,6 @@ function handleConfigEntryAfterLoadingKeys(host, portNumber, config, callback) {
   });
 
   lazyGetTcpServer.call(self, portNumber, host, function(err, tcpServer) {
-
     if (err) return callback(err, null);
 
     tcpServer.removeAllListeners();
@@ -348,13 +358,13 @@ function handleConfig(config, configHandled) {
   }), function(err, results) {
     // if (err) {
     //   return configHandled(err);
-    // } 
+    // }
     self.logNotice('Start successful');
 
     self.servers = results.filter(function(server) {
       return !!server;
     });
-    if(Object.keys(errors).length == 0) {
+    if (Object.keys(errors).length == 0) {
       configHandled(null);
     } else {
       configHandled(errors);
@@ -412,24 +422,25 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
   var self = this;
 
   var events = new EventEmitter();
+
   function messageHandler(msg) {
-    events.emit('msg:'+msg.type, msg.data);
+    events.emit('msg:' + msg.type, msg.data);
   }
   this.handleMessage = messageHandler;
 
   this.unbindAll(function() {});
-  if(this.di) {
+  if (this.di) {
     this.emit('reload');
   }
   var di = this.di = new DI();
 
   di.onMissing = function(name) {
     var m;
-    if( (m = name.match(/(.+)Service$/))) {
+    if ((m = name.match(/(.+)Service$/))) {
       name = m[1];
       try {
         this.bindType(name + 'Service', require(path.join(__dirname, '..', 'modules/services/', name)));
-      } catch(err) {
+      } catch (err) {
         console.log(err && err.message);
         return;
       }
@@ -453,21 +464,21 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
   });
   di.bindInstance('master', null);
   Object.keys(config.modules || {}).forEach(function(moduleName) {
-    if(!config.modules[moduleName])
+    if (!config.modules[moduleName])
       return;
     var di = self.di.makeChild();
     di.bindInstance('di', di);
     di.bindInstance('moduleConfig', config.modules[moduleName]);
     try {
       di.resolve(require(path.join(__dirname, '..', 'modules', moduleName)));
-    } catch(err) {
+    } catch (err) {
       console.error("Error loading module:", moduleName, err);
     }
   });
 
   handleConfig.call(this, config, function(err) {
     self.gcServers(function() {
-      if(configLoaded)
+      if (configLoaded)
         configLoaded(err);
     });
   });
@@ -482,17 +493,16 @@ HttpMasterWorker.prototype.gcServers = function(gcFinished) {
     if (require('events').EventEmitter.listenerCount(server, 'connection') === 0) {
       toClose.push(server);
       delete self.tcpServers[key];
-      if(self.cachedServers[key]) {
+      if (self.cachedServers[key]) {
         self.cachedServers[key].server.removeAllListeners();
-        delete self.cachedServers[key];  
-      }      
+        delete self.cachedServers[key];
+      }
     }
   });
   async.each(toClose, function(server, cb) {
     server.close();
     cb();
   }, gcFinished);
-
 };
 
 module.exports = HttpMasterWorker;
