@@ -1,7 +1,9 @@
 module.exports = function AddHeaderMiddleware() {
   return {
     requestHandler: function(req, res, next, target) {
-      res.setHeader(target[0], target[1]);
+      if(!req.upgrade) {
+        res.setHeader(target[0], target[1]);
+      }
       next();
     },
     entryParser: function(config) {
