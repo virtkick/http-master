@@ -19,7 +19,10 @@ module.exports = function LogFileService(config, commService, master, worker) {
       var stream;
 
       function openLogFile(logFile) {
-
+        if(logFile === 'stdout' || logFile === 'stderr') {
+          stream = process[logFile];
+          return stream;
+        }
         stream = fs.createWriteStream(logFile, {
           'flags': 'a'
         });
