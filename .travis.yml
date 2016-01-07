@@ -3,6 +3,11 @@ node_js:
 - '4.1'
 - '0.12'
 addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-4.8
   code_climate:
     repo_token:
       secure: Ew9Pi/cVS/herXT082k3E/xwcpI8BORzgQpcLCdtir7nXqRRi7g0HOR31OH375+xO4F5sJLGKNSK5zJ1iSJvxChJXdwU4e2ZEgTlbm8z7Ewh7kd39dGg+JIqwcIrqpIXyniqbw6Ntu6Jwk8QjQXgbtkYwNw35WxsLGEF7fKY41M=
