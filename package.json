@@ -27,10 +27,10 @@
   "license": "MIT",
   "dependencies": {
     "async": "1.4.2",
-    "bufferutil": "^1.2.1",
+    "bufferutil": "1.2.1",
     "bugsnag": "1.6.4",
     "compression": "1.6.0",
-    "connect-gzip-static": "^1.0.0",
+    "connect-gzip-static": "1.0.0",
     "eventemitter3": "1.1.1",
     "extend": "2.0.1",
     "http-auth": "2.2.5",
@@ -46,8 +46,8 @@
     "send": "0.13.0",
     "spdy": "3.0.0",
     "uid-number": "0.0.6",
-    "utf-8-validate": "^1.2.1",
-    "ws": "^1.0.1",
+    "utf-8-validate": "1.2.1",
+    "ws": "1.0.1",
     "x509.js": "1.0.0",
     "xregexp": "2.0.0",
     "yargs": "3.26.0"
