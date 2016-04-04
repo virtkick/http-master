@@ -240,6 +240,10 @@ function serverForPortConfig(host, portNumber, portConfig) {
         if (err) {
           return cb(err);
         }
+        if(uri === null) {
+          // handle not working OCSP server
+          return cb();
+        }
         var req = ocsp.request.generate(cert, issuer);
         var options = {
           url: uri,
