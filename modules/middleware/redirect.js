@@ -4,6 +4,9 @@ var regexpHelper = require('../../src/regexpHelper');
 module.exports = function RedirectMiddleware() {
   return {
     requestHandler: function(req, res, next, target) {
+      // skip for websockets
+      if(req.upgrade) { return next(); }
+      
       if (req.match)
         target = regexpHelper(target, req.match);
 
