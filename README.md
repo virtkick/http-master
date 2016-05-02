@@ -18,6 +18,7 @@
   * [Proxy](#proxy)
   * [URL rewrite](#urlrewrite)
   * [Redirect](#redirect)
+  * [Automatic free SSL / Letsencrypt](#autossl)
   * [SSL](#ssl)
   * [Websockify](#websockify)
   * [Logging](#logging)
@@ -380,6 +381,35 @@ ports: {
       "*": 8080
     },
     ssl: {} # ssl should be configured here
+  }
+}
+```
+
+<a name="autossl"/>
+## Automatic free SSL / Letsencrypt
+The following configuration will enable free encryption of websites. See [https://letsencrypt.org/](letsencrypt website) for details.
+
+```YAML
+ports: {
+  80: {
+    router: {
+      "virtkick.com": "https://virtkick.com/[path]",
+    }
+  },
+  443: {
+    router: {
+      "virtkick.com": 3333
+    },
+    ssl: {
+      letsencrypt: true
+    }
+  }
+},
+modules: {
+  letsencrypt: {
+    configDir: '/etc/letsencrypt', # needs to be writable
+    email: 'your@email.com',
+    agreeTos: true
   }
 }
 ```
