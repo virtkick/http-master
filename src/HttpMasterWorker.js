@@ -9,6 +9,7 @@ var DI = require('./di');
 var path = require('path');
 var extend = require('extend');
 var ocsp = require('ocsp');
+let Promise = require('bluebird');
 
 var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
@@ -53,6 +54,9 @@ function lazyGetTcpServer(port, host, cb) {
 
 function loadKeysforConfigEntry(config, callback) {
   var key;
+  if(config.ssl === true) {
+    config.ssl = {};
+  }
   if (config.ssl) {
     var SNI = config.ssl.SNI;
     var SNImatchers = {};
@@ -60,21 +64,23 @@ function loadKeysforConfigEntry(config, callback) {
       for (key in config.ssl.SNI) {
         SNImatchers[key] = new RegExp('^' + regexpQuote(key).replace(/^\\\*\\\./g, '^([^.]+\\.)?') + '$', 'i'); // domain names are case insensitive
       }
-      var sniCallback = function(hostname, cb) {
-        hostname = punycode.toUnicode(hostname);
-        for (var key in SNI) {
-          if (hostname.match(SNImatchers[key])) {
-            if (cb) // since node 0.11.5
-              return cb(null, SNI[key]);
-            else
-              return SNI[key];
-          }
-        }
-        if (cb)
-          return cb(null);
-      };
-      config.ssl.SNICallback = sniCallback;
     }
+    var sniCallback = (hostname, cb) => {
+      hostname = punycode.toUnicode(hostname);
+      for (var key in SNI) {
+        if (hostname.match(SNImatchers[key])) {
+          if (cb) // since node 0.11.5
+            return cb(null, SNI[key]);
+          else
+            return SNI[key];
+        }
+      }
+      if(this.fallbackSniCallback) {
+        return this.fallbackSniCallback(hostname, cb, config.ssl);
+      }
+      return cb(null);
+    };
+    config.ssl.SNICallback = sniCallback;
 
     if (SNI) {
       var todo = [];
@@ -117,12 +123,11 @@ function loadKeysforConfigEntry(config, callback) {
 }
 
 function handlePortEntryConfig(host, portNumber, portEntryConfig, callback) {
-  var self = this;
-  loadKeysforConfigEntry(portEntryConfig, function(err) {
+  loadKeysforConfigEntry.call(this, portEntryConfig, err => {
     if (err) {
       return callback(err);
     }
-    handleConfigEntryAfterLoadingKeys.call(self, host, portNumber, portEntryConfig, callback);
+    handleConfigEntryAfterLoadingKeys.call(this, host, portNumber, portEntryConfig, callback);
   });
 }
 
@@ -184,7 +189,10 @@ function createHandlers(portNumber, portConfig) {
     portConfig.router = [portConfig.router];
   }
 
-  portConfig.router = (self.config.middleware || []).concat(portConfig.middleware || []).concat(portConfig.router);
+  portConfig.router = [].concat(self.middleware)
+    .concat(self.config.middleware || [])
+    .concat(portConfig.middleware || [])
+    .concat(portConfig.router);
 
   var reject = di.resolve('rejectMiddleware');
 
@@ -236,6 +244,9 @@ function serverForPortConfig(host, portNumber, portConfig) {
 
     var cache = this.ocspCache = this.ocspCache || new ocsp.Cache();
     server.on('OCSPRequest', function(cert, issuer, cb) {
+      if(!cert) {
+        return cb();
+      }
       ocsp.getOCSPURI(cert, function(err, uri) {
         if (err) {
           return cb(err);
@@ -399,6 +410,7 @@ function unbindAll(cb) {
 function HttpMasterWorker(config) {
   config = config || {};
   this.config = config;
+  this.middleware = [];
   var store = {};
   this.tlsSessionStore = config.tlsSessionStore || {
     get: function(id, cb) {
@@ -408,6 +420,7 @@ function HttpMasterWorker(config) {
     set: function(id, data, cb) {
       id = id.toString('base64');
       store[id] = data;
+      // todo cleanup old ids
       if (cb)
         cb();
     }
@@ -435,8 +448,10 @@ HttpMasterWorker.prototype.loadConfig = function(config, configLoaded) {
 
   var events = new EventEmitter();
 
+  this.config = config;
+
   function messageHandler(msg) {
-    events.emit('msg:' + msg.type, msg.data);
+    events.emit('msg:' + msg.type, msg.data, msg.workerId);
   }
   this.handleMessage = messageHandler;
 

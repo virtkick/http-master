@@ -1,3 +1,5 @@
+'use strict';
+
 var DispatchTable = require('../../src/DispatchTable');
 
 var defaultModule = 'proxy';
@@ -49,17 +51,32 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
   }
 
   function parseSingleEntry(entry) {
+    var moduleName, entryKey;
+    
     if(typeof entry === 'function') {
       return passEntryToModuleInstance(di.resolve(entry), {});
     }
-
-    var m = entry.toString().match(entryRegexp);
+    let m = entry.toString().match(entryRegexp);
     var moduleName = m[1] || defaultModule;
     var entryKey = m[2];
 
     return passEntryToModule(moduleName, entryKey);
   }
 
+  function parseEntry(entry) {
+    if (typeof entry === 'object') {
+      if(entry instanceof Array) {
+        return handlerForMiddlewareList(entry.map(parseEntry));
+      }
+      else if(entry.$) {
+        return passEntryToModule(entry.$, entry);
+      }
+      else {
+        return passEntryToModule('router', entry);
+      }
+    }
+    return parseSingleEntry(entry);
+  }
 
   return {
     entryParser: function(routerEntries) {
@@ -72,17 +89,7 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
         }
         var dispatchTable = new DispatchTable(portNumber, {
           config: routerEntry,
-          entryParser: function(entry) {
-            if (typeof entry === 'object') {
-              if(entry instanceof Array) {
-                return handlerForMiddlewareList(entry.map(parseSingleEntry));
-              }
-              else {
-                return passEntryToModule('router', entry);
-              }
-            }
-            return parseSingleEntry(entry);
-          },
+          entryParser: parseEntry,
           requestHandler: function(req, res, next, target) {
             target.middleware(req, res, next, target.dispatchTarget);
           }

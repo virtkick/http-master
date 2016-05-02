@@ -216,7 +216,7 @@ function setupDi() {
     try {
       di.resolve(require(path.join(__dirname, '..', 'modules', moduleName)));
     } catch (err) {
-      console.error("Error loading module:", moduleName, err);
+      console.error("Error loading module:", moduleName, err.stack);
     }
   });
 }
@@ -299,7 +299,11 @@ HttpMaster.prototype.init = function(config, initDone) {
       var singleWorker = self.singleWorker = new(require('./HttpMasterWorker'))();
 
       singleWorker.sendMessage = function(type, data) {
-        process.emit('msg:' + type, data);
+        process.emit('msg:' + type, data, singleWorker);
+        process.emit('msg', {
+          type: type,
+          data: data
+        }, singleWorker);
       };
       singleWorker.on('logNotice', self.logNotice.bind(self));
       singleWorker.on('logError', self.logError.bind(self));

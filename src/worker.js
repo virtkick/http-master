@@ -11,12 +11,14 @@ function logError(str) {
 }
 var logNotice = logError;
 
-console.log = function() {
-  process.sendMessage("logNotice", util.format.apply(this, arguments));
-};
-console.error = function() {
-  process.sendMessage("logError", util.format.apply(this, arguments));
-};
+if(process.env.NODE_ENV === 'production') {
+  console.log = function() {
+    process.sendMessage("logNotice", util.format.apply(this, arguments));
+  };
+  console.error = function() {
+    process.sendMessage("logError", util.format.apply(this, arguments));
+  };
+}
 
 // TODO: move to common
 function dropPrivileges() {
@@ -70,7 +72,8 @@ worker.on('logError', logError);
 process.sendMessage = function(type, data) {
   process.send(JSON.stringify({
     type: type,
-    data: data
+    data: data,
+    workerId: cluster.worker.id
   }));
 };
 
