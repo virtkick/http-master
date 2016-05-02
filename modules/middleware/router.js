@@ -94,6 +94,7 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
             target.middleware(req, res, next, target.dispatchTarget);
           }
         });
+        process.emit('dispatchTable', dispatchTable.table);
         return {
           middleware: DispatchTable.prototype.dispatchRequest.bind(dispatchTable)
         }

@@ -13,12 +13,24 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
   }
 
   if(!master) {
+    let whitelist = {};
+        
+    Object.keys(moduleConfig.domains || {})
+      .forEach(domain => {
+        whitelist[domain] = true;
+        whitelist['www.' + domain] = true;
+      });
+    process.on('dispatchTable', table => {
+      Object.keys(table).map(entry => entry = entry.split(/:/)[0])
+        .forEach(domain => whitelist[domain] = true);
+    });
+    
     worker.fallbackSniCallback = (hostname, cb, sslConfig) => {
-      if(sslConfig.letsencrypt) {
+      if(sslConfig.letsencrypt && whitelist[hostname]) {
         comm.request('sniCallback', hostname).then(certData => {
           return tls.createSecureContext(certData);
         }).nodeify(cb);
-      }
+      } else cb(null);
     };
     
     worker.middleware.push(function() {
@@ -48,10 +60,16 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
     configDir: moduleConfig.configDir,
     approveRegistration(hostname, cb) { // leave `null` to disable automatic registration
       // Note: this is the place to check your database to get the user associated with this domain
+      let email = moduleConfig.email;
+      if(moduleConfig.domains &&
+        moduleConfig.domains[hostname] &&
+        moduleConfig.domains[hostname].email) {
+        email = moduleConfig.domains[hostname].email;
+      }
+
       cb(null, {
         domains: [hostname],
-        // TODO: allow per domain email change
-        email: moduleConfig.email,
+        email: email,
         agreeTos: moduleConfig.agreeTos
       });
     }
