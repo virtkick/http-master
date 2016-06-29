@@ -245,7 +245,7 @@ function serverForPortConfig(host, portNumber, portConfig) {
     var cache = this.ocspCache = this.ocspCache || new ocsp.Cache();
     server.on('OCSPRequest', function(cert, issuer, cb) {
       if(!cert) {
-        return cb();
+        return cb(new Error('empty certificate passed'));
       }
       ocsp.getOCSPURI(cert, function(err, uri) {
         if (err) {
@@ -260,7 +260,13 @@ function serverForPortConfig(host, portNumber, portConfig) {
           url: uri,
           ocsp: req.data
         };
-        cache.request(req.id, options, cb);
+        cache.request(req.id, options, function(err, response) {
+          if(err) {
+            console.error('Ignoring OCSP error', err);
+            return cb();
+          }
+          cb(null, response);
+        });
       });
     });
 
