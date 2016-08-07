@@ -1,6 +1,6 @@
 {
   "name": "http-master",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "src/HttpMaster.js",
   "scripts": {
@@ -26,6 +26,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "asn1js": "^1.2.12",
     "async": "1.4.2",
     "bluebird": "^3.3.5",
     "bufferutil": "1.2.1",
