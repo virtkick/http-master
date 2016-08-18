@@ -1,6 +1,6 @@
 {
   "name": "http-master",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "src/HttpMaster.js",
   "scripts": {
@@ -28,7 +28,6 @@
   "dependencies": {
     "async": "1.4.2",
     "bluebird": "^3.3.5",
-    "bufferutil": "1.2.1",
     "bugsnag": "1.6.4",
     "compression": "1.6.0",
     "connect-gzip-static": "1.0.0",
@@ -48,7 +47,6 @@
     "send": "0.13.0",
     "spdy": "^3.3.2",
     "uid-number": "0.0.6",
-    "utf-8-validate": "1.2.1",
     "uuid": "^2.0.2",
     "ws": "^1.1.1",
     "x509.js": "1.0.0",
@@ -64,6 +62,8 @@
     "should": "4.3.0"
   },
   "optionalDependencies": {
-    "codeclimate-test-reporter": "~0.0.3"
+    "codeclimate-test-reporter": "~0.0.3",
+    "bufferutil": "1.2.1",
+    "utf-8-validate": "1.2.1"
   }
 }
