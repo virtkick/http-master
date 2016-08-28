@@ -1,7 +1,4 @@
 module.exports = function LetsEncryptService(commService) {
-  console.log("SERVICE!!");
-    
-  return;
   var LE = require('letsencrypt');
 
   var config = {

@@ -25,11 +25,21 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
         .forEach(domain => whitelist[domain] = true);
     });
     
+    var leSni = require('le-sni-auto').create({
+      renewWithin: 10 * 24 * 60 * 60 * 1000       // do not renew prior to 10 days before expiration
+      , renewBy: 5 * 24 * 60 * 60 * 1000         // do not wait more than 5 days before expiration
+      // key (privkey.pem) and cert (cert.pem + chain.pem) will be provided by letsencrypt
+      , tlsOptions: { rejectUnauthorized: true, requestCert: false, ca: null, crl: null }
+      , getCertificatesAsync: function (domain, certs) {
+          return comm.request('getCertificates', {
+            domain: domain,
+            certs: certs
+          });
+      }
+    });
     worker.fallbackSniCallback = (hostname, cb, sslConfig) => {
       if(sslConfig.letsencrypt && whitelist[hostname]) {
-        comm.request('sniCallback', hostname).then(certData => {
-          return tls.createSecureContext(certData);
-        }).nodeify(cb);
+        return leSni.sniCallback(hostname, cb);
       } else cb(null);
     };
     
@@ -55,10 +65,14 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
     return;
   }
   
-  let LEX = require('letsencrypt-express');//.testing();
+  let LEX = require('letsencrypt');//.testing();
+  var leChallenge = require('le-challenge-standalone').create({ debug: false });
   let lex = LEX.create({
+    server: LEX.productionServerUrl,
     configDir: moduleConfig.configDir,
-    approveRegistration(hostname, cb) { // leave `null` to disable automatic registration
+    challenge: leChallenge,
+    approveDomains(opts, certs, cb) { // leave `null` to disable automatic registration
+      let hostname = opts.domain;
       // Note: this is the place to check your database to get the user associated with this domain
       let email = moduleConfig.email;
       if(moduleConfig.domains &&
@@ -66,20 +80,22 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
         moduleConfig.domains[hostname].email) {
         email = moduleConfig.domains[hostname].email;
       }
-
-      cb(null, {
-        domains: [hostname],
-        email: email,
-        agreeTos: moduleConfig.agreeTos
-      });
+      if (certs) {
+        opts.domains = certs.altnames;
+      }
+      else {
+        opts.email = email;
+        opts.agreeTos = moduleConfig.agreeTos;
+      }
+      cb(null, {options: opts, certs: certs});
     }
   });
   lex = Promise.promisifyAll(lex);
+  lex.challenge = Promise.promisifyAll(lex.challenge);
     
   comm.onRequest('acmeChallenge', (data) => {
-    return lex.getChallengeAsync(lex, data.host, data.key);
+    return lex.challenge.getAsync(lex, data.host, data.key);
   });
   
-  let sniCallback = Promise.promisify(require('../lib/letsencryptSniCallback').create(lex));
-  comm.onRequest('sniCallback', hostname => sniCallback(hostname));
+  comm.onRequest('getCertificates', data => lex.getCertificatesAsync(data.domain, data.certs));
 }

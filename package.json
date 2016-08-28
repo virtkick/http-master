@@ -1,6 +1,6 @@
 {
   "name": "http-master",
-  "version": "1.1.8",
+  "version": "1.2.0",
   "description": "Easy to setup, convenient, universal, parallel, http/https proxy daemon. Setup in 1 minute, run, configure, adapt. Proxying based on excellent node-http-proxy.",
   "main": "src/HttpMaster.js",
   "scripts": {
@@ -38,7 +38,9 @@
     "js-yaml": "3.2.3",
     "jsonfn": "0.31.0",
     "jsonlint-lines": "1.6.0",
-    "letsencrypt-express": "virtkick/letsencrypt-express",
+    "le-challenge-standalone": "^2.0.0",
+    "le-sni-auto": "^2.0.1",
+    "letsencrypt": "^2.1.5",
     "moment": "2.10.3",
     "morgan": "1.6.1",
     "node-watch": "^0.3.5",
