@@ -1,5 +1,5 @@
 'use strict';
-var XRegExp = require('xregexp').XRegExp;
+var XRegExp = require('xregexp');
 var assert = require('assert');
 
 // globStringToRegex from: http://stackoverflow.com/a/13818704/403571

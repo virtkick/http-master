@@ -33,7 +33,7 @@
     "connect-gzip-static": "1.0.0",
     "eventemitter3": "1.2.0",
     "extend": "3.0.0",
-    "http-auth": "2.4.4",
+    "http-auth": "~2.2.9",
     "http-proxy": "^1.14.0",
     "js-yaml": "3.6.1",
     "jsonfn": "0.31.0",
