@@ -91,15 +91,15 @@ class CertScanner extends EventEmitter {
               fs.stat(certPath, (err, statData) => {
                 if(statData.isDirectory()) {
                   return processDirectory(certPath, () => {
-                    cb(false); // is a directory
+                    cb(null, false); // is a directory
                   });
                 }
 
                 this.getCaCertsFromFile(certPath, (err, certs, rawCerts) => {
-                  if(err) return cb(false);
+                  if(err) return cb(null, false);
 
                   if (this.isDomainCert(certs)) {
-                    return cb(false);
+                    return cb(null, false);
                   }
                   var matchingCa = certs.filter((cert, i) => {
                     var res = this.caMatches(cert, parsedCert);
@@ -109,10 +109,10 @@ class CertScanner extends EventEmitter {
                     }
                     return res;
                   });
-                  return cb(matchingCa.length);
+                  return cb(null, matchingCa.length);
                 });
               });
-            }, function(ca) {
+            }, function(err, ca) {
               caResults = ca.map(fileName => {
                 return path.join(dirName, fileName);
               }).concat(caResults);
