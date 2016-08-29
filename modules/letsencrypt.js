@@ -68,7 +68,7 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
   let LEX = require('letsencrypt');//.testing();
   var leChallenge = require('le-challenge-standalone').create({ debug: false });
   let lex = LEX.create({
-    server: LEX.productionServerUrl,
+    server: 'staging',//LEX.productionServerUrl,
     configDir: moduleConfig.configDir,
     challenge: leChallenge,
     approveDomains(opts, certs, cb) { // leave `null` to disable automatic registration
@@ -96,6 +96,12 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
   comm.onRequest('acmeChallenge', (data) => {
     return lex.challenge.getAsync(lex, data.host, data.key);
   });
+    
+  let getCertificatesAsync = require('memoizee')(lex.getCertificatesAsync, {
+    maxAge: 10000,
+  });
   
-  comm.onRequest('getCertificates', data => lex.getCertificatesAsync(data.domain, data.certs));
+  comm.onRequest('getCertificates', data => {
+    return getCertificatesAsync(data.domain, data.certs);
+  });
 }
