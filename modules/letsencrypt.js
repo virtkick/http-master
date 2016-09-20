@@ -68,7 +68,7 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
   let LEX = require('letsencrypt');//.testing();
   var leChallenge = require('le-challenge-standalone').create({ debug: false });
   let lex = LEX.create({
-    server: 'staging',//LEX.productionServerUrl,
+    server: process.env.LETSENCRYPT_STAGING ? 'staging' : LEX.productionServerUrl,
     configDir: moduleConfig.configDir,
     challenge: leChallenge,
     approveDomains(opts, certs, cb) { // leave `null` to disable automatic registration
