@@ -10,8 +10,6 @@ var path = require('path');
 var extend = require('extend');
 var ocsp = require('ocsp');
 let Promise = require('bluebird');
-Promise.promisifyAll(ocsp);
-Promise.promisifyAll(ocsp.Cache.prototype);
 
 var nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
 
@@ -245,23 +243,36 @@ function serverForPortConfig(host, portNumber, portConfig) {
     server = baseModule.createServer(portConfig.ssl);
 
     var cache = this.ocspCache = this.ocspCache || new ocsp.Cache();
-    server.on('OCSPRequest', function(cert, issuer, ocspCallback) {
+    server.on('OCSPRequest', function(cert, issuer, cb) {
       if(!cert) {
-        return ocspCallback(new Error('empty certificate passed'));
+        return cb(new Error('empty certificate passed'));
       }
-      ocsp.getOCSPURIAsync(cert, uri => {
-        if(uri === null) {
-          return;
-        }
-        var req = ocsp.request.generate(cert, issuer);
-        var options = {
-          url: uri,
-          ocsp: req.data
-        };
-        return cache.requestAsync(req.id, options);
-      }).catch(err, err => {
+      try {
+        ocsp.getOCSPURI(cert, function(err, uri) {
+          if (err) {
+            return cb(err);
+          }
+          if(uri === null) {
+            // handle not working OCSP server
+            return cb();
+          }
+          var req = ocsp.request.generate(cert, issuer);
+          var options = {
+            url: uri,
+            ocsp: req.data
+          };
+          cache.request(req.id, options, function(err, response) {
+            if(err) {
+              console.error('Ignoring OCSP error', err);
+              return cb();
+            }
+            cb(null, response);
+          });
+        });
+      } catch(err) {
         console.error('Ignoring OCSP error', err);
-      }).nodeify(ocspCallback);
+        return cb();
+      }
     });
 
     if (!portConfig.ssl.skipWorkerSessionResumption) {
