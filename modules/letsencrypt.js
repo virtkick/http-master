@@ -65,7 +65,7 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
     return;
   }
   
-  let LEX = require('letsencrypt');//.testing();
+  let LEX = require('greenlock');//.testing();
   var leChallenge = require('le-challenge-standalone').create({ debug: false });
   let lex = LEX.create({
     server: process.env.LETSENCRYPT_STAGING ? 'staging' : LEX.productionServerUrl,
