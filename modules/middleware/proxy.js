@@ -1,6 +1,7 @@
 'use strict';
 
 var http = require('http');
+var https = require('https');
 var httpProxy = require('http-proxy');
 var url = require('url');
 var regexpHelper = require('../../src/regexpHelper');
@@ -28,18 +29,24 @@ function parseEntry(entry) {
 }
 
 function getAgent(config, portConfig) {
-  var agent = false;
+  let httpAgent = false, httpsAgent = false;
   var agentSettings = portConfig.agentSettings || config.agentSettings;
   if (agentSettings) {
-    agent = new http.Agent(agentSettings);
+    httpAgent = new http.Agent(agentSettings);
+    httpsAgent = new https.Agent(agentSettings);
   }
-  return agent;
+  return {httpAgent, httpsAgent};
 }
 
 module.exports = function ProxyMiddleware(config, portConfig, di) {
-  var agent = getAgent(config, portConfig);
-  var proxy = httpProxy.createProxyServer({xfwd: true, agent: agent});
-  proxy.on('error', function(err, req, res) {
+  var {httpAgent, httpsAgent} = getAgent(config, portConfig);
+  var proxyHttp = httpProxy.createProxyServer({xfwd: true, agent: httpAgent});
+  var proxyHttps = httpProxy.createProxyServer({xfwd: true, agent: httpsAgent, secure: false});
+  proxyHttp.on('error', function(err, req, res) {
+    req.err = err;
+    req.next(err);
+  });
+  proxyHttps.on('error', function(err, req, res) {
     req.err = err;
     req.next(err);
   });
@@ -64,8 +71,6 @@ module.exports = function ProxyMiddleware(config, portConfig, di) {
 
   return {
     requestHandler: function(req, res, next, dispatchTarget) {
-      req.__proxy = proxy;
-      req.__agent = agent;
       req.next = next;
       // workaround for node-http-proxy/#591
       if(!req.headers.host) {
@@ -86,6 +91,10 @@ module.exports = function ProxyMiddleware(config, portConfig, di) {
       else {
         proxyTarget.path = '';
       }
+      let proxy = proxyTarget.protocol === 'https:' ? proxyHttps : proxyHttp;
+      let agent = proxyTarget.protocol === 'https:' ? httpsAgent : httpAgent;
+      req.__proxy = proxy;
+      req.__agent = agent;
 
       var options = {
         target: proxyTarget,
