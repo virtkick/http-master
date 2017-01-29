@@ -17,6 +17,10 @@ module.exports = function CommService(events, master, worker) {
           events.on('msg:' + namespace + ':request:' + name, (reqData, worker) => {
             Promise.resolve().then(() => handler(reqData.data, worker)).then(resData => {
               worker.sendMessage(reqData.uuid, resData);;
+            }).catch(err => {
+              worker.sendMessage(reqData.uuid, {
+                error: err.message
+              })
             });
           });
         },
@@ -30,8 +34,8 @@ module.exports = function CommService(events, master, worker) {
     
     process.on('msg', msg => {
       if(requestMap[msg.type]) {
-        if(msg.error) {
-          requestMap[msg.type].error(msg.error);
+        if(msg.data && msg.data.error) {
+          requestMap[msg.type].error(msg.data.error);
         } else {
           requestMap[msg.type](msg.data);
         }
@@ -49,6 +53,9 @@ module.exports = function CommService(events, master, worker) {
             };
             requestMap[__uuid].error = err => {
               delete requestMap[__uuid];
+              if(!(err instanceof Error)) {
+                err = new Error(err);
+              }
               reject(err);
             };
             

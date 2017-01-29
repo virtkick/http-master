@@ -65,9 +65,10 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
     return;
   }
   
-  let LEX = require('greenlock');//.testing();
-  var leChallenge = require('le-challenge-standalone').create({ debug: false });
+  let LEX = require('greenlock');
+  var leChallenge = require('le-challenge-standalone').create({ debug: true });
   let lex = LEX.create({
+    debug: !!process.env.LETSENCRYPT_DEBUG,
     server: process.env.LETSENCRYPT_STAGING ? 'staging' : LEX.productionServerUrl,
     configDir: moduleConfig.configDir,
     challenge: leChallenge,
@@ -98,7 +99,8 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
   });
     
   let getCertificatesAsync = require('memoizee')(lex.getCertificatesAsync, {
-    maxAge: 10000,
+    maxAge: 10000, // prevent DoS
+    promise: 'then' // cache also errors
   });
   
   comm.onRequest('getCertificates', data => {
