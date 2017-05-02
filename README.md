@@ -464,7 +464,7 @@ ports: {
 <a name="spdy"/>
 ## SPDY - HTTP/2 Support
 Enable SPDY - HTTP/2 protocol by setting `spdy:true`. There is no need to change anything in your node app (So don't include npm modules `https`, `http2`, `spdy` or similar)
-_This implementation is kind of experimental:_ While the protocol _can_ speed up loading times _considerably_, keep in mind that this is implementated in javascript. So depending on cpu load it _you may actually get fewer requests per second!_
+_This implementation is kind of experimental:_ While the protocol _can_ speed up loading times _considerably_, keep in mind that this is implementated in javascript. So depending on cpu load _you may actually get fewer requests per second!_
 ```YAML
 ports: {
   443: {
