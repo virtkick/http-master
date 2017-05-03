@@ -176,25 +176,25 @@ httpMaster.init({
  // listening
 });
 ```
-####Class: HttpMaster
+#### Class: HttpMaster
 
-####Event: 'allWorkersStarted'
+#### Event: 'allWorkersStarted'
 `function()`
 Emitted after succesful `.init()`
 
-####Event: 'allWorkersReloaded'
+#### Event: 'allWorkersReloaded'
 `function()`
 Emitted after succesful `.reload()`
 
-####Event: 'logNotice'
+#### Event: 'logNotice'
 `function(msg)`
 Helpful logging information in case something got wrong.
 
-####Event: 'logError'
+#### Event: 'logError'
 `function(msg)`
 Information about errors that could be logged.
 
-####Event: 'error'
+#### Event: 'error'
 `function(err)`
 Emitted on failure to listen on any sockets/routes or failure to use given configuration.
 
