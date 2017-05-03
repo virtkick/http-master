@@ -20,6 +20,7 @@
   * [Redirect](#redirect)
   * [Automatic free SSL / Letsencrypt](#autossl)
   * [SSL](#ssl)
+  * [SPDY - HTTP/2 support _(experimental)_](#spdy)
   * [Websockify](#websockify)
   * [Logging](#logging)
   * [HTTP authentication](#auth)
@@ -455,6 +456,24 @@ ports: {
           ca: "/path/to/ca/bundle.pem"
         }
       }
+    }
+  }
+}
+```
+
+<a name="spdy"/>
+## SPDY - HTTP/2 Support
+Enable SPDY - HTTP/2 protocol by setting `spdy:true`. There is no need to change anything in your node app (So don't include npm modules `https`, `http2`, `spdy` or similar)
+_This implementation is kind of experimental:_ While the protocol _can_ speed up loading times _considerably_, keep in mind that this is implementated in javascript. So depending on cpu load _you may actually get fewer requests per second!_
+```YAML
+ports: {
+  443: {
+    router: {
+      "test.mysite.org": 6080,
+    },
+    ssl: {
+      letsencrypt: true, # or any other auto/manual configuration
+      spdy: true
     }
   }
 }
