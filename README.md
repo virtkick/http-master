@@ -10,26 +10,26 @@
 
 
 * [About](#about)
-* [Installation and basic usage](#installandbasicusage)
-* [Usage as a module](#module)
-* [Watch config for changes](#watchconfig)
-* [Use custom config loader](#configloader)
+* [Installation and basic usage](#installation-and-basic-usage)
+* [Usage as a module](#usage-as-a-module)
+* [Watch config for changes](#watch-config-for-changes)
+* [Use custom config loader](#use-custom-config-loader)
 * Features
   * [Proxy](#proxy)
-  * [URL rewrite](#urlrewrite)
+  * [URL rewrite](#url-rewrite)
   * [Redirect](#redirect)
-  * [Automatic free SSL / Letsencrypt](#autossl)
+  * [Automatic free SSL / Letsencrypt](#automatic-free-ssl-with-letsencrypt)
   * [SSL](#ssl)
-  * [SPDY - HTTP/2 support _(experimental)_](#spdy)
+  * [SPDY - HTTP/2 support _(experimental)_](#spdy-or-http2-support)
   * [Websockify](#websockify)
   * [Logging](#logging)
-  * [HTTP authentication](#auth)
-  * [Add header](#addheader)
-  * [Compression / GZIP](#gzip)
-  * [Regexp matching](#regexpmatching)
-  * [Error handling](#reject)
-  * [Serve static directory](#static)
-  * [Advanced routing](#advancedrouting)
+  * [HTTP authentication](#http-authentication)
+  * [Add header](#add-header)
+  * [Compression / GZIP](#gzip-compression)
+  * [Regexp matching](#regexp-matching)
+  * [Error handling](#error-handling)
+  * [Serve static directory](#serve-static-directory)
+  * [Advanced routing](#advanced-routing)
 * [Upstart](#upstart)
 * [Systemd](#systemd)
 * [Contributors](#contributors)
@@ -72,9 +72,8 @@ Ongoing development on:
 (\*\*) Needs writing a custom config loader as a javascript file.
 
 
-<a name="installandbasicusage"/>
 ## Installation and basic usage
-Refer to section [Usage as a module](#module) if you are interested in that use-case.
+Refer to section [Usage as a module](#usage-as-a-module) if you are interested in that use-case.
 
 To install, Node.JS is required to be installed and in your PATH:
 `npm install -g http-master` (may be needed to run as root depending on your setup)
@@ -163,7 +162,6 @@ ssl : {
 ```
 
 
-<a name="module"/>
 ## Usage as a module
 
 ```
@@ -211,7 +209,6 @@ Stopping httpMaster may be done using `httpMaster.reload({})`. Which should clos
 Note: Changing workerCount is the only thing that may not change.
 
 
-<a name="watchconfig"/>
 ## Watch config for changes
 
 Add `--watch` or add to config `"watchConfig": true`.
@@ -221,7 +218,6 @@ You may also trigger reload manually by sending USR1 signal to the master proces
 If you run via systemd then you may use the following `systemctl reload http-master.service`
 
 
-<a name="configloader"/>
 ## Use custom config loader
  
 See this repository for an example https://github.com/CodeCharmLtd/http-master-example-httploader
@@ -230,7 +226,7 @@ If you have an old 0.7.0 config, you can also load it with a provided config loa
 
 `http-master --configloader /path/to/lib/node_modules/http-master/migrateV1Config.js --config oldconfig.json`
 
-<a name="proxy"/>
+
 ## Proxy
 Proxy is a default action what to do with a http request but in each place where a number or host are used, you could do a redirect as well.
 
@@ -318,7 +314,6 @@ In addition to `router`, following setting could be set per port:
 * `proxyTargetTimeout` sets timeout for target connection
 * `proxyTimeout` sets timeout for proxy connection
 
-<a name="urlrewrite"/>
 ## URL rewrite
 All proxy example can be adapted to also do URL rewriting. All matching rules can do either wildcard (implicit) regexp matching explicit regexp matching. Let's focus on implicit first.
 
@@ -356,9 +351,8 @@ ports: {
   }
 }
 ```
-Everything above and more you can also do with regexp matching which is described in [Regexp matching](#regexpmatching) section.
+Everything above and more you can also do with regexp matching which is described in [Regexp matching](#regexp-matching) section.
 
-<a name="redirect"/>
 ## Redirect
 Redirect is a feature implemented and invoked in a similiar way to proxy.
 The different is that instead of proxy target, you should point rules to `"redirect -> http://target"`. The way target is constructed often is desired to be dynamic, for example that's how https to http redirect is usually used.
@@ -386,8 +380,7 @@ ports: {
 }
 ```
 
-<a name="autossl"/>
-## Automatic free SSL / Letsencrypt
+## Automatic free SSL with Letsencrypt
 The following configuration will enable free encryption of websites. See [https://letsencrypt.org/](letsencrypt website) for details.
 
 ```YAML
@@ -415,7 +408,6 @@ modules: {
 }
 ```
 
-<a name="ssl"/>
 ## SSL
 SSL can be configured for any port by simply providing "ssl" key to its entry, for example below is an auto-configuration example that also handles SNI:
 
@@ -461,8 +453,7 @@ ports: {
 }
 ```
 
-<a name="spdy"/>
-## SPDY - HTTP/2 Support
+## SPDY or HTTP2 Support
 Enable SPDY - HTTP/2 protocol by setting `spdy:true`. There is no need to change anything in your node app (So don't include npm modules `https`, `http2`, `spdy` or similar)
 _This implementation is kind of experimental:_ While the protocol _can_ speed up loading times _considerably_, keep in mind that this is implementated in javascript. So depending on cpu load _you may actually get fewer requests per second!_
 ```YAML
@@ -479,7 +470,6 @@ ports: {
 }
 ```
 
-<a name="websockify"/>
 ## Websockify
 Websockify is a feature which can turn any TCP socket to a web socket.
 
@@ -518,7 +508,7 @@ ports: {
   }
 }
 ```
-<a name="logging"/>
+
 ## Logging
 To enable application log:
 ```YAML
@@ -534,7 +524,7 @@ middleware: ["log -> /path/to/access.log"],
 ports: {} # your port config here
 ```
 
-To enable logging per route (note, consult [Advanced routing](#advancedrouting) for more details)
+To enable logging per route (note, consult [Advanced routing](#advanced-routing) for more details)
 ```YAML
 ports: {
   80: {
@@ -550,7 +540,6 @@ Logging is in apache format.
 
 Note: you may log to the same file from multiple routes, not a problem.
 
-<a name="auth"/>
 ## HTTP authentication
 ```YAML
 ports: {
@@ -564,7 +553,6 @@ ports: {
 Basically you need to generate a passwd file and point http-master to it.
 You can generate one with [node version of htpasswd]{https://www.npmjs.org/package/htpasswd}.
 
-<a name="addheader"/>
 ## Add header
 You can add one or more arbitrary requests to incoming headers/
 ```YAML
@@ -577,8 +565,7 @@ ports: {
 }
 ```
 
-<a name="gzip"/>
-## Compression / GZIP
+## GZIP Compression
 
 The single passed argument is compression level, from 1 to 9. 9 is most compression but slowest. To enable compression for all requests:
 
@@ -598,7 +585,6 @@ ports: {
 }
 ```
 
-<a name="regexpmatching"/>
 ## Regexp matching
 
 Short-hand matching format with using `*` or `*?` can be replaced by using explicit regexp expression, such as this:
@@ -614,7 +600,6 @@ ports: {
 Only problem is the necessity to escape characters for string inclusion.
 Named groups are also supported. Please open an issue to request more docs.
 
-<a name="reject" />
 ## Error handling
 
 HTTP master will report some errors in plain text, you can override this behaviour by providing a custom html error page:
@@ -634,7 +619,6 @@ ports: {
 }
 ```
 
-<a name="static" />
 ## Serve static directory
 You may also serve a static files , example:
 ```YAML
@@ -646,7 +630,6 @@ ports: {
 ```
 Please open an issue to request more docs.
 
-<a name="advancedrouting"/>
 ## Advanced routing
 
 Advanced routing refers to ability of nesting multiple layers of rules, such as:
@@ -664,7 +647,6 @@ ports: {
 ```
 Please open an issue to request more docs.
 
-<a name="systemd"/>
 ## Systemd
 
 We provide an example systemd unit file. The config file is set to /etc/http-master/http-master.conf by default. Copy the `http-master.service` to /etc/systemd/system to use it.
@@ -673,7 +655,6 @@ We provide an example systemd unit file. The config file is set to /etc/http-mas
 * `systemctl enable http-master` - auto-start
 * `systemctl reload http-master` - reload config with `kill -USR1`
 
-<a name="upstart"/>
 ## Upstart
 
 Also provided is `http-master-upstart.conf` which can be used with Upstart. As above, the config file is set to /etc/http-master/http-master.conf by default. Copy `http-master-upstart.conf` to `/etc/init/http-master.conf` to use it.
@@ -682,14 +663,12 @@ Also provided is `http-master-upstart.conf` which can be used with Upstart. As a
 * `service http-master stop`
 * `service http-master restart`
 
-<a name="contributors"/>
 ## Contributors
 
 * Damian Kaczmarek <damian@codecharm.co.uk>
 * Damian Nowak <nowaker@virtkick.com>
 * Sergey Zarouski <sergey@webuniverse.io>
 
-<a name="sponsors"/>
 ## Sponsors
 
 [eeGeo](http://sdk.eegeo.com/) - basic HTTP authentication against htpasswd file [#32](https://github.com/CodeCharmLtd/http-master/issues/32)
@@ -702,7 +681,6 @@ Example sponsored features could include:
 * Some form of .htaccess support
 * Additional logging formats
 
-<a name="license"/>
 ## License
 Copyright (c) 2013-2015 [Virtkick, Inc.](https://www.virtkick.com/)
 
