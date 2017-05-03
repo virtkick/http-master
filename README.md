@@ -36,7 +36,7 @@
 * [Sponsors](#sponsors)
 * [License](#license)
 
-<a name="about" />
+
 ## About
 
 http-master is a front end http service with with easy setup of reverse proxy/redirecting/other-actions logic. It means it was designed to run on your port 80 and 443 but can run on any. It can run as a module or as a standalone application. Your average use case could be having several web applications (node.js, rails, Java etc.) running on different internal ports and Apache running on port 8080. http-master allows you to easily define rules which domain should target which server and if no rules match, everything else could go to the Apache server. This way you setup your SSL in one place, in http-master and even non-SSL compatible http server can be provided with HTTPS. Many different flexible routing configurations are possible to set up.
