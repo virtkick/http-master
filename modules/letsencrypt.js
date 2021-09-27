@@ -2,8 +2,6 @@
 
 module.exports = function LetsEncrypt(commService, master, worker, moduleConfig, config) {
   let comm = commService('letsencrypt');
-  let Promise = require('bluebird');
-  let tls = require('tls');
 
   if(!moduleConfig.email) {
     throw new Error('letsencrypt.email needs to be set for the module to work');
@@ -11,7 +9,6 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
   if(!moduleConfig.agreeTos) {
     throw new Error('letsencrypt.agreeTos needs to be set for the module to work');
   }
-
   if(!master) {
     let whitelist = {};
         
@@ -32,8 +29,8 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
       , tlsOptions: { rejectUnauthorized: true, requestCert: false, ca: null, crl: null }
       , getCertificatesAsync: function (domain, certs) {
           return comm.request('getCertificates', {
-            domain: domain,
-            certs: certs
+            domain,
+            certs,
           });
       }
     });
@@ -54,8 +51,9 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
           comm.request('acmeChallenge', {
             key: key,
             host: req.headers.host
-          }).then(val => res.end(val || '_'))
-          .catch(err => {
+          }).then(val => {
+            return res.end(val || '_');
+          }).catch(err => {
             res.statusCode = 500;
             res.end('Error')
           });
@@ -65,45 +63,159 @@ module.exports = function LetsEncrypt(commService, master, worker, moduleConfig,
     return;
   }
   
-  let LEX = require('greenlock');
-  var leChallenge = require('le-challenge-standalone').create({ debug: true });
-  let lex = LEX.create({
-    debug: !!process.env.LETSENCRYPT_DEBUG,
-    server: process.env.LETSENCRYPT_STAGING ? 'staging' : LEX.productionServerUrl,
-    configDir: moduleConfig.configDir,
-    challenge: leChallenge,
-    approveDomains(opts, certs, cb) { // leave `null` to disable automatic registration
-      let hostname = opts.domain;
-      // Note: this is the place to check your database to get the user associated with this domain
-      let email = moduleConfig.email;
-      if(moduleConfig.domains &&
-        moduleConfig.domains[hostname] &&
-        moduleConfig.domains[hostname].email) {
-        email = moduleConfig.domains[hostname].email;
-      }
-      if (certs) {
-        opts.domains = certs.altnames;
-      }
-      else {
-        opts.email = email;
-        opts.agreeTos = moduleConfig.agreeTos;
-      }
-      cb(null, {options: opts, certs: certs});
+  const ACME = require('@root/acme');
+  const Keypairs = require('@root/keypairs');
+  const packageAgent = 'http-master/1.3.0';
+  const memoizee = require('memoizee');
+  
+  const { configDir } = moduleConfig;
+  const { join } = require('path');
+  const { writeFile, readFile } = require('fs').promises;
+  const PRIVKEY_PATH = join(configDir, 'privkey.pem');
+  const ACCOUNT_PATH = join(configDir, 'account.json');
+
+  const subscriberEmail = moduleConfig.email;
+  const directoryUrl = process.env.LETSENCRYPT_STAGING ?
+    'https://acme-staging-v02.api.letsencrypt.org/directory' : 'https://acme-v02.api.letsencrypt.org/directory';
+
+
+  const notify = (ev, args) => {
+    // console.log('Notify', ev, args);
+  };
+  
+  const acme = ACME.create({ maintainerEmail: 'rush+letsencrypt@virtkick.com', packageAgent, notify})
+
+  const acmeInitPromise = (async () => {
+    await acme.init(directoryUrl);
+    return await Promise.all([
+      getOrCreateAccount(),
+      getOrCreateServerKey(),
+    ]);
+  })();
+
+  const challengeStore = {};
+
+  async function getOrCreateServerKey() {
+    try {
+      return await readFile(PRIVKEY_PATH, 'ascii')
+    } catch (err) {
+      // You can generate it fresh
+      const serverKeypair = await Keypairs.generate({ kty: 'RSA', format: 'jwk' });
+      const serverKey = serverKeypair.private;
+      const serverPem = await Keypairs.export({ jwk: serverKey });
+      await writeFile(PRIVKEY_PATH, serverPem, 'ascii');
+      return serverPem;
     }
-  });
-  lex = Promise.promisifyAll(lex);
-  lex.challenge = Promise.promisifyAll(lex.challenge);
-    
-  comm.onRequest('acmeChallenge', (data) => {
-    return lex.challenge.getAsync(lex, data.host, data.key);
-  });
-    
-  let getCertificatesAsync = require('memoizee')(lex.getCertificatesAsync, {
-    maxAge: 10000, // prevent DoS
-    promise: 'then' // cache also errors
+  }
+
+  async function getOrCreateAccount() {
+    try {
+      const { account, accountKey, directoryUrl: savedDirectoryUrl } = JSON.parse(await readFile(ACCOUNT_PATH));
+      if (savedDirectoryUrl !== directoryUrl) {
+        throw new Error('Directory URL does not match');
+      }
+      return { account, accountKey };
+    } catch (err) {
+      const accountKeypair = await Keypairs.generate({ kty: 'EC', format: 'jwk' });
+      const accountKey = accountKeypair.private;
+
+      const agreeToTerms = moduleConfig.agreeTos;
+
+      const account = await acme.accounts.create({
+        subscriberEmail,
+        agreeToTerms,
+        accountKey,
+      });
+
+      writeFile(ACCOUNT_PATH, JSON.stringify({ account, accountKey, directoryUrl }));
+
+      return { account, accountKey };
+    }
+  }
+
+  async function generateCert(domain, certs) {
+    const [ { account, accountKey }, serverPem ] = await acmeInitPromise;
+
+    const serverKey = await Keypairs.import({ pem: serverPem });
+
+    const CSR = require('@root/csr');
+    const PEM = require('@root/pem');  
+    const encoding = 'der';
+    const typ = 'CERTIFICATE REQUEST';
+
+    const domains = [ domain ];
+    const csrDer = await CSR.csr({ jwk: serverKey, domains, encoding });
+    const csr = PEM.packBlock({ type: typ, bytes: csrDer });
+
+    const challenges = {
+      'http-01': {
+        init(opts) {
+          return null;
+        },
+        async set(data) {
+          const challenge = data.challenge;
+          challengeStore[challenge.token] = challenge.keyAuthorization;
+        },
+        async get(data) {
+          const challenge = data.challenge;
+          return { keyAuthorization: challengeStore[challenge.key] };
+        },
+        async remove(data) {
+          delete challengeStore[data.key];
+        }
+      },
+    };
+
+    const pems = await acme.certificates.create({
+      account,
+      accountKey,
+      csr,
+      domains,
+      challenges
+    });
+
+    return {
+      privkey: serverPem,
+      cert: pems.cert,
+      chain: pems.chain,
+      expiresAt: (new Date(pems.expires)).getTime(),
+      issuedAt: Date.now(),
+      subject: domain,
+      altnames: [],
+    };
+  }
+
+  const generateAndCacheCert = memoizee(async (domain, certs) => {
+    const certPath = join(configDir, `cert-${domain}.json`);
+    const cert = await generateCert(domain, certs);
+    await writeFile(certPath, JSON.stringify(cert));
+    return cert;
+  }, { maxAge: 120000, promise: true, primitive: true });
+
+  const readCert = memoizee(async domain => {
+    const certPath = join(configDir, `cert-${domain}.json`);
+    return JSON.parse(await readFile(certPath));
+  }, {promise: true, primitive: true })
+
+  async function getCertificatesAsync(domain, certs) {
+    try {
+      const cert = await readCert(domain);
+      if (cert.expiresAt > Date.now) {
+        readCert.delete(domain);
+        throw new Error(`Certificate for ${domain} has expired`);
+      }
+      return cert;
+    } catch (err) {
+      return generateAndCacheCert(domain, certs);
+    }
+  }
+
+  comm.onRequest('acmeChallenge', async (data) => {
+    const res = challengeStore[data.key];
+    return res;
   });
   
-  comm.onRequest('getCertificates', data => {
+  comm.onRequest('getCertificates', async data => {
     return getCertificatesAsync(data.domain, data.certs);
   });
 }

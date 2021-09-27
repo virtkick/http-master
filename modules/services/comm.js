@@ -63,7 +63,7 @@ module.exports = function CommService(events, master, worker) {
               data: data,
               uuid: __uuid
             });
-          }).timeout(10000).nodeify(cb);
+          }).timeout(60000).nodeify(cb);
         },
         send(name, data) {
           worker.sendMessage(namespace + ':' + name, data);
