@@ -28,7 +28,7 @@ module.exports = function LogFileService(config, commService, master, worker) {
         });
         if(user || group) {
           uidNumber(user, group, function(err, userId, groupId) {
-            fs.chown(logFile, userId, groupId);
+            fs.chown(logFile, userId, groupId, () => {});
           });
         }
         stream.once('open', function() {
