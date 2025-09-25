@@ -144,7 +144,6 @@ class CertScanner extends EventEmitter {
 
     var keys = {};
     var certs = {};
-    var keysByFilename = {};
 
     let options = this.options;
     
@@ -185,7 +184,6 @@ class CertScanner extends EventEmitter {
                 // Support both RSA and EC keys by using universal identifier
                 var keyId = createKeyIdentifier(pem, null, certPath);
                 console.log('DEBUG: Found key file:', certPath, 'keyId:', keyId);
-                keysByFilename[certPath] = options.read ? rawCert : certPath;
                 keys[keyId] = options.read ? rawCert : certPath;
                 return cb();
               }
@@ -238,7 +236,7 @@ class CertScanner extends EventEmitter {
               // Support both RSA and EC certificates by using universal identifier
               var certKeyId = createKeyIdentifier(null, cert, certPath);
               console.log('DEBUG: Found cert file:', certPath, 'certKeyId:', certKeyId);
-              certs[keyForCert] = keyForCert; // Use file path, not RSA modulus
+              certs[keyForCert] = certKeyId;
 
               async.each(altNames, (domain, cb) => {
                 outputConfig[domain] = {};
@@ -264,19 +262,7 @@ class CertScanner extends EventEmitter {
     processDirectory(this.sslDirectory, function(err) {
 
       Object.keys(outputConfig).forEach(function(domain) {
-        console.log("DEBUG: Matching domain:", domain, "certFile:", outputConfig[domain].cert);
-        console.log("DEBUG: certKeyId:", certs[outputConfig[domain].cert]);
-        console.log("DEBUG: Available keys:", Object.keys(keys));
-        console.log("DEBUG: Available keysByFilename:", Object.keys(keysByFilename));
-        var key = keys[certs[outputConfig[domain].cert]] || keysByFilename[certs[outputConfig[domain].cert]];
-
-        // Fallback for shared RSA modulus - use filename-based matching
-        if (!key) {
-          var certFile = outputConfig[domain].cert;
-          var domainFromCert = path.basename(certFile, path.extname(certFile));
-          var keyFile = path.join(path.dirname(certFile), domainFromCert + ".key");
-          key = keysByFilename[keyFile];
-        }
+        var key = keys[certs[outputConfig[domain].cert]];
 
 
         // flatten CA reuslts array by removing duplicates

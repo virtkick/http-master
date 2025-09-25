@@ -33,11 +33,11 @@ describe('Production Config Unit Tests', function() {
   it('should match production config exactly as deployed', function() {
     // EXACT production port 80 router configuration
     var config = {
-      "*/.well-known/acme-challenge/*": "static -> /etc/http-proxy/lego-webroot",
+      "*/.well-known/acme-challenge/*": "static -> /etc/http-proxy/lego-webroot/.well-known/acme-challenge/[2]",
       "x.virtkick.io": "static -> /home/virtkick-upload",
       "card.virtkick.com": "redirect -> https://card.virtkick.com",
       "owncloud.nowaker.net": "redirect -> https://owncloud.nowaker.net/[path]",
-      "owncloud.nowaker.net/.well-known/acme-challenge/*": "static -> /etc/http-proxy/lego-webroot/.well-known/acme-challenge/[1]"
+      "owncloud.nowaker.net/.well-known/acme-challenge/*": "static -> /etc/http-proxy/lego-webroot/.well-known/acme-challenge/[2]"
     };
     
     var dispatchTable = new DispatchTable(80, {
@@ -68,14 +68,14 @@ describe('Production Config Unit Tests', function() {
     
     // Assertions
     expect(target1).to.exist;
-    expect(target1.entryKey).to.equal('/etc/http-proxy/lego-webroot/.well-known/acme-challenge/[1]');
+    expect(target1.entryKey).to.equal('/etc/http-proxy/lego-webroot/.well-known/acme-challenge/[2]');
     expect(req1.match).to.include('test123');
     
     expect(target2).to.exist; 
     expect(target2.entryKey).to.equal('https://owncloud.nowaker.net/[path]');
     
     expect(target3).to.exist;
-    expect(target3.entryKey).to.equal('/etc/http-proxy/lego-webroot');
+    expect(target3.entryKey).to.equal('/etc/http-proxy/lego-webroot/.well-known/acme-challenge/[2]');
     expect(req3.match).to.include('test456');
   });
 
