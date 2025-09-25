@@ -46,8 +46,12 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
   }
 
   function passEntryToModule(moduleName, entry) {
+    console.log('ROUTER PARSE: Resolving middleware:', moduleName + 'Middleware', 'for entry:', entry);
     var instance = di.resolve(moduleName + 'Middleware');
-    return passEntryToModuleInstance(instance, entry);
+    console.log('ROUTER PARSE: Instance resolved:', instance ? 'YES' : 'NO');
+    var result = passEntryToModuleInstance(instance, entry);
+    console.log('ROUTER PARSE: Result:', result);
+    return result;
   }
 
   function parseSingleEntry(entry) {
@@ -91,7 +95,15 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
           config: routerEntry,
           entryParser: parseEntry,
           requestHandler: function(req, res, next, target) {
-            target.middleware(req, res, next, target.dispatchTarget);
+            console.log('ROUTER: Dispatching to target:', target.dispatchTarget ? target.dispatchTarget.entry : 'undefined');
+            console.log('ROUTER: target.middleware type:', typeof target.middleware);
+            console.log('ROUTER: target.dispatchTarget:', target.dispatchTarget);
+            try {
+              target.middleware(req, res, next, target.dispatchTarget);
+            } catch (err) {
+              console.log('ROUTER: Error calling target.middleware:', err.message);
+              next(err);
+            }
           }
         });
         process.emit('dispatchTable', dispatchTable.table);
@@ -103,6 +115,7 @@ module.exports = function RouterMiddleware(di, portConfig, portNumber) {
       return handlerForMiddlewareList(middlewareList);
     },
     requestHandler: function(req, res, next, target) {
+      console.log('ROUTER: Dispatching to target:', target.dispatchTarget ? target.dispatchTarget.entry : 'undefined');
       target.middleware(req, res, next, target.dispatchTarget);
     }
   };

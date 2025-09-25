@@ -75,10 +75,9 @@ function DispatchTable(port, params) {
   this.table = {};
   this.regexpEntries = [];
   this.failedEntries = {};
+  console.log('DISPATCH INIT: Port:', port, 'Config keys:', Object.keys(config || {}));
   Object.keys(config || {}).forEach(function(entryKey) {
     var entry = config[entryKey];
-
-
     // split entry 192.168.0.0/host to
     // ['192.168.0.0', '/']
     var entryKeyData = splitFirst(entryKey);
@@ -162,7 +161,30 @@ DispatchTable.prototype.getTargetForReq = function(req) {
   var self = this;
   var target;
 
-  // look for specific host match first
+  // Check ACME challenge wildcard patterns FIRST (before exact host matches)
+  if (req.url && req.url.indexOf('/.well-known/acme-challenge/') === 0) {
+    if (this.regexpEntries.length) {
+      var regexpEntries = this.regexpEntries;
+      for (i = 0; i < regexpEntries.length; ++i) {
+        var entry = regexpEntries[i];
+        if(!entry.regexp) {
+          continue;
+        }
+        m = host.match(entry.regexp);
+        if (m) {
+          if(!req.match)
+            req.match = [];
+          for(var j = 1; j < m.length; ++j)
+            req.match.push(m[j]);
+          if(this.checkPathForReq(req, entry)) {
+            return entry.target;
+          }
+        }
+      }
+    }
+  }
+
+  // look for specific host match second
   // and generic path-only match then
   [host, ''].some(function(host) {
     var entry = self.table[host];
@@ -175,9 +197,21 @@ DispatchTable.prototype.getTargetForReq = function(req) {
       }
       else { // multiple entries, check pathnames
         var targetEntries = entry;
-        for (i = 0; i < targetEntries.length; ++i) {
-          if(self.checkPathForReq(req, targetEntries[i])) {
-            target = targetEntries[i].target;
+        // Sort entries by path specificity - entries with paths come first
+        var sortedEntries = targetEntries.slice().sort(function(a, b) {
+          // Entries with specific paths should be checked before general entries
+          if (a.path && !b.path) return -1;
+          if (!a.path && b.path) return 1;
+          // If both have paths, sort by path length (longer = more specific)
+          if (a.path && b.path) {
+            return b.path.length - a.path.length;
+          }
+          return 0;
+        });
+        
+        for (i = 0; i < sortedEntries.length; ++i) {
+          if(self.checkPathForReq(req, sortedEntries[i])) {
+            target = sortedEntries[i].target;
             return true;
           }
         }
@@ -187,21 +221,20 @@ DispatchTable.prototype.getTargetForReq = function(req) {
   if(target) {
     return target;
   }
-  // if host-only matches failed, look for path matches
+  // if host-only matches failed, look for remaining wildcard patterns
   if (this.regexpEntries.length) {
     var regexpEntries = this.regexpEntries;
     for (i = 0; i < regexpEntries.length; ++i) {
       var entry = regexpEntries[i];
       if(!entry.regexp) {
-        // TODO: research this
         continue;
       }
       m = host.match(entry.regexp);
       if (m) {
         if(!req.match)
           req.match = [];
-        for(var i = 1;i < m.length;++i)
-          req.match.push(m[i]);
+        for(var k = 1; k < m.length; ++k)
+          req.match.push(m[k]);
         if(this.checkPathForReq(req, entry)) {
           return entry.target;
         }
@@ -211,10 +244,14 @@ DispatchTable.prototype.getTargetForReq = function(req) {
 };
 
 DispatchTable.prototype.dispatchRequest = function(req, res, next) {
+  console.log('DISPATCH: Request URL:', req.url, 'Host:', req.headers.host);
   var target = this.getTargetForReq(req);
+  console.log('DISPATCH: Target found:', target ? 'YES' : 'NO');
   if(target && this.requestHandler) {
+    console.log('DISPATCH: Calling requestHandler with target');
     return this.requestHandler(req, res, next, target);
   }
+  console.log('DISPATCH: No target found, calling next()');
   next();
 };
 

@@ -72,7 +72,9 @@ describe('static middleware with wildcards', function() {
       workerCount: 0,
       ports: {
         23442: {
-          '*/.well-known/acme-challenge/*': 'static -> ./tests/wildcard_test_data/webroot/[1]'
+          router: {
+            '*/.well-known/acme-challenge/*': 'static -> ./tests/wildcard_test_data/webroot/[2]'
+          }
         }
       }
     }, function(err) {
@@ -135,7 +137,9 @@ describe('static middleware with multiple wildcards', function() {
       workerCount: 0,
       ports: {
         23443: {
-          '*/api/*/data.json': 'static -> ./tests/multi_wildcard_test_data/api/[1]/data.json'
+          router: {
+            '*/api/*/data.json': 'static -> ./tests/multi_wildcard_test_data/api/[2]/data.json'
+          }
         }
       }
     }, function(err) {
